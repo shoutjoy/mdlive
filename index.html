@@ -194,6 +194,12 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 /* caption opts */
 .cap-opt{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--bg3);color:var(--tx2);transition:all var(--tr)}
 .cap-opt.sel{border-color:var(--ac);background:var(--acg);color:var(--ac)}
+/* font size stepper */
+#fsize-display{min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:var(--tx);line-height:26px;cursor:default;user-select:none;background:var(--bg3);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+/* stats type buttons */
+#stats-type-row .btn-tog{font-size:11px;padding:3px 8px}
+/* view mode buttons */
+#vm-split,#vm-editor,#vm-preview{font-size:10px;min-width:34px;padding:0 5px}
 /* footnote highlight in editor via preview */
 .preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}
 .preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}
@@ -220,7 +226,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 
 <!-- TITLEBAR -->
 <header id="titlebar">
-  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V7</div>
+  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V9</div>
   <input id="doc-title" type="text" value="Untitled Document" spellcheck="false">
   <div id="tba">
     <span id="rm-badge">RESEARCH</span>
@@ -249,14 +255,11 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <button class="tb" onclick="ED.inlineCode()" data-tooltip="인라인 코드"><code style="font-size:10px">`c`</code></button>
   </div>
   <div class="ts"></div>
-  <!-- font size -->
-  <div class="tg">
-    <select class="tbsel" id="fsize-sel" onchange="ED.fontSize(this.value)" data-tooltip="글자 크기">
-      <option value="">크기</option>
-      <option>8pt</option><option>9pt</option><option>10pt</option><option>11pt</option>
-      <option>12pt</option><option>14pt</option><option>16pt</option><option>18pt</option>
-      <option>20pt</option><option>24pt</option><option>28pt</option>
-    </select>
+  <!-- font size +/- -->
+  <div class="tg" style="gap:0">
+    <button class="tb" onclick="FS.dec()" data-tooltip="글자 크기 줄이기 (Shift+Alt+,)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">−</button>
+    <div id="fsize-display" style="min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:var(--tx);line-height:26px;cursor:default;user-select:none" data-tooltip="현재 글자 크기">12pt</div>
+    <button class="tb" onclick="FS.inc()" data-tooltip="글자 크기 키우기 (Shift+Alt+.)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">+</button>
   </div>
   <!-- font color + highlight -->
   <div class="tg">
@@ -303,11 +306,16 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <button class="tb" onclick="ED.footnote()" data-tooltip="각주">†</button>
     <button class="tb" onclick="ED.math()" data-tooltip="수식(LaTeX)">∑</button>
     <button class="tb" onclick="App.showCite()" data-tooltip="인용 삽입" data-key="Ctrl+Shift+C">📖</button>
+    <button class="tb" onclick="STATS.show()" data-tooltip="APA 통계 삽입" data-key="Shift+Alt+9">𝑓(x)</button>
   </div>
   <div class="ts"></div>
   <div class="tg"><button class="tb" onclick="App.toggleFind()" data-tooltip="찾기/바꾸기" data-key="Ctrl+F">🔍</button></div>
   <div class="spacer"></div>
-  <div class="tg"><select id="vm-sel" onchange="App.setView(this.value)"><option value="split">Split</option><option value="editor">Editor</option><option value="preview">Preview</option></select></div>
+  <div class="tg">
+    <button class="tb" onclick="App.setViewCycle('split')" id="vm-split" data-tooltip="분할 보기 (Alt+1)" data-key="Alt+1" style="font-size:10px;min-width:36px">Split</button>
+    <button class="tb" onclick="App.setViewCycle('editor')" id="vm-editor" data-tooltip="에디터만 (Alt+2)" data-key="Alt+2" style="font-size:10px;min-width:36px">Edit</button>
+    <button class="tb" onclick="App.setViewCycle('preview')" id="vm-preview" data-tooltip="미리보기만 (Alt+3)" data-key="Alt+3" style="font-size:10px;min-width:36px">View</button>
+  </div>
   <div class="ts"></div>
   <div class="tg">
     <button class="tb" id="pw-btn" onclick="PW.open()" data-tooltip="새창 미리보기" data-key="Ctrl+Shift+P">🗗 PV</button>
@@ -396,10 +404,19 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       <div class="hk-item"><span class="hk-desc">기울임꼴</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>I</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">인라인 코드 `code`</span><div class="hk-keys"><kbd>Alt</kbd><kbd>V</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">코드 직접 삽입 (마지막 언어)</span><div class="hk-keys"><kbd>Alt</kbd><kbd>C</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">글자 크기 키우기</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>&gt;</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">글자 크기 줄이기</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>&lt;</kbd></div></div>
     </div>
-    <div class="hk-s">기타</div>
+    <div class="hk-s">화면 전환</div>
+    <div class="hk-grid">
+      <div class="hk-item"><span class="hk-desc">Split 보기</span><div class="hk-keys"><kbd>Alt</kbd><kbd>1</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">에디터만</span><div class="hk-keys"><kbd>Alt</kbd><kbd>2</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">미리보기만</span><div class="hk-keys"><kbd>Alt</kbd><kbd>3</kbd></div></div>
+    </div>
+    <div class="hk-s">삽입 / 도구</div>
     <div class="hk-grid">
       <div class="hk-item"><span class="hk-desc">인용 삽입</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>C</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">APA 통계 삽입</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>9</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">새창 미리보기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">저장 다이얼로그</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>S</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">찾기/바꾸기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>F</kbd></div></div>
@@ -443,6 +460,51 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       </div>
     </div>
     <div class="mf"><button class="btn btn-g btn-sm" onclick="App.hideModal('save-modal')">닫기</button></div>
+  </div>
+</div>
+
+<!-- APA STATS MODAL -->
+<div class="ov" id="stats-modal">
+  <div class="modal" style="max-width:560px">
+    <h3>𝑓(x) APA 통계 결과 삽입 <span style="font-size:11px;color:var(--tx3);font-weight:400">Shift+Alt+9</span></h3>
+    <!-- Analysis type selector -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="stats-type-row">
+      <button class="btn btn-tog btn-sm active" onclick="STATS.setType('ttest')" id="st-ttest">t-test</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('anova')" id="st-anova">ANOVA</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('regression')" id="st-regression">Regression</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('correlation')" id="st-correlation">Correlation</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('chisq')" id="st-chisq">Chi-square</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('sem')" id="st-sem">SEM</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('logistic')" id="st-logistic">Logistic</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('multilevel')" id="st-multilevel">Multilevel</button>
+      <button class="btn btn-tog btn-sm" onclick="STATS.setType('custom')" id="st-custom" style="border-color:var(--ac2);color:var(--ac2)">✎ Custom</button>
+    </div>
+    <!-- Fields area -->
+    <div id="stats-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"></div>
+    <!-- Custom area (hidden by default) -->
+    <div id="stats-custom-area" style="display:none;margin-bottom:10px">
+      <div class="fg"><label class="fl">커스텀 이름</label><input class="fi" id="custom-name" type="text" placeholder="예: Mixed ANOVA"></div>
+      <div class="fg"><label class="fl">출력 포맷 <span style="color:var(--tx3);font-size:10px">{변수명} 사용</span></label>
+        <input class="fi" id="custom-fmt" type="text" placeholder="예: (F({df1}, {df2}) = {F}, p = {p})">
+      </div>
+      <div class="fg" id="custom-vars-area"><label class="fl">변수 목록 <span style="color:var(--tx3);font-size:10px">콤마로 구분</span></label>
+        <input class="fi" id="custom-vars" type="text" placeholder="df1, df2, F, p" oninput="STATS.updateCustomVars()">
+      </div>
+      <div id="custom-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"></div>
+      <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+        <button class="btn btn-g btn-sm" onclick="STATS.saveCustom()">💾 저장</button>
+        <select id="custom-saved-sel" class="fi" style="width:auto;flex:1;padding:4px 8px;font-size:11px" onchange="STATS.loadCustom(this.value)"><option value="">— 저장된 커스텀 —</option></select>
+        <button class="btn btn-g btn-sm" style="color:var(--er)" onclick="STATS.deleteCustom()">삭제</button>
+      </div>
+    </div>
+    <!-- Preview -->
+    <div style="background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-family:var(--fm);font-size:12px;color:var(--tx);min-height:28px">
+      <span style="font-size:10px;color:var(--tx3);margin-right:6px">미리보기:</span><span id="stats-preview" style="color:var(--ac)"></span>
+    </div>
+    <div class="mf">
+      <button class="btn btn-g btn-sm" onclick="App.hideModal('stats-modal')">취소</button>
+      <button class="btn btn-p btn-sm" onclick="STATS.insert()">삽입</button>
+    </div>
   </div>
 </div>
 
@@ -1615,7 +1677,7 @@ const ED={
   italic(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e)||'텍스트';const b=ed.value.substring(s-1,s),a=ed.value.substring(e,e+1);if(b==='*'&&a==='*'){ed.value=ed.value.substring(0,s-1)+sel+ed.value.substring(e+1);ed.setSelectionRange(s-1,s-1+sel.length);App.render()}else ins(ed,s,e,`*${sel}*`)},
   strike(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd;ins(ed,s,e,`~~${ed.value.substring(s,e)||'텍스트'}~~`)},
   inlineCode(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd;ins(ed,s,e,`\`${ed.value.substring(s,e)||'code'}\``)},
-  fontSize(size){if(!size)return;const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e)||'텍스트';ins(ed,s,e,`<span style="font-size:${size}">${sel}</span>`);el('fsize-sel').value=''},
+  fontSize(size){if(!size)return;const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e)||'텍스트';ins(ed,s,e,`<span style="font-size:${size}">${sel}</span>`)},
   align(dir){const ed=this.ed();const{text}=getCL(ed);const c=text.replace(/<div[^>]*>(.*?)<\/div>/gi,'$1');repCL(ed,dir==='left'?c:`<div style="text-align:${dir}">${c}</div>`)},
   list(type){const ed=this.ed(),s=ed.selectionStart;const p=type==='ul'?'- ':'1. ';ins(ed,s,s,`\n${p}항목 1\n${p}항목 2\n${p}항목 3\n`)},
   bquote(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e);if(sel)ins(ed,s,e,sel.split('\n').map(l=>'> '+l).join('\n'));else ins(ed,s,s,'\n> 인용문을 입력하세요\n')},
@@ -1638,12 +1700,292 @@ const ED={
 };
 
 /* ═══════════════════════════════════════════════════════════
+   FONT SIZE MANAGER
+═══════════════════════════════════════════════════════════ */
+const FS=(()=>{
+  const SIZES=[8,9,10,11,12,13,14,15,16,18,20,22,24,28,32,36];
+  let cur=4;// default 12pt (index 4)
+  function update(){
+    const pt=SIZES[cur];
+    el('editor').style.fontSize=pt+'px';
+    el('editor').style.lineHeight=(pt<=12?21:Math.round(pt*1.6))+'px';
+    el('fsize-display').textContent=pt+'pt';
+    LN.update();
+  }
+  function inc(){if(cur<SIZES.length-1){cur++;update()}}
+  function dec(){if(cur>0){cur--;update()}}
+  function set(pt){const i=SIZES.indexOf(pt);if(i>=0){cur=i;update()}}
+  return{inc,dec,set,update};
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   APA STATISTICS INSERTER
+═══════════════════════════════════════════════════════════ */
+const STATS=(()=>{
+  const CUSTOM_KEY='mdpro_custom_stats';
+  let curType='ttest';
+  let customList=[];
+
+  const TYPES={
+    ttest:{
+      label:'t-test',
+      fields:[
+        {id:'df',label:'df',ph:'자유도',req:true},
+        {id:'t',label:'t',ph:'t값',req:true},
+        {id:'p',label:'p',ph:'p값',req:true},
+        {id:'d',label:"Cohen's d",ph:'효과크기 (선택)',req:false},
+      ],
+      fmt:(v)=>{
+        let s=`(t(${v.df}) = ${v.t}, p = ${fmtP(v.p)}`;
+        if(v.d)s+=`, d = ${v.d}`;
+        return s+')';
+      }
+    },
+    anova:{
+      label:'ANOVA',
+      fields:[
+        {id:'df1',label:'df₁',ph:'처리 자유도',req:true},
+        {id:'df2',label:'df₂',ph:'오차 자유도',req:true},
+        {id:'F',label:'F',ph:'F값',req:true},
+        {id:'p',label:'p',ph:'p값',req:true},
+        {id:'np2',label:'η²p',ph:'부분 에타제곱 (선택)',req:false},
+      ],
+      fmt:(v)=>{
+        let s=`(F(${v.df1}, ${v.df2}) = ${v.F}, p = ${fmtP(v.p)}`;
+        if(v.np2)s+=`, η²p = ${v.np2}`;
+        return s+')';
+      }
+    },
+    regression:{
+      label:'Regression',
+      fields:[
+        {id:'beta',label:'β (표준화)',ph:'베타 (선택)',req:false},
+        {id:'B',label:'B (비표준화)',ph:'B (선택)',req:false},
+        {id:'SE',label:'SE',ph:'표준오차 (선택)',req:false},
+        {id:'t',label:'t',ph:'t값',req:true},
+        {id:'p',label:'p',ph:'p값',req:true},
+      ],
+      fmt:(v)=>{
+        const parts=[];
+        if(v.beta)parts.push(`β = ${v.beta}`);
+        if(v.B)parts.push(`B = ${v.B}`);
+        if(v.SE)parts.push(`SE = ${v.SE}`);
+        parts.push(`t = ${v.t}`);
+        parts.push(`p = ${fmtP(v.p)}`);
+        return '('+parts.join(', ')+')';
+      }
+    },
+    correlation:{
+      label:'Correlation',
+      fields:[
+        {id:'r',label:'r',ph:'상관계수',req:true},
+        {id:'df',label:'df',ph:'자유도 (선택)',req:false},
+        {id:'p',label:'p',ph:'p값',req:true},
+      ],
+      fmt:(v)=>{
+        let s=v.df?`(r(${v.df}) = ${v.r}`:`(r = ${v.r}`;
+        s+=`, p = ${fmtP(v.p)})`;
+        return s;
+      }
+    },
+    chisq:{
+      label:'Chi-square',
+      fields:[
+        {id:'df',label:'df',ph:'자유도',req:true},
+        {id:'chisq',label:'χ²',ph:'카이제곱값',req:true},
+        {id:'p',label:'p',ph:'p값',req:true},
+        {id:'V',label:"Cramer's V",ph:'효과크기 (선택)',req:false},
+      ],
+      fmt:(v)=>{
+        let s=`(χ²(${v.df}) = ${v.chisq}, p = ${fmtP(v.p)}`;
+        if(v.V)s+=`, Cramer's V = ${v.V}`;
+        return s+')';
+      }
+    },
+    sem:{
+      label:'SEM',
+      fields:[
+        {id:'beta',label:'β (표준화)',ph:'베타 (선택)',req:false},
+        {id:'b',label:'b (비표준화)',ph:'b (선택)',req:false},
+        {id:'SE',label:'SE',ph:'표준오차 (선택)',req:false},
+        {id:'z',label:'z',ph:'z값',req:true},
+        {id:'p',label:'p',ph:'p값',req:true},
+      ],
+      fmt:(v)=>{
+        const parts=[];
+        if(v.beta)parts.push(`β = ${v.beta}`);
+        if(v.b)parts.push(`b = ${v.b}`);
+        if(v.SE)parts.push(`SE = ${v.SE}`);
+        parts.push(`z = ${v.z}`);
+        parts.push(`p = ${fmtP(v.p)}`);
+        return '('+parts.join(', ')+')';
+      }
+    },
+    logistic:{
+      label:'Logistic Regression',
+      fields:[
+        {id:'OR',label:'OR',ph:'오즈비',req:true},
+        {id:'CI_low',label:'95% CI 하한',ph:'하한값',req:true},
+        {id:'CI_high',label:'95% CI 상한',ph:'상한값',req:true},
+        {id:'p',label:'p',ph:'p값',req:true},
+      ],
+      fmt:(v)=>`(OR = ${v.OR}, 95% CI [${v.CI_low}, ${v.CI_high}], p = ${fmtP(v.p)})`
+    },
+    multilevel:{
+      label:'Multilevel (HLM)',
+      fields:[
+        {id:'gamma',label:'γ',ph:'감마 계수',req:true},
+        {id:'SE',label:'SE',ph:'표준오차',req:true},
+        {id:'t',label:'t',ph:'t값',req:true},
+        {id:'p',label:'p',ph:'p값',req:true},
+      ],
+      fmt:(v)=>`(γ = ${v.gamma}, SE = ${v.SE}, t = ${v.t}, p = ${fmtP(v.p)})`
+    },
+  };
+
+  function fmtP(p){
+    if(!p)return'?';
+    const n=parseFloat(p);
+    if(isNaN(n))return p;
+    if(n<.001)return'< .001';
+    if(n<.01)return n.toFixed(3).replace('0.','. ').replace(/ /,'');
+    return n.toFixed(3).replace('0.','.').replace(/0+$/,'').replace(/\.$/,'');
+  }
+
+  function loadCustom(){try{customList=JSON.parse(localStorage.getItem(CUSTOM_KEY)||'[]')}catch(e){customList=[]}}
+  function saveCustomList(){try{localStorage.setItem(CUSTOM_KEY,JSON.stringify(customList))}catch(e){}}
+
+  function renderFields(type){
+    const area=el('stats-fields');
+    const customArea=el('stats-custom-area');
+    if(type==='custom'){
+      area.style.display='none';
+      customArea.style.display='block';
+      renderCustomSavedSel();
+      updateCustomVars();
+    }else{
+      area.style.display='grid';
+      customArea.style.display='none';
+      const t=TYPES[type];if(!t)return;
+      area.innerHTML=t.fields.map(f=>`
+        <div class="fg" style="margin:0">
+          <label class="fl">${f.label}${f.req?'':' <span style="color:var(--tx3)">(선택)</span>'}</label>
+          <input class="fi" id="sf_${f.id}" type="text" placeholder="${f.ph}" oninput="STATS.preview()" style="padding:5px 8px">
+        </div>`).join('');
+    }
+    preview();
+  }
+
+  function preview(){
+    const pv=el('stats-preview');
+    try{
+      if(curType==='custom'){
+        const fmt=el('custom-fmt').value;
+        const vars=(el('custom-vars').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+        const vals={};
+        vars.forEach(v=>{const inp=el('cfsf_'+v);vals[v]=inp?inp.value.trim():'';});
+        let out=fmt;
+        vars.forEach(v=>{if(vals[v])out=out.replaceAll('{'+v+'}',vals[v]);});
+        pv.textContent=out||'(출력 미리보기)';
+      }else{
+        const t=TYPES[curType];if(!t){pv.textContent='';return}
+        const vals={};
+        t.fields.forEach(f=>{const inp=el('sf_'+f.id);vals[f.id]=inp?inp.value.trim():'';});
+        pv.textContent=t.fmt(vals);
+      }
+    }catch(e){pv.textContent='입력값 오류'}
+  }
+
+  function setType(type){
+    curType=type;
+    document.querySelectorAll('#stats-type-row .btn-tog').forEach(b=>b.classList.remove('active'));
+    const btn=el('st-'+type);if(btn)btn.classList.add('active');
+    renderFields(type);
+  }
+
+  function insert(){
+    const pv=el('stats-preview').textContent;
+    if(!pv||(pv==='(출력 미리보기)'&&curType==='custom'))return;
+    const ed=el('editor');const pos=ed.selectionEnd;
+    ed.value=ed.value.substring(0,pos)+pv+ed.value.substring(pos);
+    ed.setSelectionRange(pos+pv.length,pos+pv.length);
+    ed.focus();App.render();US.snap();
+    App.hideModal('stats-modal');
+  }
+
+  function updateCustomVars(){
+    const vars=(el('custom-vars').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const area=el('custom-fields');
+    area.innerHTML=vars.map(v=>`
+      <div class="fg" style="margin:0">
+        <label class="fl">${v}</label>
+        <input class="fi" id="cfsf_${v}" type="text" placeholder="${v} 값" oninput="STATS.preview()" style="padding:5px 8px">
+      </div>`).join('');
+    preview();
+  }
+
+  function saveCustom(){
+    const name=(el('custom-name').value||'').trim();
+    const fmt=(el('custom-fmt').value||'').trim();
+    const vars=(el('custom-vars').value||'').trim();
+    if(!name||!fmt){alert('이름과 포맷을 입력하세요.');return}
+    const existing=customList.findIndex(c=>c.name===name);
+    const entry={name,fmt,vars};
+    if(existing>=0)customList[existing]=entry;
+    else customList.push(entry);
+    saveCustomList();
+    renderCustomSavedSel();
+    el('custom-name').value='';
+    alert(`"${name}" 저장됨`);
+  }
+
+  function deleteCustom(){
+    const sel=el('custom-saved-sel').value;
+    if(!sel)return;
+    customList=customList.filter(c=>c.name!==sel);
+    saveCustomList();
+    renderCustomSavedSel();
+    el('custom-name').value='';el('custom-fmt').value='';el('custom-vars').value='';
+    el('custom-fields').innerHTML='';
+    preview();
+  }
+
+  function loadCustom(name){
+    if(!name)return;
+    const c=customList.find(x=>x.name===name);
+    if(!c)return;
+    el('custom-name').value=c.name;
+    el('custom-fmt').value=c.fmt;
+    el('custom-vars').value=c.vars||'';
+    updateCustomVars();
+  }
+
+  function renderCustomSavedSel(){
+    const sel=el('custom-saved-sel');
+    sel.innerHTML='<option value="">— 저장된 커스텀 —</option>'+customList.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  }
+
+  function show(){
+    loadCustom();
+    el('stats-modal').classList.add('vis');
+    setType(curType);
+  }
+
+  return{show,setType,preview,insert,updateCustomVars,saveCustom,deleteCustom,loadCustom};
+})();
+
+/* ═══════════════════════════════════════════════════════════
    HOTKEY ENGINE
 ═══════════════════════════════════════════════════════════ */
 function hkKey(e){const mac=navigator.platform.toUpperCase().includes('MAC');const ctrl=mac?e.metaKey:e.ctrlKey;const parts=[];if(ctrl)parts.push('C');if(e.shiftKey)parts.push('S');if(e.altKey)parts.push('A');parts.push(e.key.length===1?e.key.toUpperCase():e.key);return parts.join('+')}
 
 function handleKey(e){
   const edi=el('editor');const inEd=document.activeElement===edi;const k=hkKey(e);
+  // Global hotkeys (work even outside editor)
+  if(k==='A+1'){e.preventDefault();App.setViewCycle('split');return}
+  if(k==='A+2'){e.preventDefault();App.setViewCycle('editor');return}
+  if(k==='A+3'){e.preventDefault();App.setViewCycle('preview');return}
+  if(k==='S+A+9'){e.preventDefault();STATS.show();return}
   if(!inEd){if(k==='S+?'){e.preventDefault();App.showHK()}return}
   if(k==='C+Z'){e.preventDefault();US.undo();return}
   if(k==='C+S+Z'||k==='C+Y'){e.preventDefault();US.redo();return}
@@ -1655,8 +1997,10 @@ function handleKey(e){
     'C+A+1':()=>ED.h(1),'C+A+2':()=>ED.h(2),'C+A+3':()=>ED.h(3),
     'S+A+L':()=>ED.align('left'),'S+A+C':()=>ED.align('center'),'S+A+R':()=>ED.align('right'),
     'A+8':()=>ED.table(),'A+9':()=>ED.tableRow(),'A+0':()=>ED.tableCol(),
-    'A+C':()=>ED.codeBlockDirect(),// direct code block with last lang
-    'A+V':()=>ED.inlineCode(),// inline `code`
+    'A+C':()=>ED.codeBlockDirect(),
+    'A+V':()=>ED.inlineCode(),
+    'S+A+.':()=>FS.inc(),'S+A+>':()=>FS.inc(),// Shift+Alt+>
+    'S+A+,':()=>FS.dec(),'S+A+<':()=>FS.dec(),// Shift+Alt+<
     'S+A+ArrowDown':()=>ED.dupLine(),
     'C+S':()=>App.showSaveDlg(),'C+F':()=>App.toggleFind(),
     'C+S+P':()=>PW.open(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),
@@ -1691,7 +2035,9 @@ const App={
   rm:false,rt:null,colorMode:'text',capType:'table',
 
   init(){
-    AS.load();CM.load();initTooltip();SS.init();
+    AS.load();CM.load();initTooltip();SS.init();FS.update();
+    // Set default view button state
+    const splitBtn=el('vm-split');if(splitBtn)splitBtn.classList.add('active');
     const edi=el('editor');
     edi.addEventListener('input',()=>{US.snap();this.render()});
     edi.addEventListener('keydown',handleKey);
@@ -1734,6 +2080,10 @@ const App={
   toggleErr(){el('error-panel').classList.toggle('vis')},closeErr(){el('error-panel').classList.remove('vis')},
   toggleSidebar(){el('app').classList.toggle('ns')},
   setView(m){el('editor-pane').classList.toggle('hidden',m==='preview');el('preview-pane').classList.toggle('hidden',m==='editor')},
+  setViewCycle(m){
+    this.setView(m);
+    ['split','editor','preview'].forEach(v=>{const b=el('vm-'+v);if(b)b.classList.toggle('active',v===m)});
+  },
   toggleTheme(){document.documentElement.dataset.theme=document.documentElement.dataset.theme==='light'?'':'light'},
   toggleRM(){this.rm=!this.rm;el('rm-badge').classList.toggle('vis',this.rm);el('mode-ind').textContent=this.rm?'RESEARCH':'NORMAL';PR.rm=this.rm;PW.setRM(this.rm);this.render()},
   showHK(){el('hk-overlay').classList.add('vis')},hideHK(){el('hk-overlay').classList.remove('vis')},
@@ -1748,6 +2098,7 @@ const App={
     el('image-modal').classList.add('vis');setTimeout(()=>el('img-alt').focus(),50);
   },
   showCite(){CM.open();el('cite-modal').classList.add('vis')},
+  showStats(){STATS.show()},
   showSaveDlg(){el('save-modal').classList.add('vis')},
   hideModal(id){el(id).classList.remove('vis')},
   openColorPicker(m){ColorPicker.open(m)},
