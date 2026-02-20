@@ -29,6 +29,22 @@
   --tx:#1a1a2e;--tx2:#505070;--tx3:#9090a8;--txh:#0a0a18;
   --er:#d64242;--ok:#2a8a50;--wn:#c07010;
 }
+[data-theme=light] .tb.tb-heading{color:#a07008}
+[data-theme=light] .tb.tb-heading:hover{color:#b08010;background:rgba(160,112,8,.1)}
+[data-theme=light] .tb.tb-fmt{color:#b85e1a}
+[data-theme=light] .tb.tb-fmt:hover{color:#d07020;background:rgba(184,94,26,.1)}
+[data-theme=light] .tb.tb-layout{color:#1a8040}
+[data-theme=light] .tb.tb-layout:hover{color:#20a050;background:rgba(26,128,64,.1)}
+[data-theme=light] .tb.tb-table{color:#1870a8}
+[data-theme=light] .tb.tb-table:hover{color:#2088c8;background:rgba(24,112,168,.1)}
+[data-theme=light] .tb.tb-table-tidy{color:#007a60}
+[data-theme=light] .tb.tb-table-tidy:hover{color:#009a78;background:rgba(0,122,96,.1)}
+[data-theme=light] .tb.tb-code{color:#5a30c0}
+[data-theme=light] .tb.tb-code:hover{color:#7040e0;background:rgba(90,48,192,.1)}
+[data-theme=light] .tb.tb-insert{color:#a02060}
+[data-theme=light] .tb.tb-insert:hover{color:#c02878;background:rgba(160,32,96,.1)}
+[data-theme=light] .tb.tb-util{color:#1888a0}
+[data-theme=light] .tb.tb-util:hover{color:#20a8c0;background:rgba(24,136,160,.1)}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;font-family:var(--fb);background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 /* layout */
@@ -214,6 +230,45 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 #stats-type-row .btn-tog{font-size:11px;padding:3px 8px}
 /* view mode buttons */
 #vm-split,#vm-editor,#vm-preview{font-size:10px;min-width:34px;padding:0 5px}
+
+/* ── 툴바 그룹별 색상 테마 ── */
+/* 🟡 헤딩 — 진한 노란색 */
+.tb.tb-heading{color:#d4a017}
+.tb.tb-heading:hover{color:#f5c842;background:rgba(212,160,23,.15)}
+.tb.tb-heading.active{background:rgba(212,160,23,.2);color:#f5c842}
+
+/* 🟠 텍스트 서식 — 오렌지 */
+.tb.tb-fmt{color:#e07a30}
+.tb.tb-fmt:hover{color:#f7a06a;background:rgba(224,122,48,.15)}
+.tb.tb-fmt.active{background:rgba(224,122,48,.2);color:#f7a06a}
+
+/* 🟢 레이아웃(정렬·목록) — 어두운 형광 초록 */
+.tb.tb-layout{color:#3dba6e}
+.tb.tb-layout:hover{color:#6af7a0;background:rgba(61,186,110,.15)}
+.tb.tb-layout.active{background:rgba(61,186,110,.2);color:#6af7a0}
+
+/* 🔵 표 — 밝은 하늘색 */
+.tb.tb-table{color:#3a9fd4}
+.tb.tb-table:hover{color:#6acff7;background:rgba(58,159,212,.15)}
+.tb.tb-table.active{background:rgba(58,159,212,.2);color:#6acff7}
+
+/* ✦ Tidy — 청록 형광 */
+.tb.tb-table-tidy{color:#00d4aa;font-weight:600}
+.tb.tb-table-tidy:hover{color:#00ffcc;background:rgba(0,212,170,.15)}
+
+/* 💻 코드 — 연보라 */
+.tb.tb-code{color:#a07af7}
+.tb.tb-code:hover{color:#c4aeff;background:rgba(160,122,247,.15)}
+.tb.tb-code.active{background:rgba(160,122,247,.2);color:#c4aeff}
+
+/* 🔴 삽입·특수 — 분홍/연자홍 */
+.tb.tb-insert{color:#d45a8a}
+.tb.tb-insert:hover{color:#f77ab0;background:rgba(212,90,138,.15)}
+.tb.tb-insert.active{background:rgba(212,90,138,.2);color:#f77ab0}
+
+/* 🔍 유틸 — 연한 시안 */
+.tb.tb-util{color:#5ac8d4}
+.tb.tb-util:hover{color:#8aecf7;background:rgba(90,200,212,.15)}
 /* footnote highlight in editor via preview */
 .preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}
 .preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}
@@ -264,80 +319,101 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 
 <!-- TOOLBAR -->
 <div id="toolbar">
+  <!-- ☰ 사이드바 토글 -->
   <div class="tg"><button class="tb" onclick="App.toggleSidebar()" data-tooltip="사이드바">☰</button></div>
   <div class="ts"></div>
+
+  <!-- 🟡 헤딩 — 노란색 계열 -->
   <div class="tg">
-    <button class="tb" onclick="ED.h(1)" data-tooltip="제목 H1" data-key="Ctrl+Alt+1"><b>H1</b></button>
-    <button class="tb" onclick="ED.h(2)" data-tooltip="제목 H2" data-key="Ctrl+Alt+2"><b>H2</b></button>
-    <button class="tb" onclick="ED.h(3)" data-tooltip="제목 H3" data-key="Ctrl+Alt+3"><b>H3</b></button>
+    <button class="tb tb-heading" onclick="ED.h(1)" data-tooltip="제목 H1" data-key="Ctrl+Alt+1"><b>H1</b></button>
+    <button class="tb tb-heading" onclick="ED.h(2)" data-tooltip="제목 H2" data-key="Ctrl+Alt+2"><b>H2</b></button>
+    <button class="tb tb-heading" onclick="ED.h(3)" data-tooltip="제목 H3" data-key="Ctrl+Alt+3"><b>H3</b></button>
   </div>
   <div class="ts"></div>
+
+  <!-- 🟠 텍스트 서식 — 오렌지 계열 -->
   <div class="tg">
-    <button class="tb" id="bold-btn" onclick="ED.bold()" data-tooltip="Smart Bold" data-key="Ctrl+B"><b>B</b></button>
-    <button class="tb" id="italic-btn" onclick="ED.italic()" data-tooltip="기울임꼴" data-key="Ctrl+I"><i>I</i></button>
-    <button class="tb" onclick="ED.strike()" data-tooltip="취소선">S̶</button>
-    <button class="tb" onclick="ED.inlineCode()" data-tooltip="인라인 코드"><code style="font-size:10px">`c`</code></button>
+    <button class="tb tb-fmt" id="bold-btn" onclick="ED.bold()" data-tooltip="Smart Bold" data-key="Ctrl+B"><b>B</b></button>
+    <button class="tb tb-fmt" id="italic-btn" onclick="ED.italic()" data-tooltip="기울임꼴" data-key="Ctrl+I"><i>I</i></button>
+    <button class="tb tb-fmt" onclick="ED.strike()" data-tooltip="취소선">S̶</button>
+    <button class="tb tb-fmt" onclick="ED.inlineCode()" data-tooltip="인라인 코드"><code style="font-size:10px">`c`</code></button>
   </div>
   <div class="ts"></div>
-  <!-- font size +/- -->
+
+  <!-- 🟠 글자 크기 — 오렌지 계열 -->
   <div class="tg" style="gap:0">
-    <button class="tb" onclick="FS.dec()" data-tooltip="선택 글자 크기 줄이기 (Shift+Alt+,)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">−</button>
-    <div id="fsize-display" style="min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#e8e8f0;line-height:26px;cursor:pointer;user-select:none;background:#2a2a3a;border-top:1px solid #3a3a50;border-bottom:1px solid #3a3a50" data-tooltip="한번 클릭: 목록 / 두번 클릭: 직접 입력" onclick="FS.clickPick(event)" ondblclick="FS.startEdit(event)">12pt</div>
-    <input id="fsize-input" type="text" value="12" onblur="FS.endEdit()" onkeydown="FS.editKey(event)" style="display:none;width:46px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#e8e8f0;background:#2a2a3a;border:1px solid var(--ac);border-radius:3px;outline:none;padding:0 4px;height:22px;line-height:22px">
-    <button class="tb" onclick="FS.inc()" data-tooltip="선택 글자 크기 키우기 (Shift+Alt+.)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">+</button>
+    <button class="tb tb-fmt" onclick="FS.dec()" data-tooltip="선택 글자 크기 줄이기 (Shift+Alt+,)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">−</button>
+    <div id="fsize-display" style="min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#f7a06a;line-height:26px;cursor:pointer;user-select:none;background:#2a2a3a;border-top:1px solid #3a3a50;border-bottom:1px solid #3a3a50" data-tooltip="한번 클릭: 목록 / 두번 클릭: 직접 입력" onclick="FS.clickPick(event)" ondblclick="FS.startEdit(event)">12pt</div>
+    <input id="fsize-input" type="text" value="12" onblur="FS.endEdit()" onkeydown="FS.editKey(event)" style="display:none;width:46px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#f7a06a;background:#2a2a3a;border:1px solid var(--ac);border-radius:3px;outline:none;padding:0 4px;height:22px;line-height:22px">
+    <button class="tb tb-fmt" onclick="FS.inc()" data-tooltip="선택 글자 크기 키우기 (Shift+Alt+.)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">+</button>
   </div>
-  <!-- font color + highlight -->
+
+  <!-- 🟠 색상 — 오렌지 계열 -->
   <div class="tg">
-    <button class="tb" id="fc-btn" onclick="App.openColorPicker('text')" data-tooltip="글자 색상" style="flex-direction:column;gap:1px">
+    <button class="tb tb-fmt" id="fc-btn" onclick="App.openColorPicker('text')" data-tooltip="글자 색상" style="flex-direction:column;gap:1px">
       <span style="font-size:11px;font-weight:700">A</span>
       <span id="fc-bar" style="width:14px;height:2px;border-radius:1px;background:#e8e8f0"></span>
     </button>
-    <button class="tb" id="hl-btn" onclick="App.openColorPicker('bg')" data-tooltip="형광펜 하이라이트" style="flex-direction:column;gap:1px">
+    <button class="tb tb-fmt" id="hl-btn" onclick="App.openColorPicker('bg')" data-tooltip="형광펜 하이라이트" style="flex-direction:column;gap:1px">
       <span style="font-size:11px">🖊</span>
       <span id="hl-bar" style="width:14px;height:2px;border-radius:1px;background:transparent;border:1px solid var(--bd)"></span>
     </button>
   </div>
   <div class="ts"></div>
+
+  <!-- 🟢 정렬 — 형광 초록 계열 -->
   <div class="tg">
-    <button class="tb" onclick="ED.align('left')" data-tooltip="왼쪽 정렬" data-key="Shift+Alt+L">⇤</button>
-    <button class="tb" onclick="ED.align('center')" data-tooltip="가운데 정렬" data-key="Shift+Alt+C">⇔</button>
-    <button class="tb" onclick="ED.align('right')" data-tooltip="오른쪽 정렬" data-key="Shift+Alt+R">⇥</button>
+    <button class="tb tb-layout" onclick="ED.align('left')" data-tooltip="왼쪽 정렬" data-key="Shift+Alt+L">⇤</button>
+    <button class="tb tb-layout" onclick="ED.align('center')" data-tooltip="가운데 정렬" data-key="Shift+Alt+C">⇔</button>
+    <button class="tb tb-layout" onclick="ED.align('right')" data-tooltip="오른쪽 정렬" data-key="Shift+Alt+R">⇥</button>
   </div>
   <div class="ts"></div>
+
+  <!-- 🟢 목록·인용 — 형광 초록 계열 -->
   <div class="tg">
-    <button class="tb" onclick="ED.list('ul')" data-tooltip="목록">• List</button>
-    <button class="tb" onclick="ED.list('ol')" data-tooltip="번호 목록">1. List</button>
-    <button class="tb" onclick="ED.bquote()" data-tooltip="인용구" data-key="Ctrl+.">❝</button>
+    <button class="tb tb-layout" onclick="ED.list('ul')" data-tooltip="목록">• List</button>
+    <button class="tb tb-layout" onclick="ED.list('ol')" data-tooltip="번호 목록">1. List</button>
+    <button class="tb tb-layout" onclick="ED.bquote()" data-tooltip="인용구" data-key="Ctrl+.">❝</button>
   </div>
   <div class="ts"></div>
+
+  <!-- 🔵 표 — 파란/보라 계열 -->
   <div class="tg">
-    <button class="tb" onclick="ED.table()" data-tooltip="표 삽입" data-key="Alt+8">⊞ 표</button>
-    <button class="tb" onclick="ED.tableRow()" data-tooltip="행 추가" data-key="Alt+9">+행</button>
-    <button class="tb" onclick="ED.tableCol()" data-tooltip="열 추가" data-key="Alt+0">+열</button>
-    <button class="tb" onclick="ED.mergeH()" data-tooltip="가로 병합 (colspan)" data-key="Alt+Shift+H">⊞H</button>
-    <button class="tb" onclick="ED.mergeV()" data-tooltip="세로 병합 (rowspan)" data-key="Alt+Shift+V">⊞V</button>
-    <button class="tb" onclick="App.showCaption('table')" data-tooltip="표 캡션">〈표〉</button>
-    <button class="tb" onclick="App.showCaption('fig')" data-tooltip="그림 캡션">[그림]</button>
+    <button class="tb tb-table" onclick="ED.table()" data-tooltip="표 삽입" data-key="Alt+8">⊞ 표</button>
+    <button class="tb tb-table" onclick="ED.tableRow()" data-tooltip="행 추가" data-key="Alt+9">+행</button>
+    <button class="tb tb-table" onclick="ED.tableCol()" data-tooltip="열 추가" data-key="Alt+0">+열</button>
+    <button class="tb tb-table" onclick="ED.mergeH()" data-tooltip="가로 병합 (colspan)" data-key="Alt+Shift+H">⊞H</button>
+    <button class="tb tb-table" onclick="ED.mergeV()" data-tooltip="세로 병합 (rowspan)" data-key="Alt+Shift+V">⊞V</button>
+    <button class="tb tb-table-tidy" onclick="ED.tidyTable()" data-tooltip="HTML 표 들여쓰기 정돈 (커서를 표 안에 놓고 실행)">✦ Tidy</button>
+    <button class="tb tb-table" onclick="App.showCaption('table')" data-tooltip="표 캡션">〈표〉</button>
+    <button class="tb tb-table" onclick="App.showCaption('fig')" data-tooltip="그림 캡션">[그림]</button>
   </div>
   <div class="ts"></div>
+
+  <!-- 🔵 코드 — 파란/보라 계열 -->
   <div class="tg">
-    <!-- hotkey = direct insert with last lang; toolbar button = show modal -->
-    <button class="tb" onclick="App.showCode()" data-tooltip="코드 블록 언어 선택 (메뉴) / Alt+C = 마지막 언어 직접 삽입">⌨ Code</button>
+    <button class="tb tb-code" onclick="App.showCode()" data-tooltip="코드 블록 언어 선택 (메뉴) / Alt+C = 마지막 언어 직접 삽입">⌨ Code</button>
   </div>
   <div class="ts"></div>
+
+  <!-- 🔴 삽입/특수 — 분홍/연보라 계열 -->
   <div class="tg">
-    <button class="tb" onclick="ED.pageBreak()" data-tooltip="페이지 나누기" data-key="Ctrl+Enter">⋯ PB</button>
-    <button class="tb" onclick="ED.lineBreak()" data-tooltip="줄바꿈 &lt;br&gt;" data-key="Ctrl+Shift+Enter">↩</button>
-    <button class="tb" onclick="App.showImg()" data-tooltip="이미지">🖼</button>
-    <button class="tb" onclick="App.showLink()" data-tooltip="링크 (새 탭)">🔗</button>
-    <button class="tb" onclick="ED.footnote()" data-tooltip="각주">†</button>
-    <button class="tb" onclick="ED.math()" data-tooltip="수식(LaTeX)">∑</button>
-    <button class="tb" onclick="App.showCite()" data-tooltip="인용 삽입" data-key="Ctrl+Shift+C">📖</button>
-    <button class="tb" onclick="STATS.show()" data-tooltip="APA 통계 삽입" data-key="Shift+Alt+9">𝑓(x)</button>
+    <button class="tb tb-insert" onclick="ED.pageBreak()" data-tooltip="페이지 나누기" data-key="Ctrl+Enter">⋯ PB</button>
+    <button class="tb tb-insert" onclick="ED.lineBreak()" data-tooltip="줄바꿈 &lt;br&gt;" data-key="Ctrl+Shift+Enter">↩</button>
+    <button class="tb tb-insert" onclick="App.showImg()" data-tooltip="이미지">🖼</button>
+    <button class="tb tb-insert" onclick="App.showLink()" data-tooltip="링크 (새 탭)">🔗</button>
+    <button class="tb tb-insert" onclick="ED.footnote()" data-tooltip="각주">†</button>
+    <button class="tb tb-insert" onclick="ED.math()" data-tooltip="수식(LaTeX)">∑</button>
+    <button class="tb tb-insert" onclick="App.showCite()" data-tooltip="인용 삽입" data-key="Ctrl+Shift+C">📖</button>
+    <button class="tb tb-insert" onclick="STATS.show()" data-tooltip="APA 통계 삽입" data-key="Shift+Alt+9">𝑓(x)</button>
   </div>
   <div class="ts"></div>
-  <div class="tg"><button class="tb" onclick="App.toggleFind()" data-tooltip="찾기/바꾸기" data-key="Ctrl+F">🔍</button></div>
+
+  <!-- 🔍 찾기 -->
+  <div class="tg"><button class="tb tb-util" onclick="App.toggleFind()" data-tooltip="찾기/바꾸기" data-key="Ctrl+F">🔍</button></div>
   <div class="spacer"></div>
+
+  <!-- ⚙ 보기 모드 — 기본 회색 -->
   <div class="tg">
     <button class="tb" onclick="App.setViewCycle('split')" id="vm-split" data-tooltip="분할 보기 (Alt+1)" data-key="Alt+1" style="font-size:10px;min-width:36px">Split</button>
     <button class="tb" onclick="App.setViewCycle('editor')" id="vm-editor" data-tooltip="에디터만 (Alt+2)" data-key="Alt+2" style="font-size:10px;min-width:36px">Edit</button>
@@ -2401,6 +2477,55 @@ const ED={
 
   mergeH(){this._doMerge('h');},
   mergeV(){this._doMerge('v');},
+
+  /* HTML 표를 들여쓰기가 잘 된 형태로 정돈 */
+  tidyTable(){
+    const ed=this.ed();
+    const htbl=this._getHTMLTable(ed);
+    if(!htbl){alert('커서를 HTML 표 안에 놓고 Tidy를 실행하세요.\n(병합이 있는 HTML 표에서 사용합니다.)');return;}
+    const{cells,rows,cols,tStart,tEnd,val}=htbl;
+
+    // 들여쓰기 정돈된 HTML 생성
+    function tidyCell(tag,cell,indent){
+      const attrs=[];
+      if(cell.rs>1)attrs.push(`rowspan="${cell.rs}"`);
+      if(cell.cs>1)attrs.push(`colspan="${cell.cs}"`);
+      const attrStr=attrs.length?' '+attrs.join(' '):'';
+      return `${indent}<${tag}${attrStr}>${cell.text}</${tag}>`;
+    }
+
+    const lines=[];
+    lines.push('<table>');
+
+    // thead: 첫 번째 행
+    lines.push('  <thead>');
+    lines.push('    <tr>');
+    for(let c=0;c<cols;c++){
+      const cell=cells[0]?.[c];
+      if(!cell||cell.skip)continue;
+      lines.push(tidyCell('th',cell,'      '));
+    }
+    lines.push('    </tr>');
+    lines.push('  </thead>');
+
+    // tbody: 나머지 행
+    lines.push('  <tbody>');
+    for(let r=1;r<rows;r++){
+      lines.push('    <tr>');
+      for(let c=0;c<cols;c++){
+        const cell=cells[r]?.[c];
+        if(!cell||cell.skip)continue;
+        lines.push(tidyCell('td',cell,'      '));
+      }
+      lines.push('    </tr>');
+    }
+    lines.push('  </tbody>');
+    lines.push('</table>');
+
+    const newHTML='\n'+lines.join('\n')+'\n';
+    ed.value=val.substring(0,tStart)+newHTML+val.substring(tEnd);
+    App.render();US.snap();
+  },
 
   // 언어별 주석 기호 반환  // 언어별 주석 기호 반환
   _cmt(lang){
