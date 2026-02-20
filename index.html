@@ -271,6 +271,18 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 .tb.tb-util:hover{color:#8aecf7;background:rgba(90,200,212,.15)}
 /* footnote highlight in editor via preview */
 .preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}
+
+/* ── HK 편집 모드 ── */
+.hk-item-edit{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:4px;background:var(--bg3);border:1px solid transparent;transition:border-color .15s}
+.hk-item-edit:hover{border-color:var(--bd)}
+.hk-editable{background:none;border:none;outline:none;font-family:var(--fb);color:var(--tx);cursor:text;padding:2px 4px;border-radius:3px;transition:background .15s}
+.hk-editable:focus{background:var(--bg5);outline:1px solid var(--ac)}
+.hk-editable.desc{flex:1;font-size:11px}
+.hk-editable.keys{font-size:11px;font-family:var(--fm);color:var(--ac);min-width:80px;text-align:right}
+.hk-del-btn{background:none;border:none;color:var(--tx3);cursor:pointer;padding:2px 4px;border-radius:3px;font-size:12px;line-height:1;transition:color .15s;flex-shrink:0}
+.hk-del-btn:hover{color:var(--er);background:rgba(247,106,106,.12)}
+#hk-edit-actions{margin-top:12px;display:flex;gap:6px;justify-content:flex-end}
+#hk-panel h2{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--txh);display:flex;align-items:center;justify-content:space-between}
 .preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}
 .preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}
 /* editor footnote syntax highlight */
@@ -428,7 +440,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
   <div class="tg">
     <button class="tb" onclick="App.toggleTheme()" data-tooltip="테마 전환">◑</button>
     <button class="tb" id="ln-btn" onclick="LN.toggle()" data-tooltip="줄 번호">ln</button>
-    <button class="tb" onclick="App.showHK()" data-tooltip="단축키 목록" data-key="Shift+?">?</button>
+    <button class="tb" onclick="App.showHK()" data-tooltip="단축키 목록" data-key="Alt+?">?</button>
   </div>
 </div>
 
@@ -457,7 +469,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       <div id="ed-hdr"><span class="pane-lbl"><span></span>MARKDOWN</span></div>
       <div id="ed-container">
         <div id="line-numbers"><div class="lnc" id="lnc"></div></div>
-        <textarea id="editor" placeholder="# 제목을 입력하세요&#10;&#10;여기에 Markdown을 작성하세요.&#10;Shift+? → 단축키 목록" spellcheck="false"></textarea>
+        <textarea id="editor" placeholder="# 제목을 입력하세요&#10;&#10;여기에 Markdown을 작성하세요.&#10;Alt+? → 단축키 목록" spellcheck="false"></textarea>
       </div>
     </div>
     <div id="preview-pane">
@@ -494,57 +506,29 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 <!-- HOTKEY OVERLAY -->
 <div id="hk-overlay" onclick="App.hideHK()">
   <div id="hk-panel" onclick="event.stopPropagation()">
-    <h2>단축키 안내 <button class="btn-ic" onclick="App.hideHK()">✕</button></h2>
-    <div class="hk-s">문서 구조</div>
-    <div class="hk-grid">
-      <div class="hk-item"><span class="hk-desc">H1/H2/H3</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>1~3</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">페이지 나누기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Enter</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">줄바꿈(&lt;br&gt;)</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd></div></div>
+    <h2>
+      <span>⌨ 단축키 목록</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn btn-g btn-sm" id="hk-edit-btn" onclick="HK.toggleEdit()" style="font-size:11px">✎ 편집</button>
+        <button class="btn-ic" onclick="App.hideHK()">✕</button>
+      </div>
+    </h2>
+
+    <!-- 편집 모드 안내 -->
+    <div id="hk-edit-hint" style="display:none;background:rgba(124,106,247,.1);border:1px solid var(--ac);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--tx2);line-height:1.6">
+      <b style="color:var(--ac)">편집 모드</b> — 설명 클릭 후 수정 | 단축키 클릭 후 수정 | <kbd style="background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1px 5px;font-size:10px">Del</kbd> 행 삭제 | <button onclick="HK.addRow()" class="btn btn-g btn-sm" style="font-size:10px;padding:2px 7px;vertical-align:middle">+ 행 추가</button>
     </div>
-    <div class="hk-s">표 편집</div>
-    <div class="hk-grid">
-      <div class="hk-item"><span class="hk-desc">표 삽입</span><div class="hk-keys"><kbd>Alt</kbd><kbd>8</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">행 추가</span><div class="hk-keys"><kbd>Alt</kbd><kbd>9</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">열 추가</span><div class="hk-keys"><kbd>Alt</kbd><kbd>0</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">가로 병합 (colspan) → HTML 변환</span><div class="hk-keys"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>H</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">세로 병합 (rowspan) → HTML 변환</span><div class="hk-keys"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>V</kbd></div></div>
+
+    <!-- 단축키 목록 렌더 영역 -->
+    <div id="hk-list-wrap"></div>
+
+    <div style="margin-top:10px;font-size:11px;color:var(--tx3)" id="hk-footer-note">
+      표 내부: Tab→다음 셀 | Enter→새 행 | ⌨ Code 버튼→언어 선택 | Alt+C→마지막 언어 직접 삽입
     </div>
-    <div class="hk-s">서식</div>
-    <div class="hk-grid">
-      <div class="hk-item"><span class="hk-desc">Smart Bold</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>B</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">기울임꼴</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>I</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">인라인 코드 `code`</span><div class="hk-keys"><kbd>Alt</kbd><kbd>V</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">코드 직접 삽입 (마지막 언어)</span><div class="hk-keys"><kbd>Alt</kbd><kbd>C</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">글자 크기 키우기</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>&gt;</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">글자 크기 줄이기</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>&lt;</kbd></div></div>
+    <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end" id="hk-edit-actions" style="display:none">
+      <button class="btn btn-g btn-sm" onclick="HK.resetDefault()">↩ 기본값 복원</button>
+      <button class="btn btn-p btn-sm" onclick="HK.saveEdit()">저장</button>
     </div>
-    <div class="hk-s">화면 전환</div>
-    <div class="hk-grid">
-      <div class="hk-item"><span class="hk-desc">Split 보기</span><div class="hk-keys"><kbd>Alt</kbd><kbd>1</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">에디터만</span><div class="hk-keys"><kbd>Alt</kbd><kbd>2</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">미리보기만</span><div class="hk-keys"><kbd>Alt</kbd><kbd>3</kbd></div></div>
-    </div>
-    <div class="hk-s">편집</div>
-    <div class="hk-grid">
-      <div class="hk-item"><span class="hk-desc">줄 위로 이동</span><div class="hk-keys"><kbd>Alt</kbd><kbd>↑</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">줄 아래로 이동</span><div class="hk-keys"><kbd>Alt</kbd><kbd>↓</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">줄/선택 복제</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>↓</kbd></div></div>
-    </div>
-    <div class="hk-s">삽입 / 도구</div>
-    <div class="hk-grid">
-      <div class="hk-item"><span class="hk-desc">인용 삽입</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>C</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">주석(각주) 삽입 (9pt)</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>N</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">APA 통계 삽입</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>9</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">서식 패널 (크기·색·형광펜)</span><div class="hk-keys"><kbd>Alt</kbd><kbd>L</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">줄번호 ON/OFF</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>I</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">새창 미리보기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">저장 다이얼로그</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>S</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">찾기/바꾸기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>F</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">Research Mode</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>R</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">단축키 목록</span><div class="hk-keys"><kbd>Shift</kbd><kbd>?</kbd></div></div>
-      <div class="hk-item"><span class="hk-desc">Scholar 검색</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>G</kbd></div></div>
-    </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--tx3)">표 내부: Tab→다음 셀 | Enter→새 행 | ⌨ Code 버튼→언어 선택 | Alt+C→마지막 언어 직접 삽입</div>
   </div>
 </div>
 
@@ -1082,6 +1066,8 @@ function mdRender(md,showFootnotes){
     });
     // Remove def placeholders (they'll be added to footnotes section)
     md=md.replace(/__FN_DEF_[^_]+__\n?/g,'');
+    // ** 사이에 (), [], 등 특수문자가 있으면 marked가 파싱 못하므로 <b>로 선변환
+    md=md.replace(/\*\*([^*\n]*[()[\]{}][^*\n]*)\*\*/g,(m,inner)=>`<b>${inner}</b>`);
     let html=marked.parse(md||'');
     // Append footnotes section if there are definitions and showFootnotes is not false
     if(Object.keys(fnDefs).length>0 && showFootnotes!==false){
@@ -3004,6 +2990,228 @@ const STATS=(()=>{
 /* ═══════════════════════════════════════════════════════════
    HOTKEY ENGINE
 ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   HK — 단축키 목록 매니저 (편집 가능)
+═══════════════════════════════════════════════════════════ */
+const HK = (() => {
+  const STORAGE_KEY = 'mdpro-hotkeys-v1';
+
+  // 기본 단축키 데이터
+  const DEFAULT_DATA = [
+    { section: '문서 구조', items: [
+      { desc: 'H1 / H2 / H3',              keys: 'Ctrl + Alt + 1~3' },
+      { desc: '페이지 나누기',               keys: 'Ctrl + Enter' },
+      { desc: '줄바꿈 (<br>)',               keys: 'Ctrl + Shift + Enter' },
+    ]},
+    { section: '표 편집', items: [
+      { desc: '표 삽입',                    keys: 'Alt + 8' },
+      { desc: '행 추가',                    keys: 'Alt + 9' },
+      { desc: '열 추가',                    keys: 'Alt + 0' },
+      { desc: '가로 병합 (colspan)',         keys: 'Alt + Shift + H' },
+      { desc: '세로 병합 (rowspan)',         keys: 'Alt + Shift + V' },
+      { desc: 'HTML 표 들여쓰기 정돈',       keys: 'Tidy 버튼' },
+    ]},
+    { section: '텍스트 서식', items: [
+      { desc: 'Smart Bold',                 keys: 'Ctrl + B' },
+      { desc: '기울임꼴',                    keys: 'Ctrl + I' },
+      { desc: '인라인 코드 `code`',          keys: 'Alt + V' },
+      { desc: '코드 직접 삽입 (마지막 언어)', keys: 'Alt + C' },
+      { desc: '글자 크기 키우기',             keys: 'Shift + Alt + .' },
+      { desc: '글자 크기 줄이기',             keys: 'Shift + Alt + ,' },
+    ]},
+    { section: '레이아웃 / 정렬', items: [
+      { desc: '왼쪽 / 가운데 / 오른쪽 정렬', keys: 'Shift + Alt + L / C / R' },
+      { desc: 'Split 보기',                 keys: 'Alt + 1' },
+      { desc: '에디터만',                    keys: 'Alt + 2' },
+      { desc: '미리보기만',                  keys: 'Alt + 3' },
+    ]},
+    { section: '편집', items: [
+      { desc: '줄 위로 이동',                keys: 'Alt + ↑' },
+      { desc: '줄 아래로 이동',              keys: 'Alt + ↓' },
+      { desc: '줄 / 선택 복제',              keys: 'Shift + Alt + ↓' },
+      { desc: '실행 취소',                   keys: 'Ctrl + Z' },
+      { desc: '다시 실행',                   keys: 'Ctrl + Shift + Z' },
+    ]},
+    { section: '삽입 / 도구', items: [
+      { desc: '인용 삽입',                   keys: 'Ctrl + Shift + C' },
+      { desc: '각주 삽입',                   keys: 'Shift + Alt + N' },
+      { desc: 'APA 통계 삽입',               keys: 'Shift + Alt + 9' },
+      { desc: '서식 패널 (크기·색·형광펜)',    keys: 'Alt + L' },
+      { desc: '줄번호 ON/OFF',               keys: 'Ctrl + Alt + I' },
+      { desc: '새창 미리보기',               keys: 'Ctrl + Shift + P' },
+      { desc: '저장 다이얼로그',              keys: 'Ctrl + S' },
+      { desc: '찾기 / 바꾸기',               keys: 'Ctrl + F' },
+      { desc: 'Research Mode',               keys: 'Ctrl + Shift + R' },
+      { desc: 'Scholar 검색',               keys: 'Ctrl + Shift + G' },
+      { desc: '단축키 목록',                 keys: 'Alt + ?' },
+    ]},
+  ];
+
+  let data = [];
+  let editMode = false;
+
+  function load() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      data = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+    } catch(e) {
+      data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    }
+  }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e){}
+  }
+
+  function render() {
+    const wrap = el('hk-list-wrap');
+    wrap.innerHTML = '';
+    data.forEach((group, gi) => {
+      // 섹션 헤더
+      const sec = document.createElement('div');
+      sec.className = 'hk-s';
+      sec.style.cssText = 'display:flex;align-items:center;gap:6px';
+      if (editMode) {
+        const inp = document.createElement('input');
+        inp.className = 'hk-editable desc';
+        inp.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ac);flex:1';
+        inp.value = group.section;
+        inp.oninput = () => { data[gi].section = inp.value; };
+        const delSec = document.createElement('button');
+        delSec.className = 'hk-del-btn';
+        delSec.title = '섹션 삭제';
+        delSec.textContent = '✕';
+        delSec.onclick = () => { data.splice(gi, 1); render(); };
+        sec.appendChild(inp);
+        sec.appendChild(delSec);
+      } else {
+        sec.textContent = group.section;
+      }
+      wrap.appendChild(sec);
+
+      // 그리드
+      const grid = document.createElement('div');
+      grid.className = 'hk-grid';
+      grid.style.marginBottom = '4px';
+
+      group.items.forEach((item, ii) => {
+        const row = document.createElement('div');
+        if (editMode) {
+          row.className = 'hk-item-edit';
+          const descInp = document.createElement('input');
+          descInp.className = 'hk-editable desc';
+          descInp.value = item.desc;
+          descInp.oninput = () => { data[gi].items[ii].desc = descInp.value; };
+
+          const keysInp = document.createElement('input');
+          keysInp.className = 'hk-editable keys';
+          keysInp.value = item.keys;
+          keysInp.placeholder = 'Ctrl + X';
+          keysInp.oninput = () => { data[gi].items[ii].keys = keysInp.value; };
+
+          const del = document.createElement('button');
+          del.className = 'hk-del-btn';
+          del.title = '행 삭제';
+          del.innerHTML = '🗑';
+          del.onclick = () => { data[gi].items.splice(ii, 1); render(); };
+
+          row.appendChild(descInp);
+          row.appendChild(keysInp);
+          row.appendChild(del);
+        } else {
+          row.className = 'hk-item';
+          const keys = item.keys.split('+').map(k => k.trim()).filter(Boolean);
+          row.innerHTML = `<span class="hk-desc">${item.desc}</span><div class="hk-keys">${keys.map(k=>`<kbd>${k}</kbd>`).join('')}</div>`;
+        }
+        grid.appendChild(row);
+      });
+
+      // 편집 모드: 이 섹션에 행 추가 버튼
+      if (editMode) {
+        const addRow = document.createElement('div');
+        addRow.style.cssText = 'padding:2px 6px;';
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-g btn-sm';
+        addBtn.style.cssText = 'font-size:10px;padding:2px 7px;width:100%;opacity:.7';
+        addBtn.textContent = '+ 이 섹션에 행 추가';
+        addBtn.onclick = () => { data[gi].items.push({desc:'새 항목', keys:''}); render(); };
+        addRow.appendChild(addBtn);
+        grid.appendChild(addRow);
+      }
+
+      wrap.appendChild(grid);
+    });
+
+    // 편집 모드: 섹션 추가 버튼
+    if (editMode) {
+      const addSec = document.createElement('button');
+      addSec.className = 'btn btn-g btn-sm';
+      addSec.style.cssText = 'width:100%;margin-top:6px;font-size:11px';
+      addSec.textContent = '＋ 섹션 추가';
+      addSec.onclick = () => { data.push({section:'새 섹션', items:[{desc:'항목', keys:''}]}); render(); };
+      wrap.appendChild(addSec);
+    }
+  }
+
+  return {
+    open() {
+      load();
+      editMode = false;
+      el('hk-edit-btn').textContent = '✎ 편집';
+      el('hk-edit-btn').classList.remove('btn-p');
+      el('hk-edit-hint').style.display = 'none';
+      el('hk-edit-actions').style.display = 'none';
+      render();
+      el('hk-overlay').classList.add('vis');
+    },
+    close() {
+      el('hk-overlay').classList.remove('vis');
+      editMode = false;
+    },
+    toggleEdit() {
+      editMode = !editMode;
+      const btn = el('hk-edit-btn');
+      if (editMode) {
+        btn.textContent = '✓ 완료';
+        btn.classList.add('btn-p');
+        btn.classList.remove('btn-g');
+        el('hk-edit-hint').style.display = 'block';
+        el('hk-edit-actions').style.display = 'flex';
+      } else {
+        // 완료 → 자동 저장
+        save();
+        btn.textContent = '✎ 편집';
+        btn.classList.remove('btn-p');
+        btn.classList.add('btn-g');
+        el('hk-edit-hint').style.display = 'none';
+        el('hk-edit-actions').style.display = 'none';
+      }
+      render();
+    },
+    addRow() {
+      if (data.length === 0) data.push({section:'기타', items:[]});
+      data[data.length-1].items.push({desc:'새 항목', keys:''});
+      render();
+    },
+    saveEdit() {
+      save();
+      editMode = false;
+      el('hk-edit-btn').textContent = '✎ 편집';
+      el('hk-edit-btn').classList.remove('btn-p');
+      el('hk-edit-btn').classList.add('btn-g');
+      el('hk-edit-hint').style.display = 'none';
+      el('hk-edit-actions').style.display = 'none';
+      render();
+    },
+    resetDefault() {
+      if (!confirm('단축키 목록을 기본값으로 되돌리겠습니까?')) return;
+      data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      save();
+      render();
+    },
+  };
+})();
+
 function hkKey(e){const mac=navigator.platform.toUpperCase().includes('MAC');const ctrl=mac?e.metaKey:e.ctrlKey;const parts=[];if(ctrl)parts.push('C');if(e.shiftKey)parts.push('S');if(e.altKey)parts.push('A');parts.push(e.key.length===1?e.key.toUpperCase():e.key);return parts.join('+')}
 
 function handleKey(e){
@@ -3015,7 +3223,7 @@ function handleKey(e){
   if(k==='S+A+9'){e.preventDefault();STATS.show();return}
   if(k==='A+L'){e.preventDefault();FP.show();return}
   if(k==='C+A+I'){e.preventDefault();LN.toggle();return}
-  if(!inEd){if(k==='S+?'){e.preventDefault();App.showHK()}return}
+  if(!inEd){if(k==='A+?'){e.preventDefault();App.showHK()}return}
   if(k==='C+Z'){e.preventDefault();US.undo();return}
   if(k==='C+S+Z'||k==='C+Y'){e.preventDefault();US.redo();return}
   // Alt+ArrowUp/Down — move line
@@ -3037,7 +3245,7 @@ function handleKey(e){
     'S+A+ArrowDown':()=>ED.dupLine(),
     'C+S':()=>App.showSaveDlg(),'C+F':()=>App.toggleFind(),
     'C+S+P':()=>PW.open(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),'C+S+G':()=>Scholar.show(),
-    'S+?':()=>App.showHK(),
+    'A+?':()=>App.showHK(),
   };
   if(map[k]){e.preventDefault();map[k]()}
 }
@@ -3119,7 +3327,7 @@ const App={
   },
   toggleTheme(){document.documentElement.dataset.theme=document.documentElement.dataset.theme==='light'?'':'light'},
   toggleRM(){this.rm=!this.rm;el('rm-badge').classList.toggle('vis',this.rm);el('mode-ind').textContent=this.rm?'RESEARCH':'NORMAL';PR.rm=this.rm;PW.setRM(this.rm);this.render()},
-  showHK(){el('hk-overlay').classList.add('vis')},hideHK(){el('hk-overlay').classList.remove('vis')},
+  showHK(){HK.open()},hideHK(){HK.close()},
   showCode(){el('code-modal').classList.add('vis')},
   showLink(){el('link-modal').classList.add('vis');setTimeout(()=>el('link-text').focus(),50)},
   showImg(){
@@ -3244,7 +3452,7 @@ $$
 
 **📋 양식** 버튼을 눌러 학위논문, SSCI/KCI, 단일/다중 연구, 메타분석 구조를 삽입하세요.
 
-> \`Shift+?\` → 전체 단축키 목록
+> \`Alt+?\` → 전체 단축키 목록
 `}
 };
 
