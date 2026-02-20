@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Markdown PDF Editor Pro V7</title>
+<meta name="theme-color" content="#1a1a24">
+<meta name="description" content="연구·논문 전용 마크다운 에디터 — 박중희">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MD PRO V9">
+<link rel="manifest" id="pwa-manifest">
+<title>Markdown PDF Editor Pro V9</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
@@ -30,20 +36,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--fb);background:var(--bg)
 #app.ns{grid-template-columns:0 1fr}
 #app.ns #sidebar{display:none}
 /* titlebar */
-#titlebar{grid-area:tb;display:flex;align-items:center;background:var(--bg2);border-bottom:1px solid var(--bd);height:36px;padding:0 10px;z-index:100;gap:5px}
+#titlebar{grid-area:tb;display:flex;align-items:center;background:#1a1a24;border-bottom:1px solid #2e2e40;height:36px;padding:0 10px;z-index:100;gap:5px}
 #app-logo{display:flex;align-items:center;gap:7px;font-family:var(--fm);font-size:11px;font-weight:600;color:var(--ac);letter-spacing:.05em;flex-shrink:0}
 .logo-icon{width:20px;height:20px;background:var(--ac);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700}
-#doc-title{flex:1;text-align:center;background:none;border:none;color:var(--tx2);font-family:var(--fb);font-size:13px;outline:none;cursor:pointer;transition:color var(--tr)}
-#doc-title:hover,#doc-title:focus{color:var(--tx);cursor:text}
+#doc-title{flex:1;text-align:center;background:none;border:none;color:#9090b0;font-family:var(--fb);font-size:13px;outline:none;cursor:pointer;transition:color var(--tr)}
+#doc-title:hover,#doc-title:focus{color:#e8e8f0;cursor:text}
 #tba{display:flex;align-items:center;gap:4px;flex-shrink:0}
 /* toolbar */
-#toolbar{grid-area:bar;display:flex;align-items:center;background:var(--bg2);border-bottom:1px solid var(--bd);padding:0 6px;overflow-x:auto;scrollbar-width:none;user-select:none}
+#toolbar{grid-area:bar;display:flex;align-items:center;background:#222230;border-bottom:1px solid #2e2e42;padding:0 6px;overflow-x:auto;scrollbar-width:none;user-select:none}
 #toolbar::-webkit-scrollbar{display:none}
 .tg{display:flex;align-items:center;gap:1px;flex-shrink:0}
-.ts{width:1px;height:18px;background:var(--bd);margin:0 4px;flex-shrink:0}
-.tb{display:flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 5px;border:none;background:transparent;color:var(--tx2);border-radius:var(--r);cursor:pointer;font-size:11px;font-family:var(--fb);font-weight:500;transition:all var(--tr);white-space:nowrap;position:relative}
-.tb:hover{background:var(--bg5);color:var(--tx)}.tb.active{background:var(--acg);color:var(--ac)}
-.tbsel{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);color:var(--tx2);font-size:11px;padding:2px 4px;outline:none;cursor:pointer;font-family:var(--fb);height:26px}
+.ts{width:1px;height:18px;background:#3a3a50;margin:0 4px;flex-shrink:0}
+.tb{display:flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 5px;border:none;background:transparent;color:#9090b0;border-radius:var(--r);cursor:pointer;font-size:11px;font-family:var(--fb);font-weight:500;transition:all var(--tr);white-space:nowrap;position:relative}
+.tb:hover{background:#2e2e42;color:#e8e8f0}.tb.active{background:var(--acg);color:var(--ac)}
+.tbsel{background:#2a2a3a;border:1px solid #3a3a50;border-radius:var(--r);color:#9090b0;font-size:11px;padding:2px 4px;outline:none;cursor:pointer;font-family:var(--fb);height:26px}
 /* sidebar */
 #sidebar{grid-area:side;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
 #sb-hdr{padding:8px 12px;font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--tx3);text-transform:uppercase;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
@@ -194,8 +200,16 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 /* caption opts */
 .cap-opt{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--bg3);color:var(--tx2);transition:all var(--tr)}
 .cap-opt.sel{border-color:var(--ac);background:var(--acg);color:var(--ac)}
-/* font size stepper */
-#fsize-display{min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:var(--tx);line-height:26px;cursor:default;user-select:none;background:var(--bg3);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd)}
+/* font size stepper — inline input mode */
+#fsize-input{display:none;width:50px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#e8e8f0;background:#2a2a3a;border:1px solid var(--ac);border-radius:3px;outline:none;padding:0 4px;height:22px}
+#fsize-input.vis{display:block}
+#fsize-display.edit-mode{display:none}
+/* format quick panel */
+#fmt-panel{position:fixed;z-index:9000;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:16px;box-shadow:0 8px 40px rgba(0,0,0,.5);min-width:300px;display:none}
+#fmt-panel.vis{display:block}
+#fmt-panel h4{font-size:12px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.fmt-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.fmt-lbl{font-size:11px;color:var(--tx2);width:56px;flex-shrink:0}
 /* stats type buttons */
 #stats-type-row .btn-tog{font-size:11px;padding:3px 8px}
 /* view mode buttons */
@@ -226,7 +240,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 
 <!-- TITLEBAR -->
 <header id="titlebar">
-  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V7</div>
+  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V9</div>
   <input id="doc-title" type="text" value="Untitled Document" spellcheck="false">
   <div id="tba">
     <span id="rm-badge">RESEARCH</span>
@@ -257,9 +271,10 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
   <div class="ts"></div>
   <!-- font size +/- -->
   <div class="tg" style="gap:0">
-    <button class="tb" onclick="FS.dec()" data-tooltip="글자 크기 줄이기 (Shift+Alt+,)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">−</button>
-    <div id="fsize-display" style="min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:var(--tx);line-height:26px;cursor:default;user-select:none" data-tooltip="현재 글자 크기">12pt</div>
-    <button class="tb" onclick="FS.inc()" data-tooltip="글자 크기 키우기 (Shift+Alt+.)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">+</button>
+    <button class="tb" onclick="FS.dec()" data-tooltip="선택 글자 크기 줄이기 (Shift+Alt+,)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">−</button>
+    <div id="fsize-display" style="min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#e8e8f0;line-height:26px;cursor:pointer;user-select:none;background:#2a2a3a;border-top:1px solid #3a3a50;border-bottom:1px solid #3a3a50" data-tooltip="한번 클릭: 목록 / 두번 클릭: 직접 입력" onclick="FS.clickPick(event)" ondblclick="FS.startEdit(event)">12pt</div>
+    <input id="fsize-input" type="text" value="12" onblur="FS.endEdit()" onkeydown="FS.editKey(event)" style="display:none;width:46px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#e8e8f0;background:#2a2a3a;border:1px solid var(--ac);border-radius:3px;outline:none;padding:0 4px;height:22px;line-height:22px">
+    <button class="tb" onclick="FS.inc()" data-tooltip="선택 글자 크기 키우기 (Shift+Alt+.)" style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">+</button>
   </div>
   <!-- font color + highlight -->
   <div class="tg">
@@ -413,10 +428,18 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       <div class="hk-item"><span class="hk-desc">에디터만</span><div class="hk-keys"><kbd>Alt</kbd><kbd>2</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">미리보기만</span><div class="hk-keys"><kbd>Alt</kbd><kbd>3</kbd></div></div>
     </div>
+    <div class="hk-s">편집</div>
+    <div class="hk-grid">
+      <div class="hk-item"><span class="hk-desc">줄 위로 이동</span><div class="hk-keys"><kbd>Alt</kbd><kbd>↑</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">줄 아래로 이동</span><div class="hk-keys"><kbd>Alt</kbd><kbd>↓</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">줄/선택 복제</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>↓</kbd></div></div>
+    </div>
     <div class="hk-s">삽입 / 도구</div>
     <div class="hk-grid">
       <div class="hk-item"><span class="hk-desc">인용 삽입</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>C</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">APA 통계 삽입</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>9</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">서식 패널 (크기·색·형광펜)</span><div class="hk-keys"><kbd>Alt</kbd><kbd>L</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">줄번호 ON/OFF</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>I</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">새창 미리보기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">저장 다이얼로그</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>S</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">찾기/바꾸기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>F</kbd></div></div>
@@ -741,6 +764,67 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <p style="font-size:12px;color:var(--tx2);margin-bottom:14px">선택하면 에디터에 구조가 자동 삽입됩니다. 기존 내용은 유지됩니다.</p>
     <div class="tmpl-grid" id="tmpl-grid"></div>
     <div class="mf"><button class="btn btn-g btn-sm" onclick="App.hideModal('tmpl-modal')">닫기</button></div>
+  </div>
+</div>
+
+<!-- FORMAT QUICK PANEL (Alt+L) -->
+<div id="fmt-panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <h4 style="font-size:13px;font-weight:600;color:var(--txh);margin:0">✏️ 서식 설정 <span style="font-size:10px;color:var(--tx3);font-weight:400">Alt+L</span></h4>
+    <button class="btn-ic" onclick="FP.hide()" style="font-size:14px">✕</button>
+  </div>
+  <!-- font size -->
+  <div class="fmt-row">
+    <span class="fmt-lbl">글자 크기</span>
+    <button class="btn btn-g btn-sm" style="padding:2px 8px;font-size:13px;font-weight:700" onclick="FP.fsz(-1)">−</button>
+    <select id="fp-fsize" class="fi" style="flex:1;padding:3px 6px;font-size:12px" onchange="FP.applyFsize()">
+      <option>8pt</option><option>9pt</option><option>10pt</option><option>11pt</option>
+      <option selected>12pt</option><option>13pt</option><option>14pt</option><option>15pt</option>
+      <option>16pt</option><option>18pt</option><option>20pt</option><option>22pt</option>
+      <option>24pt</option><option>28pt</option><option>32pt</option><option>36pt</option><option>40pt</option><option>48pt</option><option>50pt</option>
+    </select>
+    <button class="btn btn-g btn-sm" style="padding:2px 8px;font-size:13px;font-weight:700" onclick="FP.fsz(1)">+</button>
+  </div>
+  <!-- font color -->
+  <div class="fmt-row">
+    <span class="fmt-lbl">글자 색</span>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
+      <input type="color" id="fp-fc" value="#e8e8f0" style="width:30px;height:26px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0" onchange="FP.applyColor()">
+      <div style="display:flex;gap:3px;flex-wrap:wrap">
+        <div class="csw" style="background:#e8e8f0" onclick="FP.setFc('#e8e8f0')" title="흰색계"></div>
+        <div class="csw" style="background:#ff4444" onclick="FP.setFc('#ff4444')" title="빨강"></div>
+        <div class="csw" style="background:#ff8800" onclick="FP.setFc('#ff8800')" title="주황"></div>
+        <div class="csw" style="background:#ffcc00" onclick="FP.setFc('#ffcc00')" title="노랑"></div>
+        <div class="csw" style="background:#44cc44" onclick="FP.setFc('#44cc44')" title="초록"></div>
+        <div class="csw" style="background:#00aaff" onclick="FP.setFc('#00aaff')" title="파랑"></div>
+        <div class="csw" style="background:#aa44ff" onclick="FP.setFc('#aa44ff')" title="보라"></div>
+        <div class="csw" style="background:#ff44aa" onclick="FP.setFc('#ff44aa')" title="핑크"></div>
+        <div class="csw" style="background:#333333" onclick="FP.setFc('#333333')" title="검정"></div>
+        <div class="csw" style="background:#5b4ce4" onclick="FP.setFc('#5b4ce4')" title="인디고"></div>
+      </div>
+    </div>
+  </div>
+  <!-- highlight -->
+  <div class="fmt-row">
+    <span class="fmt-lbl">형광펜</span>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
+      <input type="color" id="fp-hl" value="#fff176" style="width:30px;height:26px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0" onchange="FP.applyHL()">
+      <div style="display:flex;gap:3px;flex-wrap:wrap">
+        <div class="csw" style="background:#fff176" onclick="FP.setHL('#fff176')" title="노랑"></div>
+        <div class="csw" style="background:#ffcc80" onclick="FP.setHL('#ffcc80')" title="오렌지"></div>
+        <div class="csw" style="background:#ef9a9a" onclick="FP.setHL('#ef9a9a')" title="빨강"></div>
+        <div class="csw" style="background:#80cbc4" onclick="FP.setHL('#80cbc4')" title="민트"></div>
+        <div class="csw" style="background:#a5d6a7" onclick="FP.setHL('#a5d6a7')" title="초록"></div>
+        <div class="csw" style="background:#90caf9" onclick="FP.setHL('#90caf9')" title="파랑"></div>
+        <div class="csw" style="background:#ce93d8" onclick="FP.setHL('#ce93d8')" title="보라"></div>
+        <div class="csw" style="background:#f48fb1" onclick="FP.setHL('#f48fb1')" title="핑크"></div>
+        <div class="csw" style="background:#ffecb3" onclick="FP.setHL('#ffecb3')" title="연노랑"></div>
+        <div class="csw" style="background:repeating-linear-gradient(45deg,#888,#888 2px,transparent 2px,transparent 6px);border:1px solid #888" onclick="FP.setHL('none')" title="없음"></div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:right;margin-top:4px">
+    <button class="btn btn-g btn-sm" onclick="FP.hide()">닫기</button>
   </div>
 </div>
 
@@ -1742,27 +1826,154 @@ const ED={
       ins(ed,le,le,'\n'+text);
     }
   },
+  // Alt+↑/↓ — 현재 줄(또는 선택 줄들)을 위/아래로 이동
+  moveLine(dir){
+    const ed=this.ed();const val=ed.value;
+    const ss=ed.selectionStart,se=ed.selectionEnd;
+    const lines=val.split('\n');
+    // 선택 범위에 해당하는 줄 인덱스 계산
+    let pos=0,startLine=-1,endLine=-1;
+    for(let i=0;i<lines.length;i++){
+      const lstart=pos,lend=pos+lines[i].length;
+      if(startLine===-1&&ss<=lend)startLine=i;
+      if(ss!==se?se-1<=lend:ss<=lend){endLine=i;if(ss===se)break;}
+      pos+=lines[i].length+1;
+    }
+    if(startLine<0)startLine=0;if(endLine<0)endLine=startLine;
+    if(dir===-1&&startLine===0)return;// 맨 위
+    if(dir===1&&endLine===lines.length-1)return;// 맨 아래
+    // 이동할 줄 덩어리 추출
+    const block=lines.splice(startLine,endLine-startLine+1);
+    const insertAt=dir===-1?startLine-1:startLine;
+    lines.splice(insertAt,0,...block);
+    // 새 커서 위치 계산
+    let newPos=0;for(let i=0;i<insertAt;i++)newPos+=lines[i].length+1;
+    const newSS=newPos+(ss-val.split('\n').slice(0,startLine).join('\n').length-(startLine>0?1:0));
+    const blockLen=block.join('\n').length;
+    ed.value=lines.join('\n');
+    // 이동된 줄 전체 선택
+    let nstart=0;for(let i=0;i<insertAt;i++)nstart+=lines[i].length+1;
+    let nend=nstart;for(let i=0;i<block.length;i++)nend+=lines[insertAt+i].length+(i<block.length-1?1:0);
+    ed.setSelectionRange(nstart,nend);
+    ed.focus();App.render();US.snap();
+  },
   tabInTable(ed,ev){const val=ed.value,pos=ed.selectionStart;const ls=val.lastIndexOf('\n',pos-1)+1,le=val.indexOf('\n',pos);const ln=val.substring(ls,le===-1?val.length:le);if(!ln.trim().startsWith('|'))return false;ev.preventDefault();const pipes=[];for(let i=ls;i<(le===-1?val.length:le);i++)if(val[i]==='|')pipes.push(i);const nx=pipes.find(p=>p>pos),nn=nx!==undefined?pipes.find(p=>p>nx):undefined;if(nx!==undefined&&nn!==undefined)ed.setSelectionRange(nx+1,nn);return true},
   enterInTable(ed,ev){const val=ed.value,pos=ed.selectionStart;const ls=val.lastIndexOf('\n',pos-1)+1,le=val.indexOf('\n',pos);const ln=val.substring(ls,le===-1?val.length:le);if(!ln.trim().startsWith('|')||/^\|[\s:|-]+\|$/.test(ln.trim()))return false;ev.preventDefault();const cols=ln.split('|').filter(c=>c.trim()!=='').length;ins(ed,le===-1?val.length:le,le===-1?val.length:le,'\n|'+' 셀 |'.repeat(cols));return true},
 };
 
 /* ═══════════════════════════════════════════════════════════
-   FONT SIZE MANAGER
+   FONT SIZE MANAGER  (선택 텍스트에 크기 적용)
 ═══════════════════════════════════════════════════════════ */
 const FS=(()=>{
-  const SIZES=[8,9,10,11,12,13,14,15,16,18,20,22,24,28,32,36];
-  let cur=4;// default 12pt (index 4)
-  function update(){
-    const pt=SIZES[cur];
-    el('editor').style.fontSize=pt+'px';
-    el('editor').style.lineHeight=(pt<=12?21:Math.round(pt*1.6))+'px';
-    el('fsize-display').textContent=pt+'pt';
-    LN.update();
+  const SIZES=[8,9,10,11,12,13,14,15,16,18,20,22,24,28,32,36,40,48,50];
+  let cur=4;// 기본 12pt
+
+  function updateDisplay(){
+    el('fsize-display').textContent=SIZES[cur]+'pt';
   }
-  function inc(){if(cur<SIZES.length-1){cur++;update()}}
-  function dec(){if(cur>0){cur--;update()}}
-  function set(pt){const i=SIZES.indexOf(pt);if(i>=0){cur=i;update()}}
-  return{inc,dec,set,update};
+
+  function apply(){
+    const pt=SIZES[cur];
+    const ed=el('editor');
+    const s=ed.selectionStart,e=ed.selectionEnd;
+    const sel=ed.value.substring(s,e)||'텍스트';
+    ins(ed,s,e,`<span style="font-size:${pt}pt">${sel}</span>`);
+  }
+
+  function inc(){if(cur<SIZES.length-1){cur++;updateDisplay();apply()}}
+  function dec(){if(cur>0){cur--;updateDisplay();apply()}}
+
+  // 한번 클릭 → 드롭다운 픽커
+  let _picker=null;
+  function clickPick(ev){
+    ev.stopPropagation();
+    if(_picker){_picker.remove();_picker=null;return}
+    const rect=el('fsize-display').getBoundingClientRect();
+    const div=document.createElement('div');
+    div.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.bottom+2}px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.4);z-index:9999;overflow:hidden;min-width:70px`;
+    div.innerHTML=SIZES.map((s,i)=>`<div data-i="${i}" style="padding:5px 14px;font-family:var(--fm);font-size:12px;cursor:pointer;color:${i===cur?'var(--ac)':'var(--tx)'};background:${i===cur?'var(--acg)':'transparent'};transition:background .1s" onmouseenter="this.style.background='var(--bg5)'" onmouseleave="this.style.background='${i===cur?'var(--acg)':'transparent'}'" onclick="FS.pickSize(${i},event)">${s}pt</div>`).join('');
+    document.body.appendChild(div);_picker=div;
+    setTimeout(()=>document.addEventListener('click',_closePicker,{once:true}),10);
+  }
+  function _closePicker(){if(_picker){_picker.remove();_picker=null}}
+  function pickSize(i,ev){if(ev)ev.stopPropagation();cur=i;updateDisplay();_closePicker();apply()}
+
+  // 두번 클릭 → 인라인 직접 입력
+  function startEdit(ev){
+    ev.stopPropagation();_closePicker();
+    const disp=el('fsize-display'),inp=el('fsize-input');
+    inp.value=SIZES[cur];
+    disp.style.display='none';inp.style.display='inline-block';
+    inp.focus();inp.select();
+  }
+  function endEdit(){
+    const inp=el('fsize-input'),disp=el('fsize-display');
+    const v=parseInt(inp.value);
+    if(v>=6&&v<=200){
+      // find nearest or add
+      let best=0,bDiff=999;
+      SIZES.forEach((s,i)=>{const d=Math.abs(s-v);if(d<bDiff){bDiff=d;best=i}});
+      cur=best;updateDisplay();apply();
+    }
+    inp.style.display='none';disp.style.display='';
+  }
+  function editKey(ev){if(ev.key==='Enter')el('fsize-input').blur();if(ev.key==='Escape'){el('fsize-input').style.display='none';el('fsize-display').style.display='';}}
+
+  function update(){updateDisplay()}
+  return{inc,dec,update,clickPick,pickSize,startEdit,endEdit,editKey};
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   FORMAT QUICK PANEL (Alt+L)
+═══════════════════════════════════════════════════════════ */
+const FP=(()=>{
+  let vis=false;
+  function show(){
+    const panel=el('fmt-panel');
+    if(vis){hide();return}
+    // position near toolbar
+    const tb=document.querySelector('#toolbar');
+    const rect=tb.getBoundingClientRect();
+    panel.style.left='50%';panel.style.top=(rect.bottom+4)+'px';
+    panel.style.transform='translateX(-50%)';
+    panel.classList.add('vis');vis=true;
+    setTimeout(()=>document.addEventListener('click',_outside,{once:true}),10);
+  }
+  function hide(){el('fmt-panel').classList.remove('vis');vis=false}
+  function _outside(e){if(!el('fmt-panel').contains(e.target))hide();else setTimeout(()=>document.addEventListener('click',_outside,{once:true}),10)}
+
+  function fsz(dir){
+    const sel=el('fp-fsize');
+    const idx=sel.selectedIndex;
+    const ni=Math.max(0,Math.min(sel.options.length-1,idx+dir));
+    sel.selectedIndex=ni;applyFsize();
+  }
+  function applyFsize(){
+    const size=el('fp-fsize').value;
+    const ed=el('editor');const s=ed.selectionStart,e=ed.selectionEnd;
+    const sel2=ed.value.substring(s,e)||'텍스트';
+    ins(ed,s,e,`<span style="font-size:${size}">${sel2}</span>`);
+  }
+  function setFc(c){el('fp-fc').value=c==='#e8e8f0'?'#e8e8f0':c;applyColor()}
+  function applyColor(){
+    const c=el('fp-fc').value;
+    const ed=el('editor');const s=ed.selectionStart,e=ed.selectionEnd;
+    const sel2=ed.value.substring(s,e)||'텍스트';
+    ins(ed,s,e,`<span style="color:${c}">${sel2}</span>`);
+  }
+  function setHL(c){if(c==='none'){applyHLnone();return}el('fp-hl').value=c;applyHL()}
+  function applyHL(){
+    const c=el('fp-hl').value;
+    const ed=el('editor');const s=ed.selectionStart,e=ed.selectionEnd;
+    const sel2=ed.value.substring(s,e)||'텍스트';
+    ins(ed,s,e,`<span style="background:${c}">${sel2}</span>`);
+  }
+  function applyHLnone(){
+    const ed=el('editor');const s=ed.selectionStart,e=ed.selectionEnd;
+    const sel2=ed.value.substring(s,e);
+    if(sel2)ins(ed,s,e,sel2.replace(/<span style="background:[^"]*">(.*?)<\/span>/gs,'$1'));
+  }
+  return{show,hide,fsz,applyFsize,setFc,applyColor,setHL,applyHL};
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -2028,14 +2239,19 @@ function hkKey(e){const mac=navigator.platform.toUpperCase().includes('MAC');con
 
 function handleKey(e){
   const edi=el('editor');const inEd=document.activeElement===edi;const k=hkKey(e);
-  // Global hotkeys (work even outside editor)
+  // Global hotkeys
   if(k==='A+1'){e.preventDefault();App.setViewCycle('split');return}
   if(k==='A+2'){e.preventDefault();App.setViewCycle('editor');return}
   if(k==='A+3'){e.preventDefault();App.setViewCycle('preview');return}
   if(k==='S+A+9'){e.preventDefault();STATS.show();return}
+  if(k==='A+L'){e.preventDefault();FP.show();return}
+  if(k==='C+A+I'){e.preventDefault();LN.toggle();return}
   if(!inEd){if(k==='S+?'){e.preventDefault();App.showHK()}return}
   if(k==='C+Z'){e.preventDefault();US.undo();return}
   if(k==='C+S+Z'||k==='C+Y'){e.preventDefault();US.redo();return}
+  // Alt+ArrowUp/Down — move line
+  if(k==='A+ArrowUp'){e.preventDefault();ED.moveLine(-1);return}
+  if(k==='A+ArrowDown'){e.preventDefault();ED.moveLine(1);return}
   if(e.key==='Tab'){if(ED.tabInTable(edi,e))return}
   if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.altKey){if(ED.enterInTable(edi,e))return}
   const map={
@@ -2046,8 +2262,8 @@ function handleKey(e){
     'A+8':()=>ED.table(),'A+9':()=>ED.tableRow(),'A+0':()=>ED.tableCol(),
     'A+C':()=>ED.codeBlockDirect(),
     'A+V':()=>ED.inlineCode(),
-    'S+A+.':()=>FS.inc(),'S+A+>':()=>FS.inc(),// Shift+Alt+>
-    'S+A+,':()=>FS.dec(),'S+A+<':()=>FS.dec(),// Shift+Alt+<
+    'S+A+.':()=>FS.inc(),'S+A+>':()=>FS.inc(),
+    'S+A+,':()=>FS.dec(),'S+A+<':()=>FS.dec(),
     'S+A+ArrowDown':()=>ED.dupLine(),
     'C+S':()=>App.showSaveDlg(),'C+F':()=>App.toggleFind(),
     'C+S+P':()=>PW.open(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),
@@ -2261,6 +2477,44 @@ $$
 > \`Shift+?\` → 전체 단축키 목록
 `}
 };
+
+/* ═══════════════════════════════════════════════════════════
+   PWA — Service Worker + Manifest (인라인 생성)
+═══════════════════════════════════════════════════════════ */
+(function(){
+  // 1. Manifest 동적 생성
+  const manifest={
+    name:'Markdown PDF Editor Pro V9',
+    short_name:'MD PRO V9',
+    description:'연구·논문 전용 마크다운 에디터',
+    start_url:'.',
+    display:'standalone',
+    background_color:'#0f0f13',
+    theme_color:'#1a1a24',
+    icons:[
+      {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="24" fill="%237c6af7"/><text x="96" y="130" font-size="110" text-anchor="middle" font-family="monospace" fill="white">M</text></svg>',sizes:'192x192',type:'image/svg+xml'},
+      {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="60" fill="%237c6af7"/><text x="256" y="360" font-size="300" text-anchor="middle" font-family="monospace" fill="white">M</text></svg>',sizes:'512x512',type:'image/svg+xml'}
+    ]
+  };
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.getElementById('pwa-manifest');
+  if(link)link.href=url;
+
+  // 2. Service Worker 인라인 등록
+  if('serviceWorker' in navigator){
+    const swCode=`
+const CACHE='mdpro-v9-cache-v1';
+const ASSETS=['/'];
+self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{})));
+self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
+self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const rc=res.clone();caches.open(CACHE).then(c=>c.put(e.request,rc));return res}).catch(()=>caches.match('/'))).catch(()=>fetch(e.request)));});
+`;
+    const swBlob=new Blob([swCode],{type:'application/javascript'});
+    const swUrl=URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl,{scope:'./'}).catch(()=>{});
+  }
+})();
 
 window.addEventListener('DOMContentLoaded',()=>App.init());
 </script>
