@@ -226,7 +226,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 
 <!-- TITLEBAR -->
 <header id="titlebar">
-  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V9</div>
+  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V7</div>
   <input id="doc-title" type="text" value="Untitled Document" spellcheck="false">
   <div id="tba">
     <span id="rm-badge">RESEARCH</span>
@@ -1684,17 +1684,64 @@ const ED={
   table(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'\n| 헤더 1 | 헤더 2 | 헤더 3 |\n| :-- | :-- | :-- |\n| 셀 | 셀 | 셀 |\n| 셀 | 셀 | 셀 |\n')},
   tableRow(){const ed=this.ed(),val=ed.value,pos=ed.selectionStart;const le=val.indexOf('\n',pos),ln=val.substring(val.lastIndexOf('\n',pos-1)+1,le===-1?val.length:le);if(!ln.trim().startsWith('|')){this.table();return}const cols=ln.split('|').filter(c=>c.trim()!=='').length;ins(ed,le===-1?val.length:le,le===-1?val.length:le,'\n|'+' 셀 |'.repeat(cols))},
   tableCol(){const ed=this.ed(),lines=ed.value.split('\n');const cur=ed.value.substring(0,ed.selectionStart).split('\n').length-1;if(!lines[cur].trim().startsWith('|')){this.table();return}let s=cur,e2=cur;while(s>0&&lines[s-1].trim().startsWith('|'))s--;while(e2<lines.length-1&&lines[e2+1].trim().startsWith('|'))e2++;ed.value=lines.map((l,i)=>{if(i<s||i>e2||!l.trim().startsWith('|'))return l;return /^\|[\s:|-]+\|$/.test(l.trim())?l.trimEnd()+' :-- |':l.trimEnd()+' 새열 |'}).join('\n');App.render();US.snap()},
+  // 언어별 주석 기호 반환
+  _cmt(lang){
+    const hash=['python','r','ruby','bash','shell','sh','perl','yaml','toml','powershell','coffee'];
+    const dash=['sql','haskell','lua','ada'];
+    const pct=['matlab','latex','tex'];
+    const semi=['lisp','clojure','scheme'];
+    const html=['html','xml','markdown','md'];
+    const l=lang.toLowerCase();
+    if(hash.some(x=>l.startsWith(x)))return'#';
+    if(dash.some(x=>l.startsWith(x)))return'--';
+    if(pct.some(x=>l.startsWith(x)))return'%';
+    if(semi.some(x=>l.startsWith(x)))return';';
+    if(html.some(x=>l.startsWith(x)))return'<!--';
+    return'//';// js, ts, java, c, cpp, go, swift, kotlin, rust, …
+  },
   // Direct code block with last used language (for Alt+C hotkey)
-  codeBlockDirect(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd;const sel=ed.value.substring(s,e)||'// 코드 입력';ins(ed,s,e,`\n\`\`\`${lastCodeLang}\n${sel}\n\`\`\`\n`)},
+  codeBlockDirect(){
+    const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd;
+    const cmt=this._cmt(lastCodeLang);
+    const placeholder=cmt==='<!--'?`<!-- 코드 입력 -->`:cmt+' 코드 입력';
+    const sel=ed.value.substring(s,e)||placeholder;
+    ins(ed,s,e,`\n\`\`\`${lastCodeLang}\n${sel}\n\`\`\`\n`);
+  },
   // Code block from modal (toolbar ⌨ button)
-  codeBlockModal(){const lang=el('code-lang').value;lastCodeLang=lang||lastCodeLang;const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd;const sel=ed.value.substring(s,e)||'// 코드 입력';ins(ed,s,e,`\n\`\`\`${lastCodeLang}\n${sel}\n\`\`\`\n`);App.hideModal('code-modal')},
+  codeBlockModal(){
+    const lang=el('code-lang').value;lastCodeLang=lang||lastCodeLang;
+    const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd;
+    const cmt=this._cmt(lastCodeLang);
+    const placeholder=cmt==='<!--'?`<!-- 코드 입력 -->`:cmt+' 코드 입력';
+    const sel=ed.value.substring(s,e)||placeholder;
+    ins(ed,s,e,`\n\`\`\`${lastCodeLang}\n${sel}\n\`\`\`\n`);
+    App.hideModal('code-modal');
+  },
   pageBreak(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'\n\n<div class="page-break"></div>\n\n')},
   lineBreak(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'<br>\n')},
   link(){const text=el('link-text').value||'링크';const url=el('link-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`[${text}](${url})`);App.hideModal('link-modal');el('link-text').value='';el('link-url').value=''},
   image(){const alt=el('img-alt').value||'이미지';const url=el('img-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`![${alt}](${url})`);el('img-alt').value='';el('img-url').value='';App.hideModal('image-modal')},
   math(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e);ins(ed,s,e,sel?`$$\n${sel}\n$$`:'\n$$\n\\phi = \\frac{\\lambda_2}{c^2}\n$$\n')},
   footnote(){const ed=this.ed(),s=ed.selectionStart;const n=Math.floor((ed.value.match(/\[\^\d+\]/g)||[]).length/2)+1;ins(ed,s,s,`[^${n}]`);ed.value+=`\n[^${n}]: 각주 내용.`;App.render();US.snap()},
-  dupLine(){const ed=this.ed();const{le,text}=getCL(ed);ins(ed,le,le,'\n'+text)},
+  dupLine(){
+    const ed=this.ed();
+    const s=ed.selectionStart,e=ed.selectionEnd;
+    if(s!==e){
+      // 선택 영역이 있으면 — 선택한 텍스트를 그대로 복제해서 바로 뒤에 삽입
+      const sel=ed.value.substring(s,e);
+      // 줄 경계에 맞게: 선택 끝 위치 뒤에 삽입
+      // 선택이 줄 중간일 수도 있으므로 그냥 선택 직후에 붙임
+      const insert='\n'+sel;
+      ed.value=ed.value.substring(0,e)+insert+ed.value.substring(e);
+      // 복제된 부분을 선택 상태로 표시
+      ed.setSelectionRange(e+1,e+1+sel.length);
+      ed.focus();App.render();US.snap();
+    }else{
+      // 선택 없으면 커서가 있는 줄 복제 (기존 동작)
+      const{le,text}=getCL(ed);
+      ins(ed,le,le,'\n'+text);
+    }
+  },
   tabInTable(ed,ev){const val=ed.value,pos=ed.selectionStart;const ls=val.lastIndexOf('\n',pos-1)+1,le=val.indexOf('\n',pos);const ln=val.substring(ls,le===-1?val.length:le);if(!ln.trim().startsWith('|'))return false;ev.preventDefault();const pipes=[];for(let i=ls;i<(le===-1?val.length:le);i++)if(val[i]==='|')pipes.push(i);const nx=pipes.find(p=>p>pos),nn=nx!==undefined?pipes.find(p=>p>nx):undefined;if(nx!==undefined&&nn!==undefined)ed.setSelectionRange(nx+1,nn);return true},
   enterInTable(ed,ev){const val=ed.value,pos=ed.selectionStart;const ls=val.lastIndexOf('\n',pos-1)+1,le=val.indexOf('\n',pos);const ln=val.substring(ls,le===-1?val.length:le);if(!ln.trim().startsWith('|')||/^\|[\s:|-]+\|$/.test(ln.trim()))return false;ev.preventDefault();const cols=ln.split('|').filter(c=>c.trim()!=='').length;ins(ed,le===-1?val.length:le,le===-1?val.length:le,'\n|'+' 셀 |'.repeat(cols));return true},
 };
