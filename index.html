@@ -220,6 +220,15 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 .preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}
 /* editor footnote syntax highlight */
 #editor{caret-color:var(--ac)}
+/* search result cards */
+.ref-card{padding:9px 12px;border-bottom:1px solid var(--bd);transition:background var(--tr)}
+.ref-card:last-child{border-bottom:none}
+.ref-card:hover{background:var(--bg5)}
+.ref-card-title{font-size:12px;font-weight:600;color:var(--txh);margin-bottom:3px;line-height:1.4}
+.ref-card-meta{font-size:10px;color:var(--tx3);margin-bottom:5px;line-height:1.5}
+.ref-card-apa{font-size:10px;color:var(--tx2);font-family:var(--fm);background:var(--bg4);border-radius:3px;padding:4px 8px;margin-bottom:5px;line-height:1.6;word-break:break-word;cursor:text;user-select:all}
+.ref-card-btns{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.ref-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg5);color:var(--tx3);border:1px solid var(--bd)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
@@ -247,6 +256,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <button class="btn btn-g btn-sm" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
     <button class="btn btn-g btn-sm" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)" data-key="Ctrl+Shift+R">🔬 Research</button>
     <button class="btn btn-g btn-sm" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용" data-key="Ctrl+Shift+C">📚 References</button>
+    <button class="btn btn-g btn-sm" onclick="Scholar.show()" data-tooltip="Google Scholar 검색 (새 창)" data-key="Ctrl+Shift+G">🔎 Scholar</button>
     <button class="btn btn-g btn-sm" onclick="App.showSaveDlg()" data-tooltip="저장 형식 선택" data-key="Ctrl+S">💾 저장</button>
     <button class="btn btn-p btn-sm" onclick="App.printDoc()" data-tooltip="인쇄 / PDF 저장">🖨️ 인쇄</button>
   </div>
@@ -304,6 +314,8 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <button class="tb" onclick="ED.table()" data-tooltip="표 삽입" data-key="Alt+8">⊞ 표</button>
     <button class="tb" onclick="ED.tableRow()" data-tooltip="행 추가" data-key="Alt+9">+행</button>
     <button class="tb" onclick="ED.tableCol()" data-tooltip="열 추가" data-key="Alt+0">+열</button>
+    <button class="tb" onclick="ED.mergeH()" data-tooltip="가로 병합 (colspan)" data-key="Alt+Shift+H">⊞H</button>
+    <button class="tb" onclick="ED.mergeV()" data-tooltip="세로 병합 (rowspan)" data-key="Alt+Shift+V">⊞V</button>
     <button class="tb" onclick="App.showCaption('table')" data-tooltip="표 캡션">〈표〉</button>
     <button class="tb" onclick="App.showCaption('fig')" data-tooltip="그림 캡션">[그림]</button>
   </div>
@@ -413,6 +425,14 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       <div class="hk-item"><span class="hk-desc">페이지 나누기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Enter</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">줄바꿈(&lt;br&gt;)</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Enter</kbd></div></div>
     </div>
+    <div class="hk-s">표 편집</div>
+    <div class="hk-grid">
+      <div class="hk-item"><span class="hk-desc">표 삽입</span><div class="hk-keys"><kbd>Alt</kbd><kbd>8</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">행 추가</span><div class="hk-keys"><kbd>Alt</kbd><kbd>9</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">열 추가</span><div class="hk-keys"><kbd>Alt</kbd><kbd>0</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">가로 병합 (colspan) → HTML 변환</span><div class="hk-keys"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>H</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">세로 병합 (rowspan) → HTML 변환</span><div class="hk-keys"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>V</kbd></div></div>
+    </div>
     <div class="hk-s">서식</div>
     <div class="hk-grid">
       <div class="hk-item"><span class="hk-desc">Smart Bold</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>B</kbd></div></div>
@@ -437,6 +457,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <div class="hk-s">삽입 / 도구</div>
     <div class="hk-grid">
       <div class="hk-item"><span class="hk-desc">인용 삽입</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>C</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">주석(각주) 삽입 (9pt)</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>N</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">APA 통계 삽입</span><div class="hk-keys"><kbd>Shift</kbd><kbd>Alt</kbd><kbd>9</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">서식 패널 (크기·색·형광펜)</span><div class="hk-keys"><kbd>Alt</kbd><kbd>L</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">줄번호 ON/OFF</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>I</kbd></div></div>
@@ -445,6 +466,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       <div class="hk-item"><span class="hk-desc">찾기/바꾸기</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>F</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">Research Mode</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>R</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">단축키 목록</span><div class="hk-keys"><kbd>Shift</kbd><kbd>?</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">Scholar 검색</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>G</kbd></div></div>
     </div>
     <div style="margin-top:10px;font-size:11px;color:var(--tx3)">표 내부: Tab→다음 셀 | Enter→새 행 | ⌨ Code 버튼→언어 선택 | Alt+C→마지막 언어 직접 삽입</div>
   </div>
@@ -540,6 +562,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       <div class="tab" onclick="CM.tab('cite')">② 인용 삽입</div>
       <div class="tab" onclick="CM.tab('convert')">③ 스타일 변환</div>
       <div class="tab" onclick="CM.tab('lib')">④ 저장된 목록</div>
+      <div class="tab" onclick="CM.tab('search')" style="color:var(--ac2)">⑤ 🔎 논문 검색</div>
     </div>
 
     <!-- ADD -->
@@ -633,7 +656,50 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
       <div id="lib-list"><div class="cite-empty">저장된 참고문헌이 없습니다.</div></div>
     </div>
 
-    <div class="mf">
+    <!-- SEARCH TAB -->
+    <div class="tp" id="cp-search">
+      <!-- 검색창 -->
+      <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <label class="fl">제목 / 저자 / 키워드</label>
+          <input class="fi" id="ref-q" type="text" placeholder="예) self-efficacy academic achievement Korea" onkeydown="if(event.key==='Enter')RefSearch.search()">
+        </div>
+        <div style="flex:0 0 auto">
+          <label class="fl">출판연도 이후</label>
+          <select class="fi" id="ref-year" style="padding:7px 8px;width:auto">
+            <option value="">전체</option>
+            <option value="2020">2020~</option>
+            <option value="2018">2018~</option>
+            <option value="2015">2015~</option>
+            <option value="2010">2010~</option>
+          </select>
+        </div>
+        <div style="flex:0 0 auto">
+          <label class="fl">검색 DB</label>
+          <select class="fi" id="ref-db" style="padding:7px 8px;width:auto">
+            <option value="crossref">CrossRef (전체)</option>
+            <option value="openalex">OpenAlex (오픈액세스)</option>
+          </select>
+        </div>
+        <button class="btn btn-p" onclick="RefSearch.search()" style="height:36px;padding:0 16px;flex-shrink:0">🔎 검색</button>
+        <button class="btn btn-g btn-sm" onclick="RefSearch.openScholar()" style="height:36px;flex-shrink:0" title="Google Scholar 새 창">Scholar ↗</button>
+      </div>
+
+      <!-- 상태/결과수 -->
+      <div id="ref-status" style="font-size:11px;color:var(--tx3);min-height:18px;margin-bottom:6px"></div>
+
+      <!-- 결과 목록 -->
+      <div id="ref-results" style="border:1px solid var(--bd);border-radius:var(--r);background:var(--bg3);min-height:80px;max-height:340px;overflow-y:auto">
+        <div class="cite-empty" id="ref-placeholder">검색어를 입력하고 🔎 검색을 누르세요.<br><span style="font-size:10px;color:var(--tx3)">CrossRef: 1억 건+ | OpenAlex: 오픈액세스 논문 특화</span></div>
+      </div>
+
+      <!-- 하단 안내 -->
+      <div style="margin-top:8px;font-size:10px;color:var(--tx3);line-height:1.7">
+        ✅ <b>+ 추가</b> 클릭 → APA 형식으로 ④ 저장된 목록에 자동 저장 &nbsp;|&nbsp;
+        📋 <b>복사</b> 클릭 → 클립보드로 복사 &nbsp;|&nbsp;
+        결과가 없으면 <b>Scholar ↗</b>로 직접 검색
+      </div>
+    </div>
       <button class="btn btn-g btn-sm" onclick="App.hideModal('cite-modal')">닫기</button>
       <button class="btn btn-p btn-sm" id="cite-ins-btn" onclick="CM.insert()" style="display:none">✔ 선택 항목 인용 삽입</button>
     </div>
@@ -706,21 +772,88 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 </div>
 
 <!-- COLOR PICKER MODAL -->
+<!-- SCHOLAR SEARCH MODAL -->
+<div class="ov" id="scholar-modal">
+  <div class="modal" style="max-width:520px">
+    <h3>🔎 Google Scholar 검색</h3>
+    <div class="fg">
+      <label class="fl">검색어 (논문 제목, 저자, 키워드 등)</label>
+      <div style="display:flex;gap:7px">
+        <input class="fi" id="scholar-q" type="text" placeholder="예) structural equation modeling education Korea" style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+        <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">검색 옵션</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label style="font-size:12px;color:var(--tx2)">언어:</label>
+        <select id="scholar-lang" class="fi" style="width:auto;padding:4px 8px">
+          <option value="ko">한국어 우선</option>
+          <option value="">전체</option>
+          <option value="en">영어 우선</option>
+        </select>
+        <label style="font-size:12px;color:var(--tx2)">기간:</label>
+        <select id="scholar-year" class="fi" style="width:auto;padding:4px 8px">
+          <option value="">전체 기간</option>
+          <option value="2024">2024년~</option>
+          <option value="2022">2022년~</option>
+          <option value="2020">2020년~</option>
+          <option value="2015">2015년~</option>
+          <option value="2010">2010년~</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--tx2);cursor:pointer">
+          <input type="checkbox" id="scholar-review" style="accent-color:var(--ac)"> 리뷰 논문만
+        </label>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:10px;line-height:1.6">
+      💡 검색 결과는 <b>Google Scholar 새 창</b>에서 열립니다.<br>
+      논문 제목 클릭 → 인용 버튼 → APA 복사 → 📚 References 탭에 붙여넣기
+    </div>
+    <div class="fg" id="scholar-recent-wrap" style="display:none">
+      <label class="fl">최근 검색어</label>
+      <div id="scholar-recent" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-g btn-sm" onclick="Scholar.clear()">검색어 초기화</button>
+      <button class="btn btn-g btn-sm" onclick="App.hideModal('scholar-modal')">닫기</button>
+      <button class="btn btn-p btn-sm" onclick="Scholar.search()">🔎 Scholar 검색</button>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="color-modal">
-  <div class="modal" style="max-width:380px">
+  <div class="modal" style="max-width:400px">
     <h3 id="color-modal-title">글자 색상 설정</h3>
     <div class="fg">
       <label class="fl">빠른 선택</label>
       <div class="csw-row" id="color-swatches"></div>
     </div>
     <div class="fg">
-      <label class="fl">직접 입력 (Hex 또는 색상명)</label>
-      <input class="fi" id="color-hex" type="text" placeholder="#ff0000" style="font-family:var(--fm)">
+      <div style="display:flex;gap:6px;align-items:center">
+        <div style="flex:1">
+          <label class="fl">직접 입력 (Hex 또는 색상명)</label>
+          <input class="fi" id="color-hex" type="text" placeholder="#ff0000" style="font-family:var(--fm)" oninput="ColorPicker.updatePreview(this.value)">
+        </div>
+        <!-- 네이티브 color input (hidden) -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;margin-top:14px">
+          <label id="eyedrop-btn" class="btn btn-g btn-sm" style="cursor:pointer;padding:5px 8px;display:flex;flex-direction:column;align-items:center;gap:2px" title="스포이드 / 색상 팔레트">
+            <span style="font-size:16px">🎨</span>
+            <span style="font-size:9px">팔레트</span>
+            <input type="color" id="color-native" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" oninput="ColorPicker.fromNative(this.value)" onchange="ColorPicker.fromNative(this.value)">
+          </label>
+          <button id="eyedropper-btn" class="btn btn-g btn-sm" style="padding:5px 8px;display:flex;flex-direction:column;align-items:center;gap:2px" onclick="ColorPicker.eyedrop()" title="화면에서 색상 추출 (스포이드)">
+            <span style="font-size:16px">💉</span>
+            <span style="font-size:9px">스포이드</span>
+          </button>
+        </div>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <label class="fl" style="margin:0">미리보기:</label>
-      <div id="color-preview" style="padding:4px 12px;border-radius:4px;font-size:13px;border:1px solid var(--bd)">샘플 텍스트</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <label class="fl" style="margin:0;flex-shrink:0">미리보기:</label>
+      <div id="color-preview" style="flex:1;padding:5px 12px;border-radius:4px;font-size:13px;border:1px solid var(--bd);transition:all .15s">샘플 텍스트 / Sample Text</div>
     </div>
+    <div id="eyedrop-support-msg" style="font-size:10px;color:var(--tx3);margin-bottom:8px;display:none">⚠ 스포이드는 Chrome/Edge에서만 지원됩니다.</div>
     <div class="mf">
       <button class="btn btn-g btn-sm" onclick="App.hideModal('color-modal')">취소</button>
       <button class="btn btn-p btn-sm" onclick="App.applyColor()">적용</button>
@@ -950,6 +1083,22 @@ let _st;window.addEventListener('scroll',()=>{clearTimeout(_st);_st=setTimeout((
 <\/script></body></html>`;
   }
 
+  // 이슈1 수정: 메시지 리스너를 open() 밖에서 1회만 등록
+  let _msgListenerRegistered=false;
+  function _initMsgListener(){
+    if(_msgListenerRegistered)return;
+    _msgListenerRegistered=true;
+    window.addEventListener('message',e=>{
+      if(e.data&&e.data.type==='pvS'){
+        const r=e.data.ratio;
+        const ed2=el('editor');
+        ed2.scrollTop=r*(ed2.scrollHeight-ed2.clientHeight);
+        const pc=el('preview-container');
+        pc.scrollTop=r*(pc.scrollHeight-pc.clientHeight);
+      }
+    });
+  }
+
   function open(){
     const title=el('doc-title').value;
     if(win&&!win.closed){win.focus();sync();return}
@@ -961,7 +1110,7 @@ let _st;window.addEventListener('scroll',()=>{clearTimeout(_st);_st=setTimeout((
       win.document.open();win.document.write(buildHTML(el('editor').value,title));win.document.close();
       el('pw-btn').classList.add('open');
       win.addEventListener('beforeunload',()=>el('pw-btn').classList.remove('open'));
-      window.addEventListener('message',e=>{if(e.data&&e.data.type==='pvS'){const r=e.data.ratio;const ed2=el('editor');ed2.scrollTop=r*(ed2.scrollHeight-ed2.clientHeight);const pc=el('preview-container');pc.scrollTop=r*(pc.scrollHeight-pc.clientHeight)}});
+      _initMsgListener(); // 최초 1회만 실제 등록됨
     }catch(e){alert('팝업이 차단되었습니다.');}
   }
 
@@ -1030,7 +1179,25 @@ const LN=(()=>{
 const AS=(()=>{
   let t;const K='mdpro_v7';
   function load(){try{const d=JSON.parse(localStorage.getItem(K)||'{}');if(d.c)el('editor').value=d.c;if(d.t)el('doc-title').value=d.t}catch(e){}}
-  function save(c,t2){clearTimeout(t);el('save-dot').classList.add('saving');el('save-st').textContent='저장 중...';t=setTimeout(()=>{try{localStorage.setItem(K,JSON.stringify({c,t:t2,ts:Date.now()}))}catch(e){}el('save-dot').classList.remove('saving');el('save-st').textContent='저장됨'},1000)}
+  function save(c,t2){
+    clearTimeout(t);
+    el('save-dot').classList.add('saving');
+    el('save-st').textContent='저장 중...';
+    t=setTimeout(()=>{
+      try{
+        localStorage.setItem(K,JSON.stringify({c,t:t2,ts:Date.now()}));
+        el('save-dot').classList.remove('saving');
+        el('save-dot').style.background='';
+        el('save-st').textContent='저장됨';
+      }catch(e){
+        // 이슈2 수정: QuotaExceededError 등 저장 실패 시 사용자에게 명시적으로 알림
+        el('save-dot').classList.remove('saving');
+        el('save-dot').style.background='#f76a6a';
+        el('save-st').textContent='⚠ 자동저장 실패 (용량 초과) — 💾 저장 버튼으로 파일 저장 권장';
+        console.warn('localStorage 저장 실패:',e);
+      }
+    },1000);
+  }
   return{load,save};
 })();
 
@@ -1186,15 +1353,24 @@ const CM=(()=>{
   }
 
   function tab(name){
-    const names=['add','cite','convert','lib'];
-    names.forEach((n,i)=>{document.querySelectorAll('.tab')[i].classList.toggle('active',n===name);el(`cp-${n}`).classList.toggle('active',n===name)});
+    const names=['add','cite','convert','lib','search'];
+    document.querySelectorAll('#cite-modal .tab').forEach((t,i)=>t.classList.toggle('active',names[i]===name));
+    names.forEach(n=>el(`cp-${n}`)?.classList.toggle('active',n===name));
     if(name==='cite'){renderList(el('cite-search')?.value||'');el('cite-ins-btn').style.display='none'}
     if(name==='lib')renderLib();
+    if(name==='search')setTimeout(()=>el('ref-q')?.focus(),80);
+  }
+
+  // RefSearch 에서 단일 APA 문자열을 직접 추가하는 공개 메서드
+  function addRaw(apaStr){
+    apaStr=apaStr.trim();if(!apaStr)return;
+    const p=parseAPA(apaStr);
+    if(p&&!refs.find(r=>r.full===p.full)){p.mla=toMLA(p);p.chicago=toChicago(p);refs.push(p);save();renderLib();}
   }
 
   function open(){load();renderList('');renderLib();el('cite-ins-btn').style.display='none'}
 
-  return{load,setSep,parse,loadFile,filter,toggle,getSel,upd,selAll,clrSel,insert,del,clearAll,insertRefSection,downloadLib,convertStyle,copyConverted,insertConverted,tab,open};
+  return{load,setSep,parse,loadFile,filter,toggle,getSel,upd,selAll,clrSel,insert,del,clearAll,insertRefSection,downloadLib,convertStyle,copyConverted,insertConverted,tab,open,addRaw};
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -1666,10 +1842,260 @@ Keywords:
 ];
 
 /* ═══════════════════════════════════════════════════════════
+   GOOGLE SCHOLAR SEARCH
+═══════════════════════════════════════════════════════════ */
+const Scholar=(()=>{
+  const RK='mdpro_scholar_recent';
+  let recent=[];
+
+  function load(){try{recent=JSON.parse(localStorage.getItem(RK)||'[]')}catch(e){recent=[]}}
+
+  function show(){
+    load();renderRecent();el('scholar-modal').classList.add('vis');
+    setTimeout(()=>el('scholar-q').focus(),80);
+  }
+
+  function search(){
+    const q=el('scholar-q').value.trim();
+    if(!q){el('scholar-q').focus();return;}
+    const lang=el('scholar-lang').value;
+    const year=el('scholar-year').value;
+    const review=el('scholar-review').checked;
+
+    // URL 파라미터 구성
+    const params=new URLSearchParams();
+    params.set('q',q);
+    params.set('hl',lang==='ko'?'ko':'en');
+    if(year)params.set('as_ylo',year);
+    if(review)params.set('as_rr','1');// 리뷰 논문 필터
+
+    const url=`https://scholar.google.com/scholar?${params.toString()}`;
+    window.open(url,'scholar_search','width=1100,height=800,left=100,top=80,resizable=yes,scrollbars=yes');
+
+    // 최근 검색어 저장 (중복 제거, 최대 8개)
+    recent=recent.filter(r=>r!==q);recent.unshift(q);recent=recent.slice(0,8);
+    try{localStorage.setItem(RK,JSON.stringify(recent))}catch(e){}
+    renderRecent();
+  }
+
+  function renderRecent(){
+    const wrap=el('scholar-recent-wrap');
+    const div=el('scholar-recent');
+    if(!recent.length){wrap.style.display='none';return}
+    wrap.style.display='block';
+    div.innerHTML=recent.map(r=>`<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg5);border:1px solid var(--bd);border-radius:var(--r);padding:2px 8px;font-size:11px;cursor:pointer;color:var(--tx2)" onclick="Scholar.useRecent('${r.replace(/'/g,"\\'")}')">🕐 ${r}</span>`).join('');
+  }
+
+  function useRecent(q){el('scholar-q').value=q;search()}
+
+  function clear(){
+    el('scholar-q').value='';recent=[];
+    try{localStorage.removeItem(RK)}catch(e){}
+    renderRecent();
+    el('scholar-q').focus();
+  }
+
+  return{show,search,useRecent,clear};
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   REF SEARCH — CrossRef / OpenAlex 내장 논문 검색
+═══════════════════════════════════════════════════════════ */
+const RefSearch=(()=>{
+  let _loading=false;
+
+  /* ── APA 포맷터 ── */
+  function toAPA(w){
+    // 저자
+    let authors='';
+    if(w._src==='openalex'){
+      const au=(w.authorships||[]).map(a=>a.author?.display_name||'').filter(Boolean);
+      if(au.length===0)authors='Unknown';
+      else if(au.length<=5)authors=au.map(fmtName).join(', ');
+      else authors=fmtName(au[0])+', et al.';
+    } else {
+      // CrossRef 실제 구조: [{family:"Kim", given:"J."}, ...]
+      // name 필드는 기관저자에만 간혹 존재
+      const au=(w.author||[]).map(a=>{
+        if(a.family&&a.given) return`${a.family}, ${a.given.trim()[0].toUpperCase()}.`;
+        if(a.family)          return a.family;
+        if(a.name)            return a.name;
+        return'';
+      }).filter(Boolean);
+      if(au.length===0)authors='Unknown';
+      else if(au.length<=5)authors=au.join(', ');
+      else authors=au[0]+', et al.';
+    }
+    // 연도
+    const year=w._year||'n.d.';
+    // 제목
+    const title=w._title||'Untitled';
+    // 저널
+    const journal=w._journal||'';
+    // 권·호·페이지
+    const vol=w.volume||w._vol||'';
+    const iss=w.issue||w._iss||'';
+    const page=w.page||w._page||'';
+    // DOI
+    const doi=w.DOI||w._doi||'';
+    let cite=`${authors} (${year}). ${title}.`;
+    if(journal)cite+=` ${journal}`;
+    if(vol)cite+=`, ${vol}`;
+    if(iss)cite+=`(${iss})`;
+    if(page)cite+=`, ${page}`;
+    cite+='.';
+    if(doi)cite+=` https://doi.org/${doi}`;
+    return cite;
+  }
+
+  function fmtName(n){
+    // "Firstname Lastname" → "Lastname, F."
+    if(!n)return'';
+    const parts=n.trim().split(/\s+/);
+    if(parts.length===1)return parts[0];
+    const last=parts[parts.length-1];
+    const initials=parts.slice(0,-1).map(p=>p[0].toUpperCase()+'.').join(' ');
+    return`${last}, ${initials}`;
+  }
+
+  /* ── CrossRef API ── */
+  async function searchCrossRef(q,year){
+    const rows=10;
+    let url=`https://api.crossref.org/works?query=${encodeURIComponent(q)}&rows=${rows}&select=DOI,title,author,published-print,published-online,container-title,volume,issue,page&mailto=mdpro@editor.app`;
+    if(year)url+=`&filter=from-pub-date:${year}`;
+    const res=await fetch(url);
+    if(!res.ok)throw new Error('CrossRef 응답 오류');
+    const data=await res.json();
+    return (data.message?.items||[]).map(w=>{
+      const yr=(w['published-print']||w['published-online'])?.['date-parts']?.[0]?.[0]||'';
+      return{
+        _src:'crossref',_title:(w.title||[''])[0],_year:yr,
+        _journal:(w['container-title']||[])[0]||'',
+        _vol:w.volume||'',_iss:w.issue||'',_page:w.page||'',
+        DOI:w.DOI||'',author:w.author||[],
+        _url:w.DOI?`https://doi.org/${w.DOI}`:''
+      };
+    });
+  }
+
+  /* ── OpenAlex API ── */
+  async function searchOpenAlex(q,year){
+    let url=`https://api.openalex.org/works?search=${encodeURIComponent(q)}&per-page=10&select=id,title,authorships,publication_year,primary_location,biblio,doi,open_access`;
+    if(year)url+=`&filter=publication_year:>${parseInt(year)-1}`;
+    const res=await fetch(url);
+    if(!res.ok)throw new Error('OpenAlex 응답 오류');
+    const data=await res.json();
+    return (data.results||[]).map(w=>{
+      const src=w.primary_location?.source;
+      return{
+        _src:'openalex',_title:w.title||'',_year:w.publication_year||'',
+        _journal:src?.display_name||'',
+        _vol:w.biblio?.volume||'',_iss:w.biblio?.issue||'',
+        _page:w.biblio?.first_page?(w.biblio.first_page+(w.biblio.last_page?'–'+w.biblio.last_page:'')):'',
+        _doi:w.doi?w.doi.replace('https://doi.org/',''):'',
+        DOI:w.doi?w.doi.replace('https://doi.org/',''):'',
+        authorships:w.authorships||[],
+        _oa:w.open_access?.is_oa||false,
+        _url:w.doi||''
+      };
+    });
+  }
+
+  /* ── 렌더링 ── */
+  function renderCards(items){
+    const box=el('ref-results');
+    if(!items.length){
+      box.innerHTML='<div class="cite-empty">검색 결과가 없습니다.<br><span style="font-size:10px">다른 키워드를 시도하거나 Scholar ↗ 버튼으로 Google Scholar를 확인하세요.</span></div>';
+      return;
+    }
+    box.innerHTML=items.map((w,i)=>{
+      const apa=toAPA(w);
+      const doi=w.DOI||w._doi||'';
+      const oa=w._oa?'<span class="ref-tag" style="color:var(--ok);border-color:var(--ok)">OA</span>':'';
+      const src=w._src==='openalex'?'<span class="ref-tag">OpenAlex</span>':'<span class="ref-tag">CrossRef</span>';
+      return`<div class="ref-card">
+  <div class="ref-card-title">${w._title||'제목 없음'}</div>
+  <div class="ref-card-meta">
+    ${w._year?`<b>${w._year}</b> · `:''}${w._journal||''}${w._vol?` ${w._vol}`:''}${w._iss?`(${w._iss})`:''}
+    ${src}${oa}
+  </div>
+  <div class="ref-card-apa" id="apa-${i}" title="클릭하면 전체 선택됨">${apa}</div>
+  <div class="ref-card-btns">
+    <button class="btn btn-p btn-sm" onclick="RefSearch.addToLib(${i})">+ 참고문헌에 추가</button>
+    <button class="btn btn-g btn-sm" onclick="RefSearch.copyAPA(${i})">📋 APA 복사</button>
+    ${doi?`<a href="https://doi.org/${doi}" target="_blank" rel="noopener" class="btn btn-g btn-sm">DOI ↗</a>`:''}
+  </div>
+</div>`;
+    }).join('');
+    // 데이터 저장 (버튼 콜백용)
+    box._data=items;
+    box._apas=items.map(toAPA);
+  }
+
+  /* ── 검색 실행 ── */
+  async function search(){
+    if(_loading)return;
+    const q=el('ref-q').value.trim();
+    const year=el('ref-year').value;
+    const db=el('ref-db').value;
+    if(!q){el('ref-q').focus();return}
+
+    _loading=true;
+    const status=el('ref-status');
+    const box=el('ref-results');
+    status.textContent='🔄 검색 중...';
+    box.innerHTML='<div class="cite-empty" style="padding:24px"><div style="font-size:20px;margin-bottom:8px">⏳</div>잠시 기다려 주세요...</div>';
+
+    try{
+      let items;
+      if(db==='openalex')items=await searchOpenAlex(q,year);
+      else items=await searchCrossRef(q,year);
+      status.textContent=`✅ ${items.length}건 검색됨 (${db==='openalex'?'OpenAlex':'CrossRef'}) · "${q}"`;
+      renderCards(items);
+    }catch(e){
+      status.textContent=`❌ 오류: ${e.message}`;
+      box.innerHTML=`<div class="cite-empty">검색 실패: ${e.message}<br><span style="font-size:10px">네트워크를 확인하거나 Scholar ↗를 사용해주세요.</span></div>`;
+    }
+    _loading=false;
+  }
+
+  function addToLib(i){
+    const box=el('ref-results');
+    const apa=box._apas?.[i];
+    if(!apa)return;
+    CM.addRaw(apa);
+    // 버튼 피드백
+    const btns=box.querySelectorAll('.ref-card')[i]?.querySelectorAll('button');
+    if(btns?.[0]){btns[0].textContent='✔ 추가됨';btns[0].disabled=true;btns[0].style.opacity='.6';}
+  }
+
+  function copyAPA(i){
+    const box=el('ref-results');
+    const apa=box._apas?.[i];
+    if(!apa)return;
+    navigator.clipboard.writeText(apa).then(()=>{
+      const btns=box.querySelectorAll('.ref-card')[i]?.querySelectorAll('button');
+      if(btns?.[1]){const orig=btns[1].textContent;btns[1].textContent='✔ 복사됨';setTimeout(()=>btns[1].textContent=orig,1500);}
+    }).catch(()=>{
+      // fallback
+      const el2=document.createElement('textarea');el2.value=apa;document.body.appendChild(el2);el2.select();document.execCommand('copy');el2.remove();
+    });
+  }
+
+  function openScholar(){
+    const q=el('ref-q').value.trim();
+    const url=q?`https://scholar.google.com/scholar?q=${encodeURIComponent(q)}&hl=ko`:'https://scholar.google.com/?hl=ko';
+    window.open(url,'_blank');
+  }
+
+  return{search,addToLib,copyAPA,openScholar};
+})();
+
+/* ═══════════════════════════════════════════════════════════
    COLOR PICKER
 ═══════════════════════════════════════════════════════════ */
 const ColorPicker=(()=>{
-  let mode='text';// text | bg
+  let mode='text';
   const TEXT_COLORS=['#e8e8f0','#ff4444','#ff8800','#ffcc00','#44cc44','#00aaff','#aa44ff','#ff44aa','#000000','#333333','#666666','#999999','#cccccc','#ffffff','#5b4ce4','#f7a06a'];
   const BG_COLORS=['#fff176','#ffcc80','#ef9a9a','#80cbc4','#a5d6a7','#90caf9','#ce93d8','#f48fb1','#ffecb3','#dcedc8','transparent'];
 
@@ -1678,16 +2104,55 @@ const ColorPicker=(()=>{
     el('color-modal-title').textContent=m==='text'?'글자 색상 설정':'형광펜 하이라이트 색상';
     const colors=m==='text'?TEXT_COLORS:BG_COLORS;
     el('color-swatches').innerHTML=colors.map(c=>`<div class="csw" style="background:${c==='transparent'?'repeating-linear-gradient(45deg,#888,#888 2px,transparent 2px,transparent 6px)':c};border-color:${c==='#ffffff'?'#ccc':'transparent'}" onclick="ColorPicker.setHex('${c}')" title="${c}"></div>`).join('');
-    el('color-hex').value='';el('color-modal').classList.add('vis');
+    el('color-hex').value='';
+    // 스포이드 지원 여부
+    const supported='EyeDropper' in window;
+    el('eyedropper-btn').style.display=supported?'':'none';
+    el('eyedrop-support-msg').style.display=supported?'none':'block';
+    // 팔레트 클릭 연동
+    el('eyedrop-btn').onclick=e=>{e.preventDefault();el('color-native').click()};
+    el('color-modal').classList.add('vis');
     updatePreview('');
   }
 
-  function setHex(c){el('color-hex').value=c;updatePreview(c)}
+  function setHex(c){
+    el('color-hex').value=c;
+    // native color input도 동기화 (투명 제외)
+    if(c&&c!=='transparent'){try{el('color-native').value=c}catch(e){}}
+    updatePreview(c);
+  }
+
+  // <input type="color"> 팔레트에서 선택
+  function fromNative(hex){
+    el('color-hex').value=hex;
+    updatePreview(hex);
+  }
+
+  // EyeDropper API — Chrome 95+ / Edge 95+
+  async function eyedrop(){
+    if(!('EyeDropper' in window)){
+      el('eyedrop-support-msg').style.display='block';return;
+    }
+    try{
+      // 모달 투명화 → 화면 전체에서 색상 선택 가능
+      el('color-modal').style.opacity='0';
+      el('color-modal').style.pointerEvents='none';
+      const result=await new EyeDropper().open();
+      el('color-modal').style.opacity='';
+      el('color-modal').style.pointerEvents='';
+      setHex(result.sRGBHex);
+    }catch(e){
+      // 사용자 취소 시 조용히 복원
+      el('color-modal').style.opacity='';
+      el('color-modal').style.pointerEvents='';
+    }
+  }
 
   function updatePreview(c){
     const prev=el('color-preview');
-    if(mode==='text'){prev.style.color=c||'inherit';prev.style.background=''}
-    else{prev.style.background=c==='transparent'?'':c;prev.style.color=''}
+    if(!c||c==='transparent'){prev.style.color='';prev.style.background='';return}
+    if(mode==='text'){prev.style.color=c;prev.style.background=''}
+    else{prev.style.background=c;prev.style.color=''}
   }
 
   function apply(){
@@ -1697,13 +2162,12 @@ const ColorPicker=(()=>{
     if(mode==='text'){wrapped=`<span style="color:${c}">${sel}</span>`}
     else{wrapped=c==='transparent'?sel:`<span style="background:${c}">${sel}</span>`}
     ins(ed,s,e,wrapped);
-    // update toolbar bar
     if(mode==='text'){el('fc-bar').style.background=c}
     else{el('hl-bar').style.background=c}
     App.hideModal('color-modal');
   }
 
-  return{open,setHex,updatePreview,apply};
+  return{open,setHex,fromNative,eyedrop,updatePreview,apply};
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -1768,7 +2232,177 @@ const ED={
   table(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'\n| 헤더 1 | 헤더 2 | 헤더 3 |\n| :-- | :-- | :-- |\n| 셀 | 셀 | 셀 |\n| 셀 | 셀 | 셀 |\n')},
   tableRow(){const ed=this.ed(),val=ed.value,pos=ed.selectionStart;const le=val.indexOf('\n',pos),ln=val.substring(val.lastIndexOf('\n',pos-1)+1,le===-1?val.length:le);if(!ln.trim().startsWith('|')){this.table();return}const cols=ln.split('|').filter(c=>c.trim()!=='').length;ins(ed,le===-1?val.length:le,le===-1?val.length:le,'\n|'+' 셀 |'.repeat(cols))},
   tableCol(){const ed=this.ed(),lines=ed.value.split('\n');const cur=ed.value.substring(0,ed.selectionStart).split('\n').length-1;if(!lines[cur].trim().startsWith('|')){this.table();return}let s=cur,e2=cur;while(s>0&&lines[s-1].trim().startsWith('|'))s--;while(e2<lines.length-1&&lines[e2+1].trim().startsWith('|'))e2++;ed.value=lines.map((l,i)=>{if(i<s||i>e2||!l.trim().startsWith('|'))return l;return /^\|[\s:|-]+\|$/.test(l.trim())?l.trimEnd()+' :-- |':l.trimEnd()+' 새열 |'}).join('\n');App.render();US.snap()},
-  // 언어별 주석 기호 반환
+
+  /* ── 셀 병합 시스템 (MD 표 + HTML 표 모두 지원, 반복 병합 가능) ── */
+
+  _getMdTable(ed){
+    const lines=ed.value.split('\n');
+    const cur=ed.value.substring(0,ed.selectionStart).split('\n').length-1;
+    if(!lines[cur].trim().startsWith('|'))return null;
+    let s=cur,e2=cur;
+    while(s>0&&lines[s-1].trim().startsWith('|'))s--;
+    while(e2<lines.length-1&&lines[e2+1].trim().startsWith('|'))e2++;
+    let sepIdx=-1;
+    for(let i=s;i<=e2;i++){if(/^\|[\s:|-]+\|$/.test(lines[i].trim())){sepIdx=i;break;}}
+    return{lines,start:s,end:e2,cur,sep:sepIdx};
+  },
+
+  _parseCells(line){
+    return line.split('|').slice(1,-1).map(c=>c.trim());
+  },
+
+  _getCursorCell(ed){
+    const val=ed.value,pos=ed.selectionStart;
+    const ls=val.lastIndexOf('\n',pos-1)+1;
+    const part=val.substring(ls,pos);
+    return Math.max(0,part.split('|').length-2);
+  },
+
+  /* HTML 표 파싱: DOMParser로 기존 colspan/rowspan 유지하며 재파싱 */
+  _getHTMLTable(ed){
+    const val=ed.value,pos=ed.selectionStart;
+    const before=val.substring(0,pos);
+    const tStart=before.lastIndexOf('<table');
+    if(tStart===-1)return null;
+    const tEnd=val.indexOf('</table>',tStart);
+    if(tEnd===-1)return null;
+    const tableHTML=val.substring(tStart,tEnd+8);
+    const doc=new DOMParser().parseFromString('<body>'+tableHTML+'</body>','text/html');
+    const table=doc.querySelector('table');
+    if(!table)return null;
+    const trs=[...table.querySelectorAll('tr')];
+    if(!trs.length)return null;
+    // 최대 열 수 계산
+    const cols=trs.reduce((mx,tr)=>{
+      let n=0;[...tr.cells].forEach(c=>n+=c.colSpan||1);return Math.max(mx,n);
+    },0);
+    const rows=trs.length;
+    // cells[r][c] = {text,cs,rs,skip}
+    const cells=Array.from({length:rows},()=>Array(cols).fill(null));
+    const occupied=Array.from({length:rows},()=>Array(cols).fill(false));
+    trs.forEach((tr,r)=>{
+      let gc=0;
+      [...tr.cells].forEach(td=>{
+        while(gc<cols&&occupied[r][gc])gc++;
+        const cs=td.colSpan||1,rs=td.rowSpan||1;
+        cells[r][gc]={text:td.innerHTML.trim(),cs,rs,skip:false};
+        for(let dr=0;dr<rs;dr++)for(let dc=0;dc<cs;dc++){
+          if(r+dr<rows&&gc+dc<cols){
+            occupied[r+dr][gc+dc]=true;
+            if(dr>0||dc>0)cells[r+dr][gc+dc]={text:'',cs:1,rs:1,skip:true};
+          }
+        }
+        gc+=cs;
+      });
+    });
+    // 빈 셀 보정
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+      if(!cells[r][c])cells[r][c]={text:'',cs:1,rs:1,skip:false};
+    }
+    // 커서 위치 → rowIdx, curCol 계산
+    const posInTable=pos-tStart;
+    const sliced=tableHTML.substring(0,posInTable);
+    const rowIdx=Math.max(0,(sliced.match(/<tr[\s>]/gi)||[]).length-1);
+    const tdIdx =Math.max(0,(sliced.match(/<t[dh][\s>]/gi)||[]).length-1);
+    // tdIdx번째 실제 td/th가 그리드의 몇 번 열인지
+    let gc2=0,counted=0,curCol=0;
+    if(trs[rowIdx]){
+      for(const td of trs[rowIdx].cells){
+        while(gc2<cols&&occupied[rowIdx]&&rowIdx>0&&cells[rowIdx][gc2]?.skip)gc2++;
+        if(counted===tdIdx){curCol=gc2;break;}
+        gc2+=td.colSpan||1;counted++;
+      }
+    }
+    return{cells,rows,cols,rowIdx,curCol,tStart,tEnd:tEnd+8,val};
+  },
+
+  _renderHTMLTable(cells,rows,cols){
+    let html='\n<table>\n<thead>\n<tr>';
+    for(let c=0;c<cols;c++){
+      const cell=cells[0]?.[c];if(!cell||cell.skip)continue;
+      const cs=cell.cs>1?` colspan="${cell.cs}"`:''
+      const rs=cell.rs>1?` rowspan="${cell.rs}"`:''
+      html+=`<th${cs}${rs}>${cell.text}</th>`;
+    }
+    html+='</tr>\n</thead>\n<tbody>';
+    for(let r=1;r<rows;r++){
+      html+='\n<tr>';
+      for(let c=0;c<cols;c++){
+        const cell=cells[r]?.[c];if(!cell||cell.skip)continue;
+        const cs=cell.cs>1?` colspan="${cell.cs}"`:''
+        const rs=cell.rs>1?` rowspan="${cell.rs}"`:''
+        html+=`<td${cs}${rs}>${cell.text}</td>`;
+      }
+      html+='</tr>';
+    }
+    html+='\n</tbody>\n</table>\n';
+    return html;
+  },
+
+  /* 공통 병합 실행: MD 표 → HTML 변환, HTML 표 → 직접 파싱 후 재병합 */
+  _doMerge(dir){
+    const ed=this.ed();
+    // ① HTML 표 우선 시도
+    const htbl=this._getHTMLTable(ed);
+    if(htbl){
+      const{cells,rows,cols,rowIdx,curCol,tStart,tEnd,val}=htbl;
+      const cell=cells[rowIdx]?.[curCol];
+      if(!cell||cell.skip){alert('이미 병합된 셀이거나 유효하지 않은 위치입니다.\n셀 텍스트 위에 커서를 놓고 실행하세요.');return;}
+      if(dir==='h'){
+        const nc=curCol+cell.cs;
+        if(nc>=cols){alert('오른쪽에 병합할 셀이 없습니다.');return;}
+        const right=cells[rowIdx][nc];
+        if(!right||right.skip){alert('오른쪽 셀이 이미 병합 중입니다.');return;}
+        cell.text=(cell.text+(right.text?' '+right.text:'')).trim();
+        cell.cs+=right.cs;
+        for(let cc=curCol+1;cc<curCol+cell.cs;cc++)if(cells[rowIdx][cc])cells[rowIdx][cc].skip=true;
+      } else {
+        const nr=rowIdx+cell.rs;
+        if(nr>=rows){alert('아래에 병합할 셀이 없습니다.');return;}
+        const below=cells[nr]?.[curCol];
+        if(!below||below.skip){alert('아래 셀이 이미 병합 중입니다.');return;}
+        cell.text=(cell.text+(below.text?' '+below.text:'')).trim();
+        cell.rs+=below.rs;
+        for(let rr=rowIdx+1;rr<rowIdx+cell.rs;rr++)if(cells[rr]?.[curCol])cells[rr][curCol].skip=true;
+      }
+      const newHTML=this._renderHTMLTable(cells,rows,cols);
+      ed.value=val.substring(0,tStart)+newHTML+val.substring(tEnd);
+      App.render();US.snap();
+      return;
+    }
+    // ② Markdown 표 처리
+    const tbl=this._getMdTable(ed);
+    if(!tbl){alert('커서를 표 안에 놓고 실행하세요.');return;}
+    const{lines,start,end,cur,sep}=tbl;
+    const col=this._getCursorCell(ed);
+    const allRows=[];
+    for(let i=start;i<=end;i++){if(i!==sep)allRows.push(this._parseCells(lines[i]));}
+    if(allRows.length<2)return;
+    const cols2=allRows[0].length;
+    const cells2=allRows.map(row=>row.map(t=>({text:t||'',cs:1,rs:1,skip:false})));
+    const dataLines=[];
+    for(let i=start;i<=end;i++){if(i!==sep)dataLines.push(i);}
+    const rowIdx2=dataLines.indexOf(cur);
+    if(rowIdx2<0){alert('커서를 표 셀 안에 놓고 실행하세요.');return;}
+    if(dir==='h'){
+      if(col>=cols2-1){alert('오른쪽에 병합할 셀이 없습니다.');return;}
+      const c1=cells2[rowIdx2][col],c2=cells2[rowIdx2][col+1];
+      c1.text=(c1.text+(c2.text?' '+c2.text:'')).trim();c1.cs=2;c2.skip=true;
+    } else {
+      if(rowIdx2>=allRows.length-1){alert('아래에 병합할 셀이 없습니다.');return;}
+      const c1=cells2[rowIdx2][col],c2=cells2[rowIdx2+1][col];
+      c1.text=(c1.text+(c2.text?' '+c2.text:'')).trim();c1.rs=2;c2.skip=true;
+    }
+    const bef=lines.slice(0,start).join('\n');
+    const aft=lines.slice(end+1).join('\n');
+    ed.value=(bef?(bef+'\n'):'')+this._renderHTMLTable(cells2,allRows.length,cols2)+(aft?('\n'+aft):'');
+    App.render();US.snap();
+  },
+
+  mergeH(){this._doMerge('h');},
+  mergeV(){this._doMerge('v');},
+
+  // 언어별 주석 기호 반환  // 언어별 주석 기호 반환
   _cmt(lang){
     const hash=['python','r','ruby','bash','shell','sh','perl','yaml','toml','powershell','coffee'];
     const dash=['sql','haskell','lua','ada'];
@@ -1806,7 +2440,17 @@ const ED={
   link(){const text=el('link-text').value||'링크';const url=el('link-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`[${text}](${url})`);App.hideModal('link-modal');el('link-text').value='';el('link-url').value=''},
   image(){const alt=el('img-alt').value||'이미지';const url=el('img-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`![${alt}](${url})`);el('img-alt').value='';el('img-url').value='';App.hideModal('image-modal')},
   math(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e);ins(ed,s,e,sel?`$$\n${sel}\n$$`:'\n$$\n\\phi = \\frac{\\lambda_2}{c^2}\n$$\n')},
-  footnote(){const ed=this.ed(),s=ed.selectionStart;const n=Math.floor((ed.value.match(/\[\^\d+\]/g)||[]).length/2)+1;ins(ed,s,s,`[^${n}]`);ed.value+=`\n[^${n}]: 각주 내용.`;App.render();US.snap()},
+  footnote(){
+    const ed=this.ed();
+    const pos=ed.selectionStart;
+    const val=ed.value;
+    const n=Math.floor((val.match(/\[\^\d+\]/g)||[]).length/2)+1;
+    const marker=`[^${n}]`;
+    const defLine=`\n[^${n}]: <span style="font-size:9pt">각주 내용.</span>`;
+    ed.value=val.substring(0,pos)+marker+val.substring(pos)+defLine;
+    ed.setSelectionRange(pos+marker.length,pos+marker.length);
+    App.render();US.snap();
+  },
   dupLine(){
     const ed=this.ed();
     const s=ed.selectionStart,e=ed.selectionEnd;
@@ -2253,20 +2897,21 @@ function handleKey(e){
   if(k==='A+ArrowUp'){e.preventDefault();ED.moveLine(-1);return}
   if(k==='A+ArrowDown'){e.preventDefault();ED.moveLine(1);return}
   if(e.key==='Tab'){if(ED.tabInTable(edi,e))return}
-  if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey&&!e.altKey){if(ED.enterInTable(edi,e))return}
   const map={
     'C+B':()=>ED.bold(),'C+I':()=>ED.italic(),'C+.':()=>ED.bquote(),
     'C+Enter':()=>ED.pageBreak(),'C+S+Enter':()=>ED.lineBreak(),
     'C+A+1':()=>ED.h(1),'C+A+2':()=>ED.h(2),'C+A+3':()=>ED.h(3),
     'S+A+L':()=>ED.align('left'),'S+A+C':()=>ED.align('center'),'S+A+R':()=>ED.align('right'),
     'A+8':()=>ED.table(),'A+9':()=>ED.tableRow(),'A+0':()=>ED.tableCol(),
+    'S+A+H':()=>ED.mergeH(),'S+A+V':()=>ED.mergeV(),
+    'S+A+N':()=>ED.footnote(),
     'A+C':()=>ED.codeBlockDirect(),
     'A+V':()=>ED.inlineCode(),
     'S+A+.':()=>FS.inc(),'S+A+>':()=>FS.inc(),
     'S+A+,':()=>FS.dec(),'S+A+<':()=>FS.dec(),
     'S+A+ArrowDown':()=>ED.dupLine(),
     'C+S':()=>App.showSaveDlg(),'C+F':()=>App.toggleFind(),
-    'C+S+P':()=>PW.open(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),
+    'C+S+P':()=>PW.open(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),'C+S+G':()=>Scholar.show(),
     'S+?':()=>App.showHK(),
   };
   if(map[k]){e.preventDefault();map[k]()}
