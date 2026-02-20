@@ -194,6 +194,12 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 /* caption opts */
 .cap-opt{padding:4px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;cursor:pointer;background:var(--bg3);color:var(--tx2);transition:all var(--tr)}
 .cap-opt.sel{border-color:var(--ac);background:var(--acg);color:var(--ac)}
+/* footnote highlight in editor via preview */
+.preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}
+.preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}
+.preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}
+/* editor footnote syntax highlight */
+#editor{caret-color:var(--ac)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
@@ -222,7 +228,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <button class="btn btn-g btn-sm" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)" data-key="Ctrl+Shift+R">🔬 Research</button>
     <button class="btn btn-g btn-sm" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용" data-key="Ctrl+Shift+C">📚 References</button>
     <button class="btn btn-g btn-sm" onclick="App.showSaveDlg()" data-tooltip="저장 형식 선택" data-key="Ctrl+S">💾 저장</button>
-    <button class="btn btn-p btn-sm" onclick="window.print()">📄 PDF</button>
+    <button class="btn btn-p btn-sm" onclick="App.printDoc()" data-tooltip="인쇄 / PDF 저장">🖨️ 인쇄</button>
   </div>
 </header>
 
@@ -388,6 +394,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     <div class="hk-grid">
       <div class="hk-item"><span class="hk-desc">Smart Bold</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>B</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">기울임꼴</span><div class="hk-keys"><kbd>Ctrl</kbd><kbd>I</kbd></div></div>
+      <div class="hk-item"><span class="hk-desc">인라인 코드 `code`</span><div class="hk-keys"><kbd>Alt</kbd><kbd>V</kbd></div></div>
       <div class="hk-item"><span class="hk-desc">코드 직접 삽입 (마지막 언어)</span><div class="hk-keys"><kbd>Alt</kbd><kbd>C</kbd></div></div>
     </div>
     <div class="hk-s">기타</div>
@@ -420,6 +427,20 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
         <span style="font-size:18px">🌐</span>
         <div style="text-align:left"><div style="font-weight:600;font-size:13px">HTML (.html)</div><div style="font-size:11px;color:var(--tx2)">A4 다중 페이지 스타일 포함</div></div>
       </button>
+      <button class="btn btn-g" style="justify-content:flex-start;padding:11px 14px;gap:10px" onclick="App.printDoc()">
+        <span style="font-size:18px">🖨️</span>
+        <div style="text-align:left"><div style="font-weight:600;font-size:13px">인쇄 / PDF로 저장</div><div style="font-size:11px;color:var(--tx2)">브라우저 인쇄창 → PDF 저장 가능 (전체 페이지)</div></div>
+      </button>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--bd)">
+        <span style="font-size:16px">🔖</span>
+        <div style="flex:1;text-align:left">
+          <div style="font-weight:600;font-size:12px;color:var(--tx)">주석([^n]) 표시 설정</div>
+          <div style="font-size:11px;color:var(--tx2);margin-top:2px">저장·인쇄 시 각주 표시 여부</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--tx2)">
+          <input type="checkbox" id="show-footnotes-chk" checked style="accent-color:var(--ac)"> 표시
+        </label>
+      </div>
     </div>
     <div class="mf"><button class="btn btn-g btn-sm" onclick="App.hideModal('save-modal')">닫기</button></div>
   </div>
@@ -572,8 +593,22 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 
 <!-- IMAGE MODAL -->
 <div class="ov" id="image-modal">
-  <div class="modal" style="max-width:420px">
+  <div class="modal" style="max-width:480px">
     <h3>🖼 이미지 삽입</h3>
+    <!-- Drag & Drop Zone -->
+    <div id="img-dropzone" style="border:2px dashed var(--bd);border-radius:8px;padding:20px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .2s;background:var(--bg3)" onclick="document.getElementById('img-file-input').click()" ondragover="IMG.dragOver(event)" ondragleave="IMG.dragLeave(event)" ondrop="IMG.drop(event)">
+      <div id="img-drop-text" style="font-size:13px;color:var(--tx2)">🖼 이미지를 드래그하거나 클릭해서 선택</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:4px">PNG, JPG, GIF, WebP 지원 · Base64로 자동 삽입</div>
+      <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMG.fileSelected(event)">
+    </div>
+    <div id="img-preview-wrap" style="display:none;margin-bottom:12px;text-align:center">
+      <img id="img-preview" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid var(--bd)">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="flex:1;height:1px;background:var(--bd)"></div>
+      <span style="font-size:11px;color:var(--tx3)">또는 URL 입력</span>
+      <div style="flex:1;height:1px;background:var(--bd)"></div>
+    </div>
     <div class="mb">
       <div class="fg"><label class="fl">Alt 텍스트</label><input class="fi" id="img-alt" type="text" placeholder="이미지 설명"></div>
       <div class="fg"><label class="fl">URL 또는 경로</label><input class="fi" id="img-url" type="text" placeholder="https://..."></div>
@@ -679,8 +714,31 @@ const _r=new marked.Renderer();
 _r.heading=(text,level)=>{const id='h-'+text.toLowerCase().replace(/[^a-z0-9가-힣\s]/g,'').replace(/\s+/g,'-').substring(0,50);return`<h${level} id="${id}">${text}</h${level}>`;};
 _r.link=(href,title,text)=>`<a href="${href}"${title?` title="${title}"`:''} target="_blank" rel="noopener noreferrer">${text}</a>`;
 marked.use({renderer:_r});
-function mdRender(md){try{return marked.parse(md||'');}catch(e){return`<p style="color:red">${e.message}</p>`;}}
-
+function mdRender(md,showFootnotes){
+  try{
+    // Process footnotes: highlight [^n] references and collect definitions
+    let fnDefs={};let fnCounter=0;
+    // Collect footnote definitions [^n]: text
+    md=md.replace(/^\[\^([^\]]+)\]:\s*(.+)$/gm,(m,key,text)=>{fnDefs[key]=text;return'__FN_DEF_'+key+'__'});
+    // Replace inline [^n] with highlighted spans
+    md=md.replace(/\[\^([^\]]+)\]/g,(m,key)=>{
+      fnCounter++;
+      return`<sup class="footnote-highlight" title="${fnDefs[key]||''}">[${fnCounter}]</sup>`;
+    });
+    // Remove def placeholders (they'll be added to footnotes section)
+    md=md.replace(/__FN_DEF_[^_]+__\n?/g,'');
+    let html=marked.parse(md||'');
+    // Append footnotes section if there are definitions and showFootnotes is not false
+    if(Object.keys(fnDefs).length>0 && showFootnotes!==false){
+      let fnHtml='<div class="footnotes-section">';
+      let i=1;
+      Object.entries(fnDefs).forEach(([k,v])=>{fnHtml+=`<div class="footnote-def"><sup>[${i}]</sup> ${v}</div>`;i++});
+      fnHtml+='</div>';
+      html+=fnHtml;
+    }
+    return html;
+  }catch(e){return`<p style="color:red">${e.message}</p>`;}
+}
 /* PAGE SPLIT */
 function splitPages(md){const p=md.replace(/\r\n/g,'\n').split(/\n?<div class="page-break"><\/div>\n?/);return p.length?p:[md]}
 
@@ -689,12 +747,13 @@ function splitPages(md){const p=md.replace(/\r\n/g,'\n').split(/\n?<div class="p
 ═══════════════════════════════════════════════════════════ */
 const PR={
   rm:false,
-  render(md){
+  render(md,showFootnotes){
+    if(showFootnotes===undefined)showFootnotes=true;
     const c=el('preview-container');const pages=splitPages(md);c.innerHTML='';
     pages.forEach((p,i)=>{
       const div=document.createElement('div');
       div.className='preview-page'+(this.rm?' rm':'');div.dataset.page=i+1;
-      div.innerHTML=mdRender(p);
+      div.innerHTML=mdRender(p,showFootnotes);
       div.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer'});
       c.appendChild(div);
     });
@@ -857,15 +916,22 @@ const CM=(()=>{
   }
 
   function parse(){
-    const raw=el('cite-raw').value.trim();if(!raw)return;
+    const raw=el('cite-raw').value;if(!raw.trim())return;
     let lines;
-    if(sep==='blank'){lines=raw.split(/\n\s*\n/).map(l=>l.replace(/^\d+\.\s*/,'').replace(/\n/g,' ').trim()).filter(Boolean)}
-    else{lines=raw.split('\n').map(l=>l.replace(/^\d+\.\s*/,'').trim()).filter(Boolean)}
+    if(sep==='blank'){
+      // Split by one or more blank lines
+      lines=raw.split(/\n[ \t]*\n+/).map(block=>
+        block.split('\n').map(l=>l.trim()).filter(Boolean).join(' ')
+      ).map(l=>l.replace(/^\d+[\.\)]\s*/,'')).filter(l=>l.length>10);
+    }else{
+      // Each non-empty line is one reference
+      lines=raw.split('\n').map(l=>l.replace(/^\d+[\.\)]\s*/,'').trim()).filter(l=>l.length>10);
+    }
     let added=0;
     lines.forEach(l=>{const p=parseAPA(l);if(p&&!refs.find(r=>r.full===p.full)){p.mla=toMLA(p);p.chicago=toChicago(p);refs.push(p);added++}});
     save();
-    el('cite-msg').textContent=added?`✓ ${added}건 추가됨 (총 ${refs.length}건)`:'이미 존재하거나 파싱 실패';
-    setTimeout(()=>el('cite-msg').textContent='',3000);
+    el('cite-msg').textContent=added?`✓ ${added}건 추가됨 (총 ${refs.length}건)`:lines.length?'이미 존재하거나 파싱 실패':'빈 줄이 없습니다 — 구분 방식을 확인하세요';
+    setTimeout(()=>el('cite-msg').textContent='',4000);
     renderLib();renderList('');
   }
 
@@ -1495,6 +1561,40 @@ const ColorPicker=(()=>{
 /* ═══════════════════════════════════════════════════════════
    EDITOR ACTIONS
 ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   IMAGE DROP HANDLER
+═══════════════════════════════════════════════════════════ */
+const IMG=(()=>{
+  function dragOver(e){e.preventDefault();e.stopPropagation();el('img-dropzone').style.borderColor='var(--ac)';el('img-dropzone').style.background='var(--acg)'}
+  function dragLeave(e){el('img-dropzone').style.borderColor='var(--bd)';el('img-dropzone').style.background='var(--bg3)'}
+  function drop(e){
+    e.preventDefault();e.stopPropagation();
+    dragLeave(e);
+    const file=e.dataTransfer.files[0];
+    if(file&&file.type.startsWith('image/'))loadImage(file);
+  }
+  function fileSelected(ev){
+    const file=ev.target.files[0];
+    if(file)loadImage(file);
+    ev.target.value='';
+  }
+  function loadImage(file){
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const dataUrl=ev.target.result;
+      el('img-url').value=dataUrl;
+      if(!el('img-alt').value)el('img-alt').value=file.name.replace(/\.[^.]+$/,'');
+      // Show preview
+      el('img-preview').src=dataUrl;
+      el('img-preview-wrap').style.display='block';
+      el('img-drop-text').textContent='✓ '+file.name+' ('+Math.round(file.size/1024)+'KB)';
+      el('img-drop-text').style.color='var(--ok)';
+    };
+    reader.readAsDataURL(file);
+  }
+  return{dragOver,dragLeave,drop,fileSelected};
+})();
+
 let lastCodeLang='python';// track last used language for Alt+C
 
 const ED={
@@ -1527,7 +1627,7 @@ const ED={
   pageBreak(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'\n\n<div class="page-break"></div>\n\n')},
   lineBreak(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'<br>\n')},
   link(){const text=el('link-text').value||'링크';const url=el('link-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`[${text}](${url})`);App.hideModal('link-modal');el('link-text').value='';el('link-url').value=''},
-  image(){const alt=el('img-alt').value||'이미지';const url=el('img-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`![${alt}](${url})`);App.hideModal('image-modal')},
+  image(){const alt=el('img-alt').value||'이미지';const url=el('img-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`![${alt}](${url})`);el('img-alt').value='';el('img-url').value='';App.hideModal('image-modal')},
   math(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e);ins(ed,s,e,sel?`$$\n${sel}\n$$`:'\n$$\n\\phi = \\frac{\\lambda_2}{c^2}\n$$\n')},
   footnote(){const ed=this.ed(),s=ed.selectionStart;const n=Math.floor((ed.value.match(/\[\^\d+\]/g)||[]).length/2)+1;ins(ed,s,s,`[^${n}]`);ed.value+=`\n[^${n}]: 각주 내용.`;App.render();US.snap()},
   dupLine(){const ed=this.ed();const{le,text}=getCL(ed);ins(ed,le,le,'\n'+text)},
@@ -1553,7 +1653,8 @@ function handleKey(e){
     'C+A+1':()=>ED.h(1),'C+A+2':()=>ED.h(2),'C+A+3':()=>ED.h(3),
     'S+A+L':()=>ED.align('left'),'S+A+C':()=>ED.align('center'),'S+A+R':()=>ED.align('right'),
     'A+8':()=>ED.table(),'A+9':()=>ED.tableRow(),'A+0':()=>ED.tableCol(),
-    'A+C':()=>ED.codeBlockDirect(),// direct with last lang
+    'A+C':()=>ED.codeBlockDirect(),// direct code block with last lang
+    'A+V':()=>ED.inlineCode(),// inline `code`
     'S+A+ArrowDown':()=>ED.dupLine(),
     'C+S':()=>App.showSaveDlg(),'C+F':()=>App.toggleFind(),
     'C+S+P':()=>PW.open(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),
@@ -1636,7 +1737,14 @@ const App={
   showHK(){el('hk-overlay').classList.add('vis')},hideHK(){el('hk-overlay').classList.remove('vis')},
   showCode(){el('code-modal').classList.add('vis')},
   showLink(){el('link-modal').classList.add('vis');setTimeout(()=>el('link-text').focus(),50)},
-  showImg(){el('image-modal').classList.add('vis');setTimeout(()=>el('img-alt').focus(),50)},
+  showImg(){
+    // reset drop zone
+    el('img-drop-text').textContent='🖼 이미지를 드래그하거나 클릭해서 선택';
+    el('img-drop-text').style.color='';
+    el('img-preview-wrap').style.display='none';
+    el('img-dropzone').style.borderColor='';el('img-dropzone').style.background='';
+    el('image-modal').classList.add('vis');setTimeout(()=>el('img-alt').focus(),50);
+  },
   showCite(){CM.open();el('cite-modal').classList.add('vis')},
   showSaveDlg(){el('save-modal').classList.add('vis')},
   hideModal(id){el(id).classList.remove('vis')},
@@ -1663,22 +1771,32 @@ const App={
   saveTXT(){const c=el('editor').value.replace(/[#*_`~>|]/g,'').replace(/\[(.*?)\]\(.*?\)/g,'$1').replace(/<[^>]+>/g,'');dlBlob(c,(el('doc-title').value||'document').replace(/[^a-z0-9가-힣]/gi,'_')+'.txt','text/plain;charset=utf-8');this.hideModal('save-modal')},
   saveHTML(){
     const md=el('editor').value;const title=el('doc-title').value;
+    const showFn=el('show-footnotes-chk').checked;
     const pages=splitPages(md);
-    const html=pages.map((p,i)=>`<div class="preview-page${this.rm?' rm':''}" data-page="${i+1}">${mdRender(p)}</div>`).join('');
-    const CSS=`body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px}.preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 4px 30px rgba(0,0,0,.4);font-family:'Libre Baskerville',Georgia,serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:20px}.preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb}.preview-page h1{font-size:21pt;font-weight:700;margin:0 0 14px;border-bottom:2px solid #1a1a2e;padding-bottom:8px}.preview-page h2{font-size:15pt;margin:20px 0 10px;font-weight:700}.preview-page h3{font-size:12pt;margin:16px 0 7px;font-weight:700}.preview-page p{margin:0 0 11px}.preview-page ul,.preview-page ol{margin:0 0 11px;padding-left:22px}.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:10pt}.preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}.preview-page td{padding:6px 11px;border:1px solid #d0d0e0}.preview-page tr:nth-child(even) td{background:#f7f7fc}.preview-page code{font-family:monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}.preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;margin:11px 0;font-size:9pt}.preview-page pre code{background:none;color:inherit}.preview-page a{color:#5b4ce4}.preview-page .rm>p{counter-increment:pln;padding-left:36px;position:relative}.preview-page.rm{counter-reset:pln}.preview-page.rm>p::before{content:counter(pln);position:absolute;left:0;top:0;font-family:monospace;font-size:8pt;color:#b0b0c8;min-width:28px;text-align:right;border-right:1px solid #ddd;padding-right:6px}@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
+    const html=pages.map((p,i)=>`<div class="preview-page${this.rm?' rm':''}" data-page="${i+1}">${mdRender(p,showFn)}</div>`).join('');
+    const CSS=`body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px}.preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 4px 30px rgba(0,0,0,.4);font-family:'Libre Baskerville',Georgia,serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:20px}.preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb}.preview-page h1{font-size:21pt;font-weight:700;margin:0 0 14px;border-bottom:2px solid #1a1a2e;padding-bottom:8px}.preview-page h2{font-size:15pt;margin:20px 0 10px;font-weight:700}.preview-page h3{font-size:12pt;margin:16px 0 7px;font-weight:700}.preview-page p{margin:0 0 11px}.preview-page ul,.preview-page ol{margin:0 0 11px;padding-left:22px}.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:10pt}.preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}.preview-page td{padding:6px 11px;border:1px solid #d0d0e0}.preview-page tr:nth-child(even) td{background:#f7f7fc}.preview-page code{font-family:monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}.preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;margin:11px 0;font-size:9pt}.preview-page pre code{background:none;color:inherit}.preview-page a{color:#5b4ce4}.preview-page img{max-width:100%}.preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}.preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}.preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
     const fullHtml=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${title}</title><style>${CSS}</style></head><body>${html}</body></html>`;
     dlBlob(fullHtml,(el('doc-title').value||'document').replace(/[^a-z0-9가-힣]/gi,'_')+'.html','text/html;charset=utf-8');
+    this.hideModal('save-modal');
+  },
+  printDoc(){
+    const md=el('editor').value;const title=el('doc-title').value;
+    const showFn=document.getElementById('show-footnotes-chk')?el('show-footnotes-chk').checked:true;
+    const pages=splitPages(md);
+    const html=pages.map((p,i)=>`<div class="preview-page${this.rm?' rm':''}" data-page="${i+1}">${mdRender(p,showFn)}</div>`).join('');
+    const CSS=`@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px}.preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 4px 30px rgba(0,0,0,.4);font-family:'Libre Baskerville',Georgia,serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:20px}.preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb}.preview-page h1{font-size:21pt;font-weight:700;margin:0 0 14px;border-bottom:2px solid #1a1a2e;padding-bottom:8px}.preview-page h2{font-size:15pt;margin:20px 0 10px;font-weight:700}.preview-page h3{font-size:12pt;margin:16px 0 7px;font-weight:700}.preview-page p{margin:0 0 11px}.preview-page ul,.preview-page ol{margin:0 0 11px;padding-left:22px}.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:10pt}.preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}.preview-page td{padding:6px 11px;border:1px solid #d0d0e0}.preview-page tr:nth-child(even) td{background:#f7f7fc}.preview-page code{font-family:'JetBrains Mono',monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}.preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;margin:11px 0;font-size:9pt}.preview-page pre code{background:none;color:inherit}.preview-page img{max-width:100%}.preview-page a{color:#5b4ce4}.preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}.preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}.preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
+    const fullHtml=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${title}</title><style>${CSS}</style></head><body>${html}<script>window.onload=function(){window.print();}<\/script></body></html>`;
+    const w=window.open('','_blank','width=900,height=700');
+    if(w){w.document.open();w.document.write(fullHtml);w.document.close();}
+    else{alert('팝업이 차단되었습니다. 팝업을 허용해 주세요.');}
     this.hideModal('save-modal');
   },
 
   sample(){return`# Markdown PDF Editor Pro V7
 
 ## 이번 업데이트 신기능
-**제작: 박중희 (연세대 심리학과 겸임교수/ 경기대 교직학부 겸임교수)** 
 
 모든 기능이 통합된 **연구·논문 전용 에디터**입니다.
-1) 논문쓰기에 적합함 
-2) AI에서 나오는 여러가지 Markdodwn문서를 정리하는 것 가능 
 
 ### 주요 기능 목록
 
