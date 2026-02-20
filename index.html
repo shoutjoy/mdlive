@@ -948,8 +948,10 @@ const CM=(()=>{
     // APA: Author, A. A., & Author, B. B. (Year). Title. Journal, Vol(No), pp. DOI
     const m=ref.full.match(/^(.+?)\.\s*\((\d{4}[a-z]?)\)\.\s*(.+?)\.\s*([^,]+),\s*(\d+)\((\d+)\),\s*([\d–\-]+)/);
     if(m){const[,authors,year,title,journal,vol,no,pp]=m;return`${expandAuthors(authors)} "${capTitle(title.trim())}" ${journal}, vol. ${vol}, no. ${no}, ${year}, pp. ${pp}.`}
-    // fallback
-    return`${ref.author}. "${ref.full.substring(ref.full.indexOf('.')+2,ref.full.indexOf(ref.year)+ref.year.length+3).replace(/\(.*?\)\./,'').trim()}" ${year}.`;
+    // fallback — use ref.year (not local year which is out of scope here)
+    const fy=ref.year||'?';
+    const titlePart=ref.full.replace(/\(.*?\)\./,'').replace(/^[^.]+\.\s*/,'').trim();
+    return`${ref.author}. "${titlePart}" ${fy}.`;
   }
 
   function toChicago(ref){
