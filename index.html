@@ -7,9 +7,9 @@
 <meta name="description" content="연구·논문 전용 마크다운 에디터 — 박중희">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MD PRO V9">
+<meta name="apple-mobile-web-app-title" content="MD PRO V20">
 <link rel="manifest" id="pwa-manifest">
-<title>Markdown PDF Editor Pro V9</title>
+<title>Markdown PDF Editor Pro</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
@@ -43,8 +43,65 @@
 [data-theme=light] .tb.tb-code:hover{color:#7040e0;background:rgba(90,48,192,.1)}
 [data-theme=light] .tb.tb-insert{color:#a02060}
 [data-theme=light] .tb.tb-insert:hover{color:#c02878;background:rgba(160,32,96,.1)}
-[data-theme=light] .tb.tb-util{color:#1888a0}
-[data-theme=light] .tb.tb-util:hover{color:#20a8c0;background:rgba(24,136,160,.1)}
+/* ── pv-hdr 복사 버튼 ── */
+.tb.tb-copy-rich{font-size:10px;padding:0 8px;height:22px;color:#6af7a0;border:1px solid rgba(106,247,160,.35);border-radius:4px;font-weight:600}
+.tb.tb-copy-rich:hover{color:#fff;background:rgba(106,247,160,.2);border-color:rgba(106,247,160,.6)}
+.tb.tb-copy-text{font-size:10px;padding:0 8px;height:22px;color:#a090d0;border:1px solid rgba(160,144,208,.3);border-radius:4px}
+.tb.tb-copy-text:hover{color:#c4b8f0;background:rgba(160,144,208,.15);border-color:rgba(160,144,208,.55)}
+
+/* ── 보기 모드 Split/Edit/View ── */
+.tb.tb-view{font-size:10px;min-width:36px;padding:0 5px;color:#60c8f0;border:1px solid rgba(96,200,240,.25);border-radius:4px}
+.tb.tb-view:hover{color:#90dcff;background:rgba(96,200,240,.15);border-color:rgba(96,200,240,.5)}
+.tb.tb-view.active{background:rgba(96,200,240,.2);color:#b8eeff;border-color:#60c8f0}
+
+/* ── PV / ↻ ── */
+.tb.tb-pv{color:#f0c060;font-size:11px}
+.tb.tb-pv:hover{color:#ffe090;background:rgba(240,192,96,.15)}
+.tb.tb-pv.open::after{display:block}
+
+/* ── ◑ ln ? 시스템 버튼 ── */
+.tb.tb-sys{color:#8888c0}
+.tb.tb-sys:hover{color:#b0b0e8;background:rgba(136,136,192,.15)}
+.tb.tb-sys.active{color:var(--ac);background:var(--acg)}
+
+/* ── titlebar 배경색 버튼들 ── */
+.btn.btn-tmpl{background:linear-gradient(135deg,#2a2060 0%,#3a2880 100%);color:#c8b8ff;border:1px solid rgba(160,130,255,.4)}
+.btn.btn-tmpl:hover{background:linear-gradient(135deg,#3a2880 0%,#4a38a0 100%);color:#e0d4ff;border-color:rgba(180,160,255,.7)}
+
+.btn.btn-research{background:linear-gradient(135deg,#0d3a2a 0%,#124a36 100%);color:#6af7a0;border:1px solid rgba(106,247,160,.35)}
+.btn.btn-research:hover{background:linear-gradient(135deg,#154a34 0%,#1a6045 100%);color:#8fffbe;border-color:rgba(106,247,160,.6)}
+
+.btn.btn-ref{background:linear-gradient(135deg,#2a1a40 0%,#381f5a 100%);color:#d4a0ff;border:1px solid rgba(180,120,255,.35)}
+.btn.btn-ref:hover{background:linear-gradient(135deg,#3a2050 0%,#4a2a70 100%);color:#eebbff;border-color:rgba(200,150,255,.6)}
+
+.btn.btn-scholar{background:linear-gradient(135deg,#1a2a40 0%,#1e3558 100%);color:#6ac8f7;border:1px solid rgba(106,200,247,.35)}
+.btn.btn-scholar:hover{background:linear-gradient(135deg,#203050 0%,#264068 100%);color:#90dcff;border-color:rgba(140,220,255,.6)}
+
+.btn.btn-save{background:linear-gradient(135deg,#2a2000 0%,#3a2e00 100%);color:#f7d06a;border:1px solid rgba(247,208,106,.35)}
+.btn.btn-save:hover{background:linear-gradient(135deg,#3a2e00 0%,#4e3e00 100%);color:#ffe090;border-color:rgba(247,208,106,.6)}
+
+.btn.btn-print{background:linear-gradient(135deg,#2e0a0a 0%,#420e0e 100%);color:#f77a7a;border:1px solid rgba(247,122,122,.35)}
+.btn.btn-print:hover{background:linear-gradient(135deg,#400e0e 0%,#581414 100%);color:#ffaaaa;border-color:rgba(247,160,160,.6)}
+
+[data-theme=light] .btn.btn-tmpl{background:linear-gradient(135deg,#ede8ff 0%,#ddd4ff 100%);color:#5a30c0;border:1px solid rgba(90,48,192,.3)}
+[data-theme=light] .btn.btn-research{background:linear-gradient(135deg,#e0fff0 0%,#c8f5e0 100%);color:#1a7040;border:1px solid rgba(26,112,64,.3)}
+[data-theme=light] .btn.btn-ref{background:linear-gradient(135deg,#f5e8ff 0%,#ead4ff 100%);color:#8020c0;border:1px solid rgba(128,32,192,.3)}
+[data-theme=light] .btn.btn-scholar{background:linear-gradient(135deg,#e0f2ff 0%,#c8e8ff 100%);color:#1060a0;border:1px solid rgba(16,96,160,.3)}
+[data-theme=light] .btn.btn-save{background:linear-gradient(135deg,#fff8e0 0%,#ffeebc 100%);color:#906000;border:1px solid rgba(144,96,0,.3)}
+[data-theme=light] .btn.btn-print{background:linear-gradient(135deg,#ffe8e8 0%,#ffd0d0 100%);color:#c02020;border:1px solid rgba(192,32,32,.3)}
+[data-theme=light] .tb.tb-view{color:#1878b0;border-color:rgba(24,120,176,.3)}
+[data-theme=light] .tb.tb-view.active{background:rgba(24,120,176,.12);color:#1060a0;border-color:#1878b0}
+[data-theme=light] .tb.tb-pv{color:#a07010}
+[data-theme=light] .tb.tb-sys{color:#5050a0}
+[data-theme=light] .tb.tb-copy-rich{color:#1a7040;border-color:rgba(26,112,64,.35)}
+[data-theme=light] .tb.tb-copy-text{color:#5050a0;border-color:rgba(80,80,160,.3)}
+
+/* ── pv-hdr 라이트 테마 ── */
+[data-theme=light] #pv-hdr{background:linear-gradient(90deg,#eeebff 0%,#f0eeff 100%);border-bottom:1px solid #d0c8f0}
+[data-theme=light] #pv-hdr .pane-lbl{color:#5040b0}
+[data-theme=light] #pv-hdr #pg-cnt{color:#1878b0}
+[data-theme=light] #pv-hdr #render-ts{color:#1a7040}
+[data-theme=light] #pv-dark-btn{color:#3060c0!important;border-color:rgba(48,96,192,.35)!important}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;font-family:var(--fb);background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 /* layout */
@@ -99,8 +156,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--fb);background:var(--bg)
 /* preview pane */
 #preview-pane{flex:1;display:flex;flex-direction:column;overflow:hidden}
 #preview-pane.hidden{display:none}
-#pv-hdr{display:flex;align-items:center;padding:3px 8px;background:var(--bg2);border-bottom:1px solid var(--bd);gap:6px;height:30px;flex-shrink:0}
-#preview-container{flex:1;overflow-y:auto;overflow-x:hidden;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:16px 0 36px;scrollbar-width:thin;scrollbar-color:#444 transparent}
+#pv-hdr{display:flex;align-items:center;padding:3px 8px;background:linear-gradient(90deg,#1a1a28 0%,#1e1e2e 100%);border-bottom:1px solid #3a3a58;gap:6px;height:30px;flex-shrink:0}
+#pv-hdr .pane-lbl{color:#a090f0;letter-spacing:.1em;font-size:10px}
+#pv-hdr .pane-lbl span{background:#f7a06a!important}
+#pv-hdr #pg-cnt{color:#6acff7;font-weight:600;font-family:var(--fm);font-size:10px}
+#pv-hdr #render-ts{color:#6af7a0;font-family:var(--fm);font-size:10px;opacity:.8}
+#preview-container{flex:1;overflow-y:auto;overflow-x:hidden;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:16px 0 36px;scrollbar-width:thin;scrollbar-color:#444 transparent;position:relative}
 /* A4 page cards */
 .preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 6px 40px rgba(0,0,0,.5);font-family:var(--fs);font-size:11pt;line-height:1.8;word-break:break-word;position:relative;flex-shrink:0;margin-bottom:16px}
 .preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb;white-space:nowrap}
@@ -115,7 +176,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--fb);background:var(--bg)
 .preview-page code{font-family:'JetBrains Mono',monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}
 .preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;overflow-x:auto;margin:11px 0;font-size:9pt}
 .preview-page pre code{background:none;color:inherit;padding:0}
-.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:10pt}
+.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:inherit}
 .preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left;font-weight:600}
 .preview-page td{padding:6px 11px;border:1px solid #d0d0e0}
 .preview-page tr:nth-child(even) td{background:#f7f7fc}
@@ -125,12 +186,178 @@ html,body{height:100%;overflow:hidden;font-family:var(--fb);background:var(--bg)
 .preview-page .ref-block{border-top:1px solid #d0d0e0;margin-top:28px;padding-top:10px;font-size:9pt;color:#4a4a6a}
 .preview-page .tbl-caption{font-size:10pt;font-weight:600;color:#1a1a2e;margin-bottom:5px;display:block}
 .preview-page .fig-caption{font-size:10pt;color:#4a4a6a;margin-top:5px;font-style:italic;display:block;text-align:center}
-/* RESEARCH MODE: paragraph line numbers */
-.preview-page.rm{counter-reset:pln}
-.preview-page.rm>p{counter-increment:pln;padding-left:36px;position:relative}
-.preview-page.rm>p::before{content:counter(pln);position:absolute;left:0;top:0;font-family:'JetBrains Mono',monospace;font-size:8.5pt;color:#b0b0c8;min-width:28px;text-align:right;user-select:none;border-right:1px solid #ddd;margin-right:8px;padding-right:6px}
-/* statusbar */
-#statusbar{grid-area:stat;display:flex;align-items:center;padding:0 12px;background:var(--acd);color:rgba(255,255,255,.85);font-size:11px;gap:12px;font-family:var(--fm);overflow:hidden}
+/* RESEARCH MODE: 본문 단락(p)에만 행 번호 — JS로 삽입 */
+.preview-page.rm p{
+  padding-left:42px;
+  position:relative;
+}
+.rm-ln{
+  position:absolute;
+  left:0;
+  top:0;
+  width:34px;
+  text-align:right;
+  font-family:'JetBrains Mono',monospace;
+  font-size:8pt;
+  line-height:inherit;
+  color:#a0a0c8;
+  user-select:none;
+  pointer-events:none;
+  border-right:1px solid #ddd;
+  padding-right:5px;
+  /* 번호가 긴 단락에서 첫 줄에만 표시 */
+  height:1.8em;
+  overflow:hidden;
+}
+/* ── 미리보기 확대/축소 ── */
+#preview-container.zoomed .preview-page{
+  transform-origin:top center;
+  /* zoom은 JS로 --pv-scale 변수 적용 */
+  transform:scale(var(--pv-scale,1));
+  margin-bottom:calc(16px + (var(--pv-scale,1) - 1) * 297mm);
+}
+/* ── 미리보기 다크 테마 ── */
+#preview-container.pv-dark{background:#0d0d1a}
+#preview-container.pv-dark .preview-page{background:#1a1a2e;color:#e0e0f0}
+#preview-container.pv-dark .preview-page h1,
+#preview-container.pv-dark .preview-page h2,
+#preview-container.pv-dark .preview-page h3,
+#preview-container.pv-dark .preview-page h4{color:#a8b8ff}
+#preview-container.pv-dark .preview-page a{color:#6acff7}
+#preview-container.pv-dark .preview-page code{background:#252538;color:#f7a06a}
+#preview-container.pv-dark .preview-page pre{background:#1e1e30;border:1px solid #3a3a5a}
+#preview-container.pv-dark .preview-page blockquote{border-left-color:#5b4ce4;color:#b0b0c8;background:#20203a}
+#preview-container.pv-dark .preview-page table{color:#e0e0f0}
+#preview-container.pv-dark .preview-page table th{background:#252540;color:#c8c8f0}
+#preview-container.pv-dark .preview-page table td{border-color:#3a3a58;color:#e0e0f0}
+#preview-container.pv-dark .preview-page table tr:nth-child(even) td{background:#20203a}
+#preview-container.pv-dark .preview-page table *{color:#e0e0f0}
+#preview-container.pv-dark .preview-page table th *{color:#c8c8f0}
+#preview-container.pv-dark .preview-page .tbl-caption{color:#c8c8f0}
+#preview-container.pv-dark .preview-page .fig-caption{color:#9090b8}
+#preview-container.pv-dark .preview-page span[style*="color"]{color:#e0e0f0!important}
+#preview-container.pv-dark .preview-page p,
+#preview-container.pv-dark .preview-page li,
+#preview-container.pv-dark .preview-page td,
+#preview-container.pv-dark .preview-page span{color:inherit}
+#preview-container.pv-dark .preview-page::after{color:#555}
+/* ── PPT 모드 (내부) ── */
+#preview-pane.ppt-mode{
+  background:#111;
+  position:relative;
+}
+/* PPT 모드에서 pv-hdr(툴바)는 항상 위에 표시 */
+#preview-pane.ppt-mode #pv-hdr{
+  position:relative;
+  z-index:300;
+  background:#1a1a2e;
+  border-bottom:1px solid #f0c06044;
+  flex-shrink:0;
+}
+#preview-pane.ppt-mode #preview-container{
+  background:#111;
+  padding:0;
+  scroll-snap-type:y mandatory;
+  align-items:center;
+  flex:1;
+  overflow-y:auto;
+}
+#preview-pane.ppt-mode .preview-page{
+  scroll-snap-align:start;
+  transform-origin:top center;
+  box-shadow:none;
+  margin-bottom:0;
+  border:none;
+}
+/* PPT 네비 오버레이 */
+#ppt-nav{
+  display:none;
+  position:absolute;
+  bottom:18px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:400;
+  background:rgba(0,0,0,.80);
+  border:1px solid rgba(255,255,255,.3);
+  border-radius:24px;
+  padding:4px 10px;
+  gap:6px;
+  align-items:center;
+  backdrop-filter:blur(6px);
+  pointer-events:all;
+}
+#ppt-nav.vis{display:flex}
+#ppt-nav button{background:none;border:none;color:#fff;cursor:pointer;font-size:18px;padding:2px 8px;border-radius:12px;transition:background .15s;line-height:1}
+#ppt-nav button:hover{background:rgba(255,255,255,.15)}
+#ppt-nav #ppt-pg{font-family:var(--fm);font-size:11px;color:rgba(255,255,255,.7);min-width:40px;text-align:center}
+#preview-pane{position:relative}          /* 오버레이 기준점 */
+#a4-overlay{
+  position:absolute;
+  left:0;top:30px;           /* pv-hdr 높이(30px) 아래부터 */
+  right:0;bottom:0;
+  pointer-events:none;
+  z-index:50;
+  overflow:hidden;
+  display:none;
+}
+#a4-overlay.vis{display:block}
+/* 개별 기준선 */
+.a4-rl{
+  position:absolute;
+  left:0;right:0;
+  height:2px;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(220,35,35,.85) 0,
+    rgba(220,35,35,.85) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  pointer-events:none;
+}
+.a4-rl-label{
+  position:absolute;
+  right:6px;
+  top:-15px;
+  font-size:9px;
+  font-family:monospace;
+  color:rgba(220,35,35,.9);
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(220,35,35,.3);
+  padding:0 5px;
+  border-radius:3px;
+  pointer-events:none;
+  user-select:none;
+  white-space:nowrap;
+}
+/* A4 버튼 */
+.tb.tb-a4{font-size:10px;padding:0 7px;height:22px;color:#f06060;border:1px solid rgba(240,96,96,.35);border-radius:4px;font-weight:600;letter-spacing:.03em}
+.tb.tb-a4:hover{color:#ff8888;background:rgba(240,96,96,.15);border-color:rgba(240,96,96,.6)}
+.tb.tb-a4.active{color:#fff;background:rgba(210,35,35,.8);border-color:#cc2222;box-shadow:0 0 8px rgba(220,40,40,.5)}
+[data-theme=light] .tb.tb-a4{color:#c02020;border-color:rgba(192,32,32,.35)}
+[data-theme=light] .tb.tb-a4.active{color:#fff;background:#c02020;border-color:#a01010}
+/* ── Light theme: structural elements ── */
+[data-theme=light] #toolbar{background:#f0eef8;border-bottom:1px solid #d0c8f0}
+[data-theme=light] #hdr,
+[data-theme=light] #hdr2{background:linear-gradient(90deg,#eeebff 0%,#f4f0ff 100%);border-bottom:1px solid #d0c8f0}
+[data-theme=light] #hdr{color:#2a1a80}
+[data-theme=light] #hdr input,
+[data-theme=light] #hdr .btn-title{color:#2a1a80;background:transparent}
+[data-theme=light] #sidebar{background:#f7f5ff;border-right:1px solid #d0c8f0}
+[data-theme=light] #sb-hdr{background:#f0eef8;border-bottom:1px solid #d0c8f0}
+[data-theme=light] #sb-hdr *{color:#5040b0}
+[data-theme=light] #sb-list a{color:#3a2a90}
+[data-theme=light] #sb-list a:hover{background:rgba(124,106,247,.12)}
+[data-theme=light] #editor-pane{background:#fdfcff}
+[data-theme=light] #editor{background:#fdfcff;color:#1a1a30;caret-color:#5040b0}
+[data-theme=light] #editor::selection{background:rgba(124,106,247,.25)}
+[data-theme=light] #ln-col{background:#f0eef8;border-right:1px solid #d8d4f0;color:#9090b8}
+[data-theme=light] .status-bar,
+[data-theme=light] #cursor-info,
+[data-theme=light] .cursor-stat{color:#5050a0;background:#f0eef8;border-top:1px solid #d0c8f0}
+[data-theme=light] .modal-box,
+[data-theme=light] .modal{background:#fdfcff;border-color:#c0b8e8}
+[data-theme=light] .modal-hdr{background:#f0eef8;border-bottom:1px solid #d0c8f0;color:#2a1a80}display:flex;align-items:center;padding:0 12px;background:var(--acd);color:rgba(255,255,255,.85);font-size:11px;gap:12px;font-family:var(--fm);overflow:hidden}
 .si{white-space:nowrap;flex-shrink:0}.ss{color:rgba(255,255,255,.3);flex-shrink:0}.ssp{flex:1}
 #autosave-indicator{display:flex;align-items:center;gap:4px}
 .save-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
@@ -228,8 +455,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 .fmt-lbl{font-size:11px;color:var(--tx2);width:56px;flex-shrink:0}
 /* stats type buttons */
 #stats-type-row .btn-tog{font-size:11px;padding:3px 8px}
-/* view mode buttons */
-#vm-split,#vm-editor,#vm-preview{font-size:10px;min-width:34px;padding:0 5px}
+/* view mode buttons — tb-view 클래스로 이동됨 */
 
 /* ── 툴바 그룹별 색상 테마 ── */
 /* 🟡 헤딩 — 진한 노란색 */
@@ -316,16 +542,16 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
 
 <!-- TITLEBAR -->
 <header id="titlebar">
-  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V9</div>
+  <div id="app-logo"><div class="logo-icon">M</div>MD PRO V20</div>
   <input id="doc-title" type="text" value="Untitled Document" spellcheck="false">
   <div id="tba">
     <span id="rm-badge">RESEARCH</span>
-    <button class="btn btn-g btn-sm" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
-    <button class="btn btn-g btn-sm" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)" data-key="Ctrl+Shift+R">🔬 Research</button>
-    <button class="btn btn-g btn-sm" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용" data-key="Ctrl+Shift+C">📚 References</button>
-    <button class="btn btn-g btn-sm" onclick="Scholar.show()" data-tooltip="Google Scholar 검색 (새 창)" data-key="Ctrl+Shift+G">🔎 Scholar</button>
-    <button class="btn btn-g btn-sm" onclick="App.showSaveDlg()" data-tooltip="저장 형식 선택" data-key="Ctrl+S">💾 저장</button>
-    <button class="btn btn-p btn-sm" onclick="App.printDoc()" data-tooltip="인쇄 / PDF 저장">🖨️ 인쇄</button>
+    <button class="btn btn-sm btn-tmpl" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
+    <button class="btn btn-sm btn-research" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)" data-key="Ctrl+Shift+R">🔬 Research</button>
+    <button class="btn btn-sm btn-ref" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용" data-key="Ctrl+Shift+C">📚 References</button>
+    <button class="btn btn-sm btn-scholar" onclick="Scholar.show()" data-tooltip="Google Scholar 검색 (새 창)" data-key="Ctrl+Shift+G">🔎 Scholar</button>
+    <button class="btn btn-sm btn-save" onclick="App.showSaveDlg()" data-tooltip="저장 형식 선택" data-key="Ctrl+S">💾 저장</button>
+    <button class="btn btn-sm btn-print" onclick="App.printDoc()" data-tooltip="인쇄 / PDF 저장">🖨️ 인쇄</button>
   </div>
 </header>
 
@@ -412,6 +638,7 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
   <div class="tg">
     <button class="tb tb-insert" onclick="ED.pageBreak()" data-tooltip="페이지 나누기" data-key="Ctrl+Enter">⋯ PB</button>
     <button class="tb tb-insert" onclick="ED.lineBreak()" data-tooltip="줄바꿈 &lt;br&gt;" data-key="Ctrl+Shift+Enter">↩</button>
+    <button class="tb tb-insert" onclick="ED.insertNbsp()" data-tooltip="불연속 공백 &amp;nbsp; 삽입" data-key="Ctrl+Shift+Space">⎵</button>
     <button class="tb tb-insert" onclick="App.showImg()" data-tooltip="이미지">🖼</button>
     <button class="tb tb-insert" onclick="App.showLink()" data-tooltip="링크 (새 탭)">🔗</button>
     <button class="tb tb-insert" onclick="ED.footnote()" data-tooltip="각주">†</button>
@@ -425,28 +652,35 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
   <div class="tg"><button class="tb tb-util" onclick="App.toggleFind()" data-tooltip="찾기/바꾸기" data-key="Ctrl+F">🔍</button></div>
   <div class="spacer"></div>
 
-  <!-- ⚙ 보기 모드 — 기본 회색 -->
+  <!-- ⚙ 보기 모드 -->
   <div class="tg">
-    <button class="tb" onclick="App.setViewCycle('split')" id="vm-split" data-tooltip="분할 보기 (Alt+1)" data-key="Alt+1" style="font-size:10px;min-width:36px">Split</button>
-    <button class="tb" onclick="App.setViewCycle('editor')" id="vm-editor" data-tooltip="에디터만 (Alt+2)" data-key="Alt+2" style="font-size:10px;min-width:36px">Edit</button>
-    <button class="tb" onclick="App.setViewCycle('preview')" id="vm-preview" data-tooltip="미리보기만 (Alt+3)" data-key="Alt+3" style="font-size:10px;min-width:36px">View</button>
+    <button class="tb tb-view" onclick="App.setViewCycle('split')" id="vm-split" data-tooltip="분할 보기 (Alt+1)" data-key="Alt+1">Split</button>
+    <button class="tb tb-view" onclick="App.setViewCycle('editor')" id="vm-editor" data-tooltip="에디터만 (Alt+2)" data-key="Alt+2">Edit</button>
+    <button class="tb tb-view" onclick="App.setViewCycle('preview')" id="vm-preview" data-tooltip="미리보기만 (Alt+3)" data-key="Alt+3">View</button>
   </div>
   <div class="ts"></div>
   <div class="tg">
-    <button class="tb" id="pw-btn" onclick="PW.open()" data-tooltip="새창 미리보기" data-key="Ctrl+Shift+P">🗗 PV</button>
-    <button class="tb" onclick="PW.forceRefresh()" data-tooltip="새창 강제 새로고침">↻</button>
+    <button class="tb tb-pv" id="pw-btn" onclick="PW.open()" data-tooltip="새창 미리보기" data-key="Ctrl+Shift+P">🗗 PV</button>
+    <button class="tb tb-pv" onclick="PW.openPPT()" data-tooltip="PPT 모드로 바로 열기" data-key="Ctrl+Shift+T">🎬 PPT</button>
+    <button class="tb tb-pv" onclick="PW.forceRefresh()" data-tooltip="새창 강제 새로고침">↻</button>
   </div>
   <div class="ts"></div>
   <div class="tg">
-    <button class="tb" onclick="App.toggleTheme()" data-tooltip="테마 전환">◑</button>
-    <button class="tb" id="ln-btn" onclick="LN.toggle()" data-tooltip="줄 번호">ln</button>
-    <button class="tb" onclick="App.showHK()" data-tooltip="단축키 목록" data-key="Alt+?">?</button>
+    <button class="tb tb-sys" onclick="App.toggleTheme()" data-tooltip="테마 전환">◑</button>
+    <button class="tb tb-sys" id="ln-btn" onclick="LN.toggle()" data-tooltip="줄 번호">ln</button>
+    <button class="tb tb-sys" onclick="App.showHK()" data-tooltip="단축키 목록" data-key="Alt+?">?</button>
   </div>
 </div>
 
 <!-- SIDEBAR -->
 <nav id="sidebar">
-  <div id="sb-hdr"><span>목차 (TOC)</span><button class="btn-ic" onclick="TOC.build(document.getElementById('editor').value)">↻</button></div>
+  <div id="sb-hdr">
+    <span>목차 (TOC)</span>
+    <div style="display:flex;gap:4px;align-items:center">
+      <button class="btn btn-g btn-sm" style="font-size:10px;padding:1px 7px" onclick="TOC.insertTOC()" data-tooltip="문서 맨 앞에 목차 자동 삽입">📑 삽입</button>
+      <button class="btn-ic" onclick="TOC.build(document.getElementById('editor').value)" data-tooltip="목차 새로고침">↻</button>
+    </div>
+  </div>
   <div id="toc-list"><div style="padding:12px;color:var(--tx3);font-size:12px">헤딩(#) 추가 시 자동 생성</div></div>
   <div id="sb-stats"><span id="sw">0 단어</span><span id="sc">0 자</span><span id="sp">약 0 페이지</span></div>
 </nav>
@@ -474,12 +708,45 @@ kbd{background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1
     </div>
     <div id="preview-pane">
       <div id="pv-hdr">
-        <span class="pane-lbl"><span style="background:var(--ac2)"></span>PREVIEW — A4 다중 페이지</span>
+        <span class="pane-lbl"><span style="background:var(--ac2)"></span>PV</span>
+        <span id="pg-cnt" style="font-size:9px;color:var(--ac);font-family:var(--fm);margin-left:4px"></span>
+        <span id="render-ts" style="font-size:9px;color:var(--tx3);font-family:var(--fm);margin-left:4px"></span>
         <span class="spacer"></span>
-        <span id="pg-cnt" style="font-size:10px;color:var(--tx3)"></span>
-        <span id="render-ts" style="font-size:10px;color:var(--tx3);margin-left:8px"></span>
+        <div style="display:flex;align-items:center;gap:3px">
+          <!-- 확대/축소 -->
+          <button class="tb tb-sys" onclick="PV.zoomOut()" data-tooltip="미리보기 축소" style="font-size:14px;font-weight:700">－</button>
+          <span id="pv-zoom-lbl" style="font-size:10px;font-family:var(--fm);color:#6acff7;min-width:32px;text-align:center">100%</span>
+          <button class="tb tb-sys" onclick="PV.zoomIn()" data-tooltip="미리보기 확대" style="font-size:14px;font-weight:700">＋</button>
+          <div class="ts"></div>
+          <!-- PPT 모드 -->
+          <button class="tb" id="ppt-btn" onclick="PV.togglePPT()" data-tooltip="PPT 모드 — 패널 너비에 맞춰 확대 후 페이지 단위 이동 (↑↓ 키)" style="font-size:10px;padding:0 7px;height:22px;color:#f0c060;border:1px solid rgba(240,192,96,.35);border-radius:4px;font-weight:600">🎬 PPT</button>
+          <div class="ts"></div>
+          <!-- 폰트 크기 -->
+          <div class="ts"></div>
+          <span style="font-size:9px;color:rgba(255,255,255,.4);font-family:var(--fm)">폰트</span>
+          <button class="tb tb-sys" onclick="PV.fontDown()" data-tooltip="폰트 축소" style="font-size:11px">ᴬ－</button>
+          <span id="pv-font-lbl" style="font-size:10px;font-family:var(--fm);color:#6acff7;min-width:28px;text-align:center">11pt</span>
+          <button class="tb tb-sys" onclick="PV.fontUp()" data-tooltip="폰트 확대" style="font-size:11px">ᴬ＋</button>
+          <div class="ts"></div>
+          <!-- Dark 테마 -->
+          <button class="tb" id="pv-dark-btn" onclick="PV.toggleDark()" data-tooltip="미리보기 다크 테마 토글" style="font-size:10px;padding:0 7px;height:22px;color:#7ab8ff;border:1px solid rgba(100,160,255,.3);border-radius:4px;font-weight:600">◑ Dark</button>
+          <div class="ts"></div>
+          <button class="tb tb-a4" id="a4-ruler-btn" onclick="A4Ruler.toggle()" data-tooltip="A4 페이지 구분선 표시/숨기기 — 297mm 위치에 빨간 점선">📄 A4</button>
+          <button class="tb tb-copy-rich" id="copy-rich-btn" onclick="CP.copyRich()" data-tooltip="서식 있는 복사 — Word·구글독스에 붙여넣기 시 서식 유지">📋 복사</button>
+          <button class="tb tb-copy-text" id="copy-text-btn" onclick="CP.copyText()" data-tooltip="텍스트 복사 — 서식 없이 순수 텍스트만">Ａ 텍스트</button>
+        </div>
       </div>
-      <div id="preview-container"></div>
+      <div id="preview-container">
+      </div>
+      <div id="a4-overlay"></div>
+      <!-- PPT 네비게이션 -->
+      <div id="ppt-nav">
+        <button onclick="PV.pptPrev()" title="이전 페이지 [←]">◀</button>
+        <span id="ppt-pg">1 / 1</span>
+        <button onclick="PV.pptNext()" title="다음 페이지 [→]">▶</button>
+        <div style="width:1px;height:16px;background:rgba(255,255,255,.2);margin:0 4px"></div>
+        <button onclick="PV.togglePPT()" title="PPT 모드 종료 [Esc]" style="font-size:13px;opacity:.6;background:none;border:none;cursor:pointer;color:#ddd;padding:0 4px">✕</button>
+      </div>
     </div>
   </div>
   <div id="error-panel">
@@ -1088,6 +1355,23 @@ function splitPages(md){const p=md.replace(/\r\n/g,'\n').split(/\n?<div class="p
 ═══════════════════════════════════════════════════════════ */
 const PR={
   rm:false,
+  /* 단락(p)에만 연속 번호 삽입 — 제목·표·코드·인용 제외 */
+  _applyRM(container){
+    /* 기존 번호 제거 */
+    container.querySelectorAll('.rm-ln').forEach(n=>n.remove());
+    if(!this.rm)return;
+    let n=1;
+    container.querySelectorAll('.preview-page').forEach(page=>{
+      /* 직계 p만 대상 (blockquote>p, li>p 등 중첩 제외) */
+      page.querySelectorAll(':scope>p, :scope>section>p').forEach(p=>{
+        const span=document.createElement('span');
+        span.className='rm-ln';
+        span.textContent=n++;
+        span.setAttribute('aria-hidden','true');
+        p.insertBefore(span,p.firstChild);
+      });
+    });
+  },
   render(md,showFootnotes){
     if(showFootnotes===undefined)showFootnotes=true;
     const c=el('preview-container');const pages=splitPages(md);c.innerHTML='';
@@ -1098,10 +1382,736 @@ const PR={
       div.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer'});
       c.appendChild(div);
     });
+    this._applyRM(c);
     if(window.MathJax)MathJax.typesetPromise([c]).catch(()=>{});
-    el('pg-cnt').textContent=`${pages.length} 페이지`;
+    el('pg-cnt').textContent=`1 / ${pages.length}`;
+    /* 스크롤 시 현재 페이지 번호 실시간 업데이트 */
+    const _pcEl=el('preview-container');
+    if(_pcEl && !_pcEl._pgScrollBound){
+      _pcEl._pgScrollBound=true;
+      _pcEl.addEventListener('scroll',()=>{
+        const scrollPages=[...document.querySelectorAll('#preview-container .preview-page')];
+        if(!scrollPages.length)return;
+        const mid=_pcEl.scrollTop+_pcEl.clientHeight*0.3;
+        let cur=0;
+        for(let i=0;i<scrollPages.length;i++){
+          if(scrollPages[i].offsetTop<=mid)cur=i;
+        }
+        el('pg-cnt').textContent=`${cur+1} / ${scrollPages.length}`;
+      },{passive:true});
+    }
+    if(typeof A4Ruler!=='undefined') A4Ruler.refresh();
+    if(typeof PV!=='undefined') PV.refresh();
   }
 };
+
+/* ═══════════════════════════════════════════════════════════
+   PV — 미리보기 확대/축소 + PPT 모드
+   PPT 모드: 245% 확대 + scroll-snap으로 페이지 단위 이동
+   ↑↓ 키, ◀▶ 버튼으로 페이지 이동
+═══════════════════════════════════════════════════════════ */
+const PV = (() => {
+  let scale = 1.0;
+  const STEP = 0.15, MIN = 0.4, MAX = 3.0;
+  let pptOn = false;
+  let pptIdx = 0;
+  let _keyBound = false;
+
+  let _pvFontPt = 11; /* 내부 PV 폰트 크기(pt) */
+
+  function setScale(s) {
+    scale = Math.min(MAX, Math.max(MIN, Math.round(s * 100) / 100));
+    const pc = el('preview-container');
+    pc.style.setProperty('--pv-scale', scale);
+    el('pv-zoom-lbl').textContent = Math.round(scale * 100) + '%';
+    const fontPx = Math.round(_pvFontPt * (96/72));
+    pc.querySelectorAll('.preview-page').forEach(p => {
+      if (scale === 1) {
+        p.style.transform = ''; p.style.transformOrigin = ''; p.style.marginBottom = '';
+      } else {
+        p.style.transformOrigin = 'top center';
+        p.style.transform = `scale(${scale})`;
+        const baseH = p.offsetHeight;
+        p.style.marginBottom = (16 + baseH * (scale - 1)) + 'px';
+      }
+      p.style.fontSize = fontPx + 'px';
+      p.style.lineHeight = '1.8'; /* 폰트 변경 시 줄간격 유지 */
+    });
+    _updateFontLbl();
+  }
+
+  function _updateFontLbl(){
+    const lbl=el('pv-font-lbl');
+    if(lbl) lbl.textContent=_pvFontPt+'pt';
+  }
+
+  function fontUp(){
+    _pvFontPt=Math.min(24,_pvFontPt+1);
+    if(pptOn){
+      const pane=el('preview-pane');
+      const vw=pane.clientWidth;
+      const ratio=vw/Math.round(210*(96/25.4));
+      const fontPx=Math.round(_pvFontPt*(96/72)*ratio);
+      el('preview-container').querySelectorAll('.preview-page').forEach(p=>{
+        p.style.fontSize=fontPx+'px'; p.style.lineHeight='1.8';
+      });
+    } else { setScale(scale); }
+    _updateFontLbl();
+  }
+  function fontDown(){
+    _pvFontPt=Math.max(6,_pvFontPt-1);
+    if(pptOn){
+      const pane=el('preview-pane');
+      const vw=pane.clientWidth;
+      const ratio=vw/Math.round(210*(96/25.4));
+      const fontPx=Math.round(_pvFontPt*(96/72)*ratio);
+      el('preview-container').querySelectorAll('.preview-page').forEach(p=>{
+        p.style.fontSize=fontPx+'px'; p.style.lineHeight='1.8';
+      });
+    } else { setScale(scale); }
+    _updateFontLbl();
+  }
+
+  /* 미리보기 패널 너비에 맞게 자동 fit */
+  function fitToPane() {
+    const pc = el('preview-container');
+    const pages = [...pc.querySelectorAll('.preview-page')];
+    if (!pages.length) return;
+    const origW = pages[0].offsetWidth / scale; /* 현재 scale 제거한 원본 너비 */
+    const avail = pc.clientWidth - 32;          /* 좌우 패딩 감안 */
+    if (avail <= 0) return;
+    const fit = Math.floor((avail / origW) * 100) / 100;
+    setScale(Math.max(MIN, Math.min(MAX, fit)));
+  }
+
+  /* PPT 모드 전용 zoom: 페이지 width/padding/minHeight 비례 조정 */
+  function _pptZoom(delta) {
+    const pane = el('preview-pane');
+    const pc   = el('preview-container');
+    const pages = getPages();
+    if (!pages.length) return;
+    const MM = 96/25.4;
+    const origPx = Math.round(210*MM);
+    /* 현재 pane 너비를 기준으로 ratio 산출 후 delta 적용 */
+    const curW = parseFloat(pages[0].style.width) || pane.clientWidth;
+    const newW = Math.round(Math.max(pane.clientWidth * 0.5,
+                            Math.min(pane.clientWidth * 2.0, curW + delta * origPx)));
+    const ratio = newW / origPx;
+    const fontPx=Math.round(_pvFontPt*(96/72)*ratio);
+    pages.forEach(p => {
+      p.style.width      = newW + 'px';
+      p.style.padding    = Math.round(22*MM*ratio)+'px '+Math.round(18*MM*ratio)+'px';
+      p.style.minHeight  = Math.round(297*MM*ratio) + 'px';
+      p.style.fontSize   = fontPx + 'px';
+      p.style.lineHeight = '1.8';
+    });
+    el('pv-zoom-lbl').textContent = Math.round(ratio*100) + '%';
+  }
+
+  function zoomIn()  { if (pptOn) { _pptZoom(+STEP); } else { setScale(scale + STEP); } }
+  function zoomOut() { if (pptOn) { _pptZoom(-STEP); } else { setScale(scale - STEP); } }
+
+  /* PPT 모드 */
+  function getPages() {
+    return [...el('preview-container').querySelectorAll('.preview-page')];
+  }
+
+  function pptGo(idx) {
+    const pages = getPages();
+    if (!pages.length) return;
+    pptIdx = Math.max(0, Math.min(pages.length - 1, idx));
+    /* PPT 모드: preview-container 스크롤 (scrollIntoView는 부모가 overflow:auto일 때 정확히 작동) */
+    const pc = el('preview-container');
+    const target = pages[pptIdx];
+    pc.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+    el('ppt-pg').textContent = `${pptIdx + 1} / ${pages.length}`;
+  }
+
+  /* PPT 뷰포트 단위 이동 (내부 패널용) */
+  function pptStep(dir) {
+    const pc = el('preview-container');
+    const vh = pc.clientHeight;
+    let next = pc.scrollTop + dir * vh;
+    next = Math.max(0, next);
+    /* 페이지 상단 snap */
+    getPages().forEach(p => {
+      if (Math.abs(next - p.offsetTop) < vh * 0.18) next = p.offsetTop;
+    });
+    next = Math.min(next, pc.scrollHeight - pc.clientHeight);
+    pc.scrollTo({ top: next, behavior: 'smooth' });
+    /* 페이지 번호 갱신 */
+    setTimeout(() => {
+      const mid = pc.scrollTop + vh / 2;
+      let best = 0, bestD = Infinity;
+      getPages().forEach((p, i) => {
+        const d = Math.abs(p.offsetTop + p.offsetHeight / 2 - mid);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      pptIdx = best;
+      el('ppt-pg').textContent = `${best + 1} / ${getPages().length}`;
+    }, 350);
+  }
+
+  function pptPrev() { pptOn ? pptStep(-1) : pptGo(pptIdx - 1); }
+  function pptNext() { pptOn ? pptStep(1)  : pptGo(pptIdx + 1); }
+
+  function togglePPT() {
+    pptOn = !pptOn;
+    const pane = el('preview-pane');
+    const btn  = el('ppt-btn');
+    const nav  = el('ppt-nav');
+
+    if (pptOn) {
+      /* PPT 진입:
+         1. View 모드로 자동 전환 (미리보기 패널 최대화)
+         2. transform 대신 width를 패널 너비에 맞게 직접 확대
+         3. pv-hdr 항상 위에 유지 */
+      App.setView('preview');
+
+      pane.classList.add('ppt-mode');
+      btn.textContent  = '🎬 종료';
+      btn.style.background = 'rgba(240,192,96,.28)';
+      btn.style.color = '#ffe090';
+      btn.style.borderColor = '#f0c060';
+      nav.classList.add('vis');
+
+      /* 패널이 렌더 완료된 뒤 fit 적용 */
+      setTimeout(() => {
+        const pages = getPages();
+        if (!pages.length) return;
+        /* 패널 내용 영역 너비 (pv-hdr 너비 = pane 너비) */
+        const vw = pane.clientWidth;
+        const MM = 96/25.4;
+        const origPx = Math.round(210*MM); /* A4 210mm px */
+        const ratio = vw / origPx;
+        const pc = el('preview-container');
+
+        pages.forEach(p => {
+          p.style.transform = 'none';
+          p.style.transformOrigin = '';
+          p.style.width = vw + 'px';
+          p.style.padding = Math.round(22*MM*ratio)+'px '+Math.round(18*MM*ratio)+'px';
+          p.style.minHeight = Math.round(297*MM*ratio) + 'px';
+          p.style.marginBottom = '0';
+          p.style.boxSizing = 'border-box';
+        });
+        /* preview-container 폰트 비례 확대 (_pvFontPt 반영) */
+        const fontPx=Math.round(_pvFontPt*(96/72)*ratio);
+        pages.forEach(p=>{ p.style.fontSize=fontPx+'px'; p.style.lineHeight='1.8'; });
+        el('pv-zoom-lbl').textContent = Math.round(ratio*100) + '%';
+
+        pptIdx = 0;
+        pc.scrollTop = 0;
+        setTimeout(() => pptGo(0), 60);
+      }, 80);
+
+      if (!_keyBound) {
+        _keyBound = true;
+        document.addEventListener('keydown', _pptKey, true);
+      }
+    } else {
+      /* PPT 종료: 스타일 복구 */
+      const drawExt=document.getElementById('pv-draw-ext');
+      if(drawExt)drawExt.style.display='none';
+      pane.classList.remove('ppt-mode');
+      btn.textContent = '🎬 PPT';
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      nav.classList.remove('vis');
+
+      const pc = el('preview-container');
+      getPages().forEach(p => {
+        p.style.transform='';p.style.transformOrigin='';
+        p.style.width='';p.style.padding='';
+        p.style.minHeight='';p.style.marginBottom='';
+        p.style.boxSizing='';p.style.fontSize='';p.style.lineHeight='';
+      });
+      pc.style.fontSize='';
+      setScale(1.0);
+    }
+  }
+
+  /* capture 단계에서 잡아야 에디터/다른 요소 포커스에 무관하게 작동 */
+  function _pptKey(e) {
+    if (!pptOn) return;
+    if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); e.stopPropagation(); pptNext(); }
+    else if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); e.stopPropagation(); pptPrev(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); togglePPT(); }
+    else if(e.key>='1'&&e.key<='6'){e.preventDefault();IPPT.handleKey(e.key);}
+  }
+
+  /* ── Dark 테마 ── */
+  let _darkOn = false;
+  function toggleDark() {
+    _darkOn = !_darkOn;
+    const pc  = el('preview-container');
+    const btn = el('pv-dark-btn');
+    pc.classList.toggle('pv-dark', _darkOn);
+    if (_darkOn) {
+      btn.textContent = '☀ Light';
+      btn.style.background = 'rgba(100,160,255,.2)';
+      btn.style.color = '#7ab8ff';
+      btn.style.borderColor = '#5090ff';
+    } else {
+      btn.textContent = '◑ Dark';
+      btn.style.background = '';
+      btn.style.color = '#7ab8ff';
+      btn.style.borderColor = 'rgba(100,160,255,.3)';
+    }
+  }
+
+  /* 렌더 후 scale 유지. 첫 렌더 시에는 창에 맞게 자동 fit */
+  let _firstRender = true;
+  function refresh() {
+    if (_firstRender) {
+      _firstRender = false;
+      /* 다음 프레임에 측정 (DOM 반영 후) */
+      requestAnimationFrame(() => fitToPane());
+      return;
+    }
+    if (pptOn) {
+      /* PPT 모드 중 재렌더: 스타일 재적용 */
+      setTimeout(() => {
+        const pane = el('preview-pane');
+        const vw = pane.clientWidth;
+        const MM = 96/25.4;
+        const origPx = Math.round(210*MM);
+        const ratio = vw / origPx;
+        const fontPx=Math.round(_pvFontPt*(96/72)*ratio);
+        getPages().forEach(p => {
+          p.style.width = vw + 'px';
+          p.style.padding = Math.round(22*MM*ratio)+'px '+Math.round(18*MM*ratio)+'px';
+          p.style.minHeight = Math.round(297*MM*ratio) + 'px';
+          p.style.marginBottom = '0';
+          p.style.boxSizing = 'border-box';
+          p.style.fontSize = fontPx+'px';
+          p.style.lineHeight = '1.8';
+        });
+        el('ppt-pg').textContent = `${pptIdx + 1} / ${getPages().length}`;
+      }, 50);
+      return;
+    }
+    if (scale !== 1.0) setScale(scale);
+  }
+
+  return { zoomIn, zoomOut, fitToPane, fontUp, fontDown, togglePPT, pptPrev, pptNext, refresh, toggleDark };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   IPPT — 내부 PV PPT 드로잉 팔레트
+   (ppt-nav 내 버튼으로 제어)
+═══════════════════════════════════════════════════════════ */
+const IPPT = (() => {
+  let tool='laser', penColor='#e63030', penSize=4;
+  let hlColor='#ffe040', hlSize=18, hlAlpha=0.40;
+  let drawing=false;
+  let canvas, ctx, laserDot, container;
+  let _init=false;
+
+  function init(){
+    if(!_init){
+      _init=true;
+      canvas=document.getElementById('ippt-canvas');
+      laserDot=document.getElementById('ippt-laser');
+      container=document.getElementById('preview-container');
+      if(!canvas||!container)return;
+
+      /* 이벤트: 컨테이너 기준 좌표 사용 */
+      document.addEventListener('mousemove',onMove);
+      canvas.addEventListener('mousedown',onDown);
+      document.addEventListener('mouseup',onUp);
+    }
+    /* 캔버스 크기는 매번 show() 시 갱신 (PPT 모드에서 크기가 바뀌므로) */
+    _resizeCanvas();
+  }
+
+  function _resizeCanvas(){
+    if(!canvas||!container)return;
+    const w=container.scrollWidth||container.clientWidth;
+    const h=container.scrollHeight||container.clientHeight;
+    if(canvas.width===w&&canvas.height===h)return; /* 변화 없으면 스킵 */
+    const tmp=document.createElement('canvas');
+    tmp.width=canvas.width; tmp.height=canvas.height;
+    if(ctx) tmp.getContext('2d').drawImage(canvas,0,0);
+    canvas.width=w; canvas.height=h;
+    canvas.style.width=w+'px'; canvas.style.height=h+'px';
+    ctx=canvas.getContext('2d');
+    if(tmp.width>0) ctx.drawImage(tmp,0,0);
+    /* ResizeObserver는 최초 1회만 등록 */
+    if(!_resizeObserver){
+      _resizeObserver=new ResizeObserver(()=>_resizeCanvas());
+      _resizeObserver.observe(container);
+    }
+  }
+  let _resizeObserver=null;
+
+  function _updHlUI(){
+    const sl=document.getElementById('ippt-hl-size-lbl');
+    const al=document.getElementById('ippt-hl-alpha-lbl');
+    if(sl)sl.textContent=hlSize;
+    if(al)al.textContent=Math.round(hlAlpha*100)+'%';
+  }
+  function setTool(t){
+    tool=t;
+    /* pv-hdr + ppt-nav 모든 ippt-tool 버튼 업데이트 */
+    document.querySelectorAll('.ippt-tool').forEach(b=>{
+      b.classList.toggle('active-tool',b.dataset.tool===t);
+    });
+    /* ppt-nav 색상 피커·hl 컨트롤 표시 */
+    const colorNav=document.getElementById('ippt-pen-color-nav');
+    if(colorNav)colorNav.style.display=(t==='pen'||t==='hl')?'block':'none';
+    const hlCtrl=document.getElementById('ippt-hl-ctrl');
+    if(hlCtrl){hlCtrl.style.display=(t==='hl')?'flex':'none'; if(t==='hl')_updHlUI();}
+    if(!canvas)return;
+    if(t==='laser'){
+      canvas.style.pointerEvents='none';
+      if(laserDot)laserDot.style.display='block';
+    } else {
+      canvas.style.pointerEvents='all';
+      if(laserDot)laserDot.style.display='none';
+    }
+    canvas.style.cursor=(t==='eraser')?'cell':(t==='pen'||t==='hl')?'crosshair':'default';
+  }
+
+  function _canvasXY(e){
+    /* container 기준 좌표 (스크롤 포함) */
+    const r=container.getBoundingClientRect();
+    return {x: e.clientX-r.left+container.scrollLeft,
+            y: e.clientY-r.top+container.scrollTop};
+  }
+
+  /* 형광펜 전용: 오프스크린 캔버스에 획 전체를 그린 뒤 한 번에 합성
+     → 한 획 안에서 alpha가 누적되지 않아 농도가 일정하게 유지됨 */
+  let _hlOffscreen=null, _hlOffCtx=null, _hlPoints=[];
+
+  function _ensureHlOffscreen(){
+    if(_hlOffscreen&&_hlOffscreen.width===canvas.width&&_hlOffscreen.height===canvas.height)return;
+    _hlOffscreen=document.createElement('canvas');
+    _hlOffscreen.width=canvas.width; _hlOffscreen.height=canvas.height;
+    _hlOffCtx=_hlOffscreen.getContext('2d');
+  }
+
+  function _drawHlStroke(){
+    if(!_hlOffCtx||_hlPoints.length<2)return;
+    _hlOffCtx.clearRect(0,0,_hlOffscreen.width,_hlOffscreen.height);
+    _hlOffCtx.beginPath();
+    _hlOffCtx.moveTo(_hlPoints[0].x,_hlPoints[0].y);
+    for(let i=1;i<_hlPoints.length;i++) _hlOffCtx.lineTo(_hlPoints[i].x,_hlPoints[i].y);
+    _hlOffCtx.strokeStyle=hlColor; _hlOffCtx.lineWidth=hlSize;
+    _hlOffCtx.lineCap='round'; _hlOffCtx.lineJoin='round';
+    _hlOffCtx.globalAlpha=1; _hlOffCtx.globalCompositeOperation='source-over';
+    _hlOffCtx.stroke();
+    /* 오프스크린을 메인 캔버스에 globalAlpha로 한 번만 합성 */
+    ctx.save();
+    ctx.globalAlpha=hlAlpha;
+    ctx.globalCompositeOperation='source-over';
+    ctx.drawImage(_hlOffscreen,0,0);
+    ctx.restore();
+  }
+
+  function onDown(e){
+    drawing=true;
+    if(tool==='pen'||tool==='eraser'){
+      const {x,y}=_canvasXY(e);
+      ctx.beginPath();
+      ctx.moveTo(x,y);
+      _setCtxStyle();
+    } else if(tool==='hl'){
+      _ensureHlOffscreen();
+      _hlPoints=[_canvasXY(e)];
+    }
+  }
+
+  function _setCtxStyle(){
+    if(tool==='eraser'){
+      ctx.globalCompositeOperation='destination-out';
+      ctx.globalAlpha=1; ctx.lineWidth=24; ctx.strokeStyle='rgba(0,0,0,1)';
+    } else if(tool==='pen'){
+      ctx.globalCompositeOperation='source-over';
+      ctx.globalAlpha=1; ctx.strokeStyle=penColor; ctx.lineWidth=penSize;
+    }
+    ctx.lineCap='round'; ctx.lineJoin='round';
+  }
+
+  function onMove(e){
+    if(tool==='laser'&&laserDot){
+      const r=container.getBoundingClientRect();
+      const x=e.clientX-r.left, y=e.clientY-r.top;
+      const inBounds=x>=0&&y>=0&&x<=r.width&&y<=r.height;
+      laserDot.style.display=inBounds?'block':'none';
+      /* 레이저 닷: viewport 기준 (fixed처럼 보여야 함) */
+      laserDot.style.left=x+'px';
+      laserDot.style.top=(y+container.scrollTop)+'px';
+      return;
+    }
+    if(!drawing||!ctx)return;
+    if(tool==='pen'||tool==='eraser'){
+      const {x,y}=_canvasXY(e);
+      ctx.lineTo(x,y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x,y);
+    } else if(tool==='hl'){
+      _hlPoints.push(_canvasXY(e));
+    }
+  }
+
+  function onUp(){
+    if(drawing&&tool==='hl'){
+      /* 획 완료: 오프스크린을 globalAlpha로 메인 캔버스에 한 번 합성 */
+      _drawHlStroke();
+      _hlPoints=[];
+      if(_hlOffCtx) _hlOffCtx.clearRect(0,0,_hlOffscreen.width,_hlOffscreen.height);
+    }
+    drawing=false;
+    if(ctx){ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';}
+  }
+
+  function clearAll(){
+    if(ctx)ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+
+  function show(){
+    init(); /* 이벤트 등록 + 최초 크기 */
+    if(canvas)canvas.style.display='block';
+    setTool('laser');
+    /* PPT 레이아웃 적용 후 캔버스 크기 재조정 */
+    setTimeout(()=>_resizeCanvas(), 120);
+  }
+  function hide(){
+    if(canvas)canvas.style.display='none';
+    if(laserDot)laserDot.style.display='none';
+    clearAll(); tool='laser';
+  }
+
+  /* 단축키 (내부 PPT 모드 전용) */
+  function handleKey(k){
+    if(k==='1')setTool('laser');
+    else if(k==='2')setTool('select');
+    else if(k==='4')setTool('pen');
+    else if(k==='5')setTool('hl');
+    else if(k==='6')setTool('eraser');
+  }
+
+  return{
+    show,hide,setTool,clearAll,handleKey,
+    setPenColor(col){
+      penColor=col;
+      const n=document.getElementById('ippt-pen-color');
+      const n2=document.getElementById('ippt-pen-color-nav');
+      if(n)n.value=col; if(n2)n2.value=col;
+    },
+    setPenSize(s){penSize=+s},
+    setHlColor(col){hlColor=col},
+    setHlSize(s){hlSize=+s; _updHlUI();},
+    setHlAlpha(v){hlAlpha=+v/100; _updHlUI();},
+    hlSizeUp(){hlSize=Math.min(60,hlSize+2); _updHlUI();},
+    hlSizeDown(){hlSize=Math.max(4,hlSize-2); _updHlUI();},
+    hlAlphaUp(){hlAlpha=Math.min(0.90,+(hlAlpha+0.05).toFixed(2)); _updHlUI();},
+    hlAlphaDown(){hlAlpha=Math.max(0.02,+(hlAlpha-0.05).toFixed(2)); _updHlUI();}
+  };
+})();
+
+
+
+/* ═══════════════════════════════════════════════════════════
+   A4Ruler — 미리보기 A4 페이지 구분 점선
+   297mm(A4 높이) 간격으로 빨간 점선을 각 .preview-page 위에 그림
+   내용이 길어서 297mm를 넘는 페이지에도 반복 표시
+═══════════════════════════════════════════════════════════ */
+const A4Ruler = (() => {
+  let on = false;
+
+  /* 210mm 기준으로 실제 px scale 계산 */
+  function getScale() {
+    const page = el('preview-container').querySelector('.preview-page');
+    if (!page) return 1;
+    return page.offsetWidth / (210 * (96 / 25.4));
+  }
+
+  /* 297mm → px */
+  function a4px() {
+    return Math.round(297 * (96 / 25.4) * getScale());
+  }
+
+  function drawOverlay() {
+    const overlay = el('a4-overlay');
+    overlay.innerHTML = '';
+    if (!on) { overlay.classList.remove('vis'); return; }
+
+    const container = el('preview-container');
+    const pages = [...container.querySelectorAll('.preview-page')];
+    if (!pages.length) return;
+
+    overlay.classList.add('vis');
+
+    const gap = a4px();                          /* 297mm in px */
+    const containerScrollTop = container.scrollTop;
+    const pvHdrH = 30;                           /* pv-hdr 높이 */
+
+    /* container 기준 좌표로 각 페이지 위치 파악 */
+    const containerRect = container.getBoundingClientRect();
+
+    pages.forEach(page => {
+      const pageRect = page.getBoundingClientRect();
+      /* container 내 절대 y 좌표 (스크롤 포함) */
+      const pageTop = pageRect.top - containerRect.top + containerScrollTop;
+      const pageH   = page.offsetHeight;
+
+      /* 이 페이지 안에서 297mm 배수마다 선 */
+      let n = 1;
+      while (n * gap < pageH - 2) {
+        const lineY = pageTop + n * gap;          /* overlay 기준 y */
+
+        const line = document.createElement('div');
+        line.className = 'a4-rl';
+        /* overlay top = pv-hdr(30px), container top = pvHdrH 에서 시작
+           container 안 좌표 → overlay 좌표로 변환 */
+        line.style.top = (lineY - containerScrollTop) + 'px';
+
+        const label = document.createElement('span');
+        label.className = 'a4-rl-label';
+        label.textContent = `${297 * n} mm`;
+        line.appendChild(label);
+
+        overlay.appendChild(line);
+        n++;
+      }
+    });
+  }
+
+  /* 스크롤할 때마다 선 위치 재계산 */
+  let _scrollBound = false;
+  function _bindScroll() {
+    if (_scrollBound) return;
+    _scrollBound = true;
+    el('preview-container').addEventListener('scroll', () => {
+      if (on) drawOverlay();
+    }, { passive: true });
+  }
+
+  return {
+    toggle() {
+      on = !on;
+      const btn = el('a4-ruler-btn');
+      btn.classList.toggle('active', on);
+      btn.textContent = on ? '📄 A4 ✓' : '📄 A4';
+      _bindScroll();
+      drawOverlay();
+    },
+    refresh() {
+      if (on) {
+        /* 렌더 직후 레이아웃이 확정되도록 한 프레임 뒤에 */
+        requestAnimationFrame(() => drawOverlay());
+      }
+    },
+  };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   CP — 미리보기 복사 매니저
+   📋 복사  : ClipboardItem으로 HTML + plaintext 동시 등록
+              → Word / 구글독스 / 한글 붙여넣기 시 서식 유지
+   Ａ 텍스트: 순수 텍스트만 (innerText 추출)
+═══════════════════════════════════════════════════════════ */
+const CP = (() => {
+
+  /* preview-container 내 모든 .preview-page를 합친 HTML 스냅샷 */
+  function getPageNodes() {
+    return [...el('preview-container').querySelectorAll('.preview-page')];
+  }
+
+  /* 복사용 HTML 생성
+     - 페이지 번호 가상요소(::after)는 복사 대상이 아니므로 제거
+     - 외부 문서에서도 기본 서식이 살아있도록 인라인 스타일 기반 wrapper 추가 */
+  function buildHtml(nodes) {
+    // 각 페이지 innerHTML 합치기 (페이지 구분은 <hr>)
+    const parts = nodes.map((n, i) => {
+      // data-page 속성 및 ::after 등은 복사본에 불필요 → cloneNode
+      const clone = n.cloneNode(true);
+      // 페이지 번호 표시용 after 콘텐츠는 DOM에 없으므로 무시
+      return clone.innerHTML;
+    });
+    const body = parts.join('\n<hr style="border:none;border-top:1px dashed #ccc;margin:18px 0">\n');
+
+    // Word·구글독스 호환 wrapper — 기본 폰트·줄간격 설정
+    return `<div style="font-family:serif;font-size:11pt;line-height:1.8;color:#1a1a2e;max-width:170mm;word-break:break-word">${body}</div>`;
+  }
+
+  /* 버튼 피드백 애니메이션 */
+  function flash(btnId, successLabel, color) {
+    const btn = el(btnId);
+    const orig = btn.textContent;
+    const origColor = btn.style.color;
+    btn.textContent = successLabel;
+    btn.style.color = color || '#6af7a0';
+    btn.style.opacity = '0.7';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.color = origColor;
+      btn.style.opacity = '';
+    }, 1600);
+  }
+
+  return {
+    /* ── 서식 있는 복사 ── */
+    async copyRich() {
+      const nodes = getPageNodes();
+      if (!nodes.length) { alert('미리보기 내용이 없습니다.'); return; }
+
+      const htmlStr = buildHtml(nodes);
+      // 순수 텍스트 fallback
+      const textStr = nodes.map(n => n.innerText).join('\n\n');
+
+      try {
+        // ClipboardItem API — HTML + text/plain 동시 등록
+        if (window.ClipboardItem) {
+          const htmlBlob = new Blob([htmlStr], { type: 'text/html' });
+          const textBlob = new Blob([textStr], { type: 'text/plain' });
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+          ]);
+        } else {
+          // fallback: execCommand (구형 브라우저)
+          const tmp = document.createElement('div');
+          tmp.innerHTML = htmlStr;
+          tmp.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+          document.body.appendChild(tmp);
+          const range = document.createRange();
+          range.selectNodeContents(tmp);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          document.execCommand('copy');
+          sel.removeAllRanges();
+          document.body.removeChild(tmp);
+        }
+        flash('copy-rich-btn', '✓ 복사됨', '#6af7a0');
+      } catch (err) {
+        // 권한 거부 시 텍스트로 fallback
+        try {
+          await navigator.clipboard.writeText(textStr);
+          flash('copy-rich-btn', '✓ 텍스트로 복사', '#f7d06a');
+        } catch(e2) {
+          alert('클립보드 복사에 실패했습니다.\n브라우저 주소창을 한 번 클릭한 뒤 다시 시도해 주세요.');
+        }
+      }
+    },
+
+    /* ── 텍스트만 복사 ── */
+    async copyText() {
+      const nodes = getPageNodes();
+      if (!nodes.length) { alert('미리보기 내용이 없습니다.'); return; }
+
+      // innerText: 가시적 텍스트 + 줄바꿈 구조 유지
+      const text = nodes.map(n => n.innerText.trim()).join('\n\n');
+      try {
+        await navigator.clipboard.writeText(text);
+        flash('copy-text-btn', '✓ 복사됨', '#6af7a0');
+      } catch(err) {
+        alert('클립보드 복사에 실패했습니다.');
+      }
+    },
+  };
+})();
 
 /* ═══════════════════════════════════════════════════════════
    PREVIEW WINDOW (popup) + scroll sync
@@ -1119,7 +2129,7 @@ const PW=(()=>{
 .preview-page code{font-family:'JetBrains Mono',monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}
 .preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;overflow-x:auto;margin:11px 0;font-size:9pt}
 .preview-page pre code{background:none;color:inherit;padding:0}
-.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:10pt}
+.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:inherit}
 .preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}
 .preview-page td{padding:6px 11px;border:1px solid #d0d0e0}
 .preview-page tr:nth-child(even) td{background:#f7f7fc}
@@ -1127,22 +2137,735 @@ const PW=(()=>{
 .preview-page a{color:#5b4ce4;text-decoration:underline}
 .preview-page a[href^="http"]::after{content:" ↗";font-size:8pt;opacity:.5}
 .preview-page .ref-block{border-top:1px solid #d0d0e0;margin-top:28px;padding-top:10px;font-size:9pt;color:#4a4a6a}
-.preview-page.rm{counter-reset:pln}
-.preview-page.rm>p{counter-increment:pln;padding-left:36px;position:relative}
-.preview-page.rm>p::before{content:counter(pln);position:absolute;left:0;top:0;font-family:'JetBrains Mono',monospace;font-size:8.5pt;color:#b0b0c8;min-width:28px;text-align:right;border-right:1px solid #ddd;padding-right:6px}
+.preview-page.rm p{padding-left:42px;position:relative}
+.rm-ln{position:absolute;left:0;top:0;width:34px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:8pt;line-height:inherit;color:#a0a0c8;user-select:none;pointer-events:none;border-right:1px solid #ddd;padding-right:5px;height:1.8em;overflow:hidden}
 @media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
 
   function buildHTML(md,title){
     const pages=splitPages(md);
     const html=pages.map((p,i)=>`<div class="preview-page${rm?' rm':''}" data-page="${i+1}">${mdRender(p)}</div>`).join('');
+    const A4_CSS=`
+/* ── PV 툴바 ── */
+#pw-toolbar{position:fixed;top:0;left:0;right:0;height:36px;background:rgba(20,20,32,.93);
+  backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex;align-items:center;padding:0 10px;gap:5px;z-index:10000;font-family:monospace}
+#pw-toolbar button{background:none;border:1px solid rgba(255,255,255,.18);border-radius:4px;
+  color:#ccc;cursor:pointer;font-size:11px;padding:2px 9px;height:24px;transition:all .15s;white-space:nowrap}
+#pw-toolbar button:hover{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.45)}
+#pw-toolbar button.active{background:rgba(240,192,96,.22);color:#f7d06a;border-color:#f0c060}
+#pw-toolbar button.active-dark{background:rgba(80,140,255,.22);color:#7ab8ff;border-color:#5090ff}
+#pw-toolbar .sep{width:1px;height:18px;background:rgba(255,255,255,.13);flex-shrink:0}
+#pw-toolbar .lbl{font-size:10px;color:rgba(255,255,255,.38);flex-shrink:0}
+#pw-toolbar #pw-zoom-lbl{font-size:10px;color:#6acff7;min-width:36px;text-align:center}
+#pw-toolbar .spacer{flex:1}
+/* PPT 네비 */
+#pw-ppt-nav{display:none;position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+  z-index:10001;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.2);
+  border-radius:28px;padding:6px 16px;gap:10px;align-items:center;backdrop-filter:blur(10px)}
+#pw-ppt-nav.vis{display:flex}
+#pw-ppt-nav button{background:none;border:none;color:#fff;cursor:pointer;font-size:22px;
+  padding:0 6px;border-radius:12px;line-height:1;transition:background .15s}
+#pw-ppt-nav button:hover{background:rgba(255,255,255,.18)}
+#pw-ppt-nav #pw-ppt-pg{font-size:12px;color:rgba(255,255,255,.78);min-width:56px;text-align:center;font-family:monospace}
+body{padding-top:36px;margin:0;background:#555}
+html,body{overflow-x:hidden}
+/* body-inner: 기본 — 고정 너비 페이지를 중앙에 표시 */
+#body-inner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:16px 0 48px;
+}
+/* PPT 모드 */
+body.ppt-mode{background:#000;padding-top:36px}
+body.ppt-mode #body-inner{
+  display:block;
+  padding:0;
+  height:calc(100vh - 36px);
+  overflow:hidden;
+}
+/* 프레젠테이션 도구 오버레이 */
+#pres-overlay{
+  position:fixed;inset:0;top:36px;
+  z-index:20000;
+  pointer-events:none;
+  cursor:default;
+}
+#pres-overlay.mode-pointer{pointer-events:none;cursor:none}
+#pres-overlay.mode-pan{pointer-events:all;cursor:grab}
+#pres-overlay.mode-pan:active{cursor:grabbing}
+#pres-overlay.mode-pen{pointer-events:all;cursor:crosshair}
+#pres-overlay.mode-hl{pointer-events:all;cursor:crosshair}
+#pres-canvas{position:absolute;inset:0;width:100%;height:100%}
+/* 포인터 레이저 닷 */
+#laser-dot{
+  display:none;
+  position:fixed;
+  width:18px;height:18px;
+  border-radius:50%;
+  background:rgba(255,30,30,.92);
+  box-shadow:0 0 8px 4px rgba(255,60,60,.6),0 0 20px 8px rgba(255,0,0,.3);
+  pointer-events:none;
+  z-index:20001;
+  transform:translate(-50%,-50%);
+  transition:opacity .1s;
+}
+/* 프레젠테이션 툴바 */
+/* ═══ pres-toolbar: PPT 모드 도구 툴바 ═══
+   기본(pos-top): 상단 toolbar 아래 수평바
+   pos-bottom: 화면 하단 중앙
+   pos-right: 화면 우측 중앙 수직
+   pos-left: 화면 좌측 중앙 수직 */
+#pres-toolbar{
+  display:none;
+  position:fixed;
+  /* 기본: 상단 toolbar 바로 아래 */
+  top:40px; left:50%; transform:translateX(-50%);
+  z-index:20002;
+  background:rgba(10,10,22,.92);
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:28px;
+  padding:5px 14px; gap:6px;
+  align-items:center;
+  backdrop-filter:blur(12px);
+  white-space:nowrap;
+}
+#pres-toolbar.vis{ display:flex }
+/* 하단 */
+#pres-toolbar.pos-bottom{
+  top:auto; bottom:68px; left:50%; transform:translateX(-50%);
+  flex-direction:row;
+}
+/* 우측 */
+#pres-toolbar.pos-right{
+  top:50%; left:auto; right:10px; transform:translateY(-50%);
+  flex-direction:column; border-radius:16px; padding:10px 6px;
+}
+/* 좌측 */
+#pres-toolbar.pos-left{
+  top:50%; left:10px; right:auto; transform:translateY(-50%);
+  flex-direction:column; border-radius:16px; padding:10px 6px;
+}
+#pres-toolbar button{
+  background:none;border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;color:#ccc;cursor:pointer;font-size:13px;
+  padding:3px 9px;height:28px;transition:all .15s;white-space:nowrap;
+  display:flex;align-items:center;gap:4px;
+}
+#pres-toolbar button:hover{background:rgba(255,255,255,.12);color:#fff}
+#pres-toolbar button.active-tool{background:rgba(240,192,96,.25);color:#f7d06a;border-color:#f0c060}
+#pres-toolbar .pt-sep{width:1px;height:18px;background:rgba(255,255,255,.15)}
+#pres-toolbar input[type=color]{width:26px;height:26px;border:none;background:none;cursor:pointer;padding:0;border-radius:4px}
+#pres-toolbar input[type=range]{width:60px;accent-color:#f7d06a}
+/* Trans 가로 모드 */
+body.trans-mode .preview-page{width:297mm;min-height:210mm;padding:15mm 22mm}
+/* Dark 반전 테마 */
+body.dark-theme{background:#111}
+body.dark-theme .preview-page{background:#1a1a2e;color:#e8e8f0}
+body.dark-theme .preview-page h1,body.dark-theme .preview-page h2,
+body.dark-theme .preview-page h3{color:#a8b8ff}
+body.dark-theme .preview-page a{color:#6acff7}
+body.dark-theme .preview-page code{background:#2a2a3e;color:#f7a06a}
+body.dark-theme .preview-page blockquote{
+  border-left-color:#7c6af7;
+  color:#d4d0f0;
+  background:rgba(40,35,80,.6);
+  border-radius:0 6px 6px 0;
+}
+body.dark-theme .preview-page blockquote p{color:#d4d0f0}
+body.dark-theme .preview-page blockquote blockquote{
+  border-left-color:#a090ff;
+  color:#c0bce8;
+  background:rgba(50,45,90,.5);
+}
+body.dark-theme .preview-page table{color:#e8e8f0 !important;font-size:inherit !important}
+body.dark-theme .preview-page table th{background:#252540 !important;color:#c8d8ff !important;border-color:#4a4a68 !important}
+body.dark-theme .preview-page table td{border-color:#3a3a58 !important;background:transparent !important;color:#e8e8f0 !important}
+body.dark-theme .preview-page table tr:nth-child(even) td{background:#20203a !important;color:#e8e8f0 !important}
+body.dark-theme .preview-page table *{color:#e8e8f0 !important}
+body.dark-theme .preview-page table th *{color:#c8d8ff !important}
+@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
+
     return`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${title||'Preview'}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"><\/script>
-<style>${CSS}<\/style></head><body>${html}
+<style>${CSS}${A4_CSS}<\/style></head>
+<body>
+<div id="pw-toolbar">
+  <button onclick="window.print()" title="인쇄 / PDF">🖨 인쇄</button>
+  <button onclick="pwDownload()" title="현재 HTML 저장">💾 저장</button>
+  <div class="sep"></div>
+  <button onclick="pwZoomOut()" title="페이지 축소">－</button>
+  <span id="pw-zoom-lbl" title="현재 배율">100%</span>
+  <button onclick="pwZoomIn()" title="페이지 확대">＋</button>
+  <button onclick="pwZoomReset()" title="100%로 초기화">↺</button>
+  <div class="sep"></div>
+  <button id="pw-ppt-btn" onclick="pwTogglePPT()" title="PPT 프레젠테이션 모드">🎬 PPT</button>
+  <button id="pw-trans-btn" onclick="pwToggleTrans()" title="페이지 방향 전환">↔ Trans</button>
+  <button id="pw-dark-btn" onclick="pwToggleDark()" title="다크 테마">◑ Dark</button>
+  <button onclick="pwFullscreen()" title="전체화면 (F11)">⛶ 전체화면</button>
+  <div class="spacer"></div>
+  <span class="lbl" style="color:rgba(255,255,255,.4);font-size:9px">폰트</span>
+  <button onclick="pwFontDown()" title="폰트 축소 (텍스트만)">ᴬ－</button>
+  <span id="pw-font-lbl" style="color:#6acff7;font-size:10px;min-width:30px;text-align:center">11pt</span>
+  <button onclick="pwFontUp()" title="폰트 확대 (텍스트만)">ᴬ＋</button>
+  <button onclick="pwFontReset()" title="폰트 초기화">↺</button>
+  <div class="sep"></div>
+  <span class="lbl" id="pw-pg-lbl" style="color:rgba(255,255,255,.5)"></span>
+</div>
+<div id="body-inner">${html}</div>
+<div id="a4-overlay"></div>
+<!-- 프레젠테이션 도구 오버레이 -->
+<div id="pres-overlay" style="display:none">
+  <canvas id="pres-canvas"></canvas>
+</div>
+<div id="laser-dot"></div>
+</div>
+<!-- 프레젠테이션 도구 툴바 (PPT 모드에서 표시, 위치 변경 가능) -->
+<div id="pres-toolbar">
+  <button onclick="PRES.cyclePos()" id="pt-pos-btn" title="툴바 위치: 상단→하단→우측→좌측 [P]" style="font-size:11px">📌</button>
+  <div class="pt-sep"></div>
+  <button class="pt-tool active-tool" data-tool="laser" onclick="PRES.setTool('laser')" title="레이저 포인터 [1]">❶🔴</button>
+  <button class="pt-tool" data-tool="select" onclick="PRES.setTool('select')" title="선택 [2]">❷↖</button>
+  <button class="pt-tool" data-tool="pan" onclick="PRES.setTool('pan')" title="이동 [3]">❸✋</button>
+  <div class="pt-sep"></div>
+  <button class="pt-tool" data-tool="pen" onclick="PRES.setTool('pen')" title="펜 [4]">❹✏</button>
+  <span id="pt-pen-opts" style="display:none;align-items:center;gap:3px">
+    <input type="color" id="pt-pen-color" value="#e63030" onchange="PRES.setPenColor(this.value)">
+    <input type="range" min="1" max="20" value="4" oninput="PRES.setPenSize(this.value)" style="width:60px">
+  </span>
+  <button class="pt-tool" data-tool="hl" onclick="PRES.setTool('hl')" title="형광펜 [5]">❺🖊</button>
+  <span id="pt-hl-opts" style="display:none;align-items:center;gap:3px">
+    <input type="color" id="pt-hl-color" value="#ffe040" onchange="PRES.setHlColor(this.value)" title="형광펜 색상">
+    <span title="굵기" style="font-size:9px;color:#aaa">굵</span>
+    <button onclick="PRES.hlSizeDown()" title="굵기 감소" style="font-size:10px;padding:0 4px;height:20px;background:none;border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#ddd;cursor:pointer">－</button>
+    <span id="pt-hl-size-lbl" style="font-size:10px;color:#ffe040;min-width:20px;text-align:center">18</span>
+    <button onclick="PRES.hlSizeUp()" title="굵기 증가" style="font-size:10px;padding:0 4px;height:20px;background:none;border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#ddd;cursor:pointer">＋</button>
+    <span title="투명도" style="font-size:9px;color:#aaa;margin-left:4px">α</span>
+    <button onclick="PRES.hlAlphaDown()" title="투명도 감소 (더 연하게)" style="font-size:10px;padding:0 4px;height:20px;background:none;border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#ddd;cursor:pointer">－</button>
+    <span id="pt-hl-alpha-lbl" style="font-size:10px;color:#ffe040;min-width:24px;text-align:center">10%</span>
+    <button onclick="PRES.hlAlphaUp()" title="투명도 증가 (더 진하게)" style="font-size:10px;padding:0 4px;height:20px;background:none;border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#ddd;cursor:pointer">＋</button>
+  </span>
+  <button class="pt-tool" data-tool="eraser" onclick="PRES.setTool('eraser')" title="지우개 [6]">❻⬜</button>
+  <div class="pt-sep"></div>
+  <button onclick="PRES.clearCanvas()" title="전체 지우기" style="color:#f08080">🗑</button>
+</div>
+<div id="pw-ppt-nav">
+  <button onclick="pwPptPrev()" title="이전 (← ↑ PageUp)">◀</button>
+  <span id="pw-ppt-pg">1 / 1</span>
+  <button onclick="pwPptNext()" title="다음 (→ ↓ PageDown Space)">▶</button>
+  <button onclick="pwTogglePPT()" style="font-size:13px;opacity:.55;margin-left:4px" title="PPT 종료 (Esc)">✕</button>
+</div>
 <script>
 document.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener noreferrer'});
-window.addEventListener('message',e=>{if(e.data&&e.data.type==='ss')window.scrollTo(0,e.data.ratio*(document.body.scrollHeight-window.innerHeight))});
-let _st;window.addEventListener('scroll',()=>{clearTimeout(_st);_st=setTimeout(()=>{const r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);try{window.opener.postMessage({type:'pvS',ratio:r},'*')}catch(e){}},10)},{passive:true});
-<\/script></body></html>`;
+/* Research Mode 단락 번호 */
+(function(){let n=1;document.querySelectorAll('.preview-page').forEach(pg=>{pg.querySelectorAll(':scope>p').forEach(p=>{const s=document.createElement('span');s.className='rm-ln';s.textContent=n++;s.setAttribute('aria-hidden','true');p.insertBefore(s,p.firstChild)})})})();
+/* scroll sync — 메인 에디터와 */
+window.addEventListener('message',e=>{
+  if(e.data&&e.data.type==='ss'){
+    const bi=document.getElementById('body-inner');
+    if(bi)bi.scrollTop=e.data.ratio*(bi.scrollHeight-bi.clientHeight);
+    else window.scrollTo(0,e.data.ratio*(document.body.scrollHeight-window.innerHeight));
+  }
+});
+let _st;
+document.getElementById('body-inner').addEventListener('scroll',()=>{
+  clearTimeout(_st);_st=setTimeout(()=>{
+    const bi=document.getElementById('body-inner');
+    const r=bi.scrollTop/Math.max(1,bi.scrollHeight-bi.clientHeight);
+    try{window.opener.postMessage({type:'pvS',ratio:r},'*')}catch(e){}
+  },10);
+},{passive:true});
+
+/* ══ 확대/축소 ══
+   내부 PV와 동일한 방식: 페이지 width를 px로 직접 설정.
+   확대 시 body-inner(flex center)가 중앙 정렬을 보장.
+*/
+let _scale=1.0;
+const MIN_S=0.2, MAX_S=5.0, STEP_S=0.15;
+const _MM=96/25.4;
+const _A4W_PX=Math.round(210*_MM); /* ≈794 */
+
+let _fontPt=11; /* 기본 폰트 크기(pt) */
+const FONT_MIN=6,FONT_MAX=24,FONT_STEP=1;
+
+function _applyScale(){
+  if(_pptOn) return; /* PPT 모드는 _pptApply가 처리 */
+  const pages=document.querySelectorAll('.preview-page');
+  const fontPx=Math.round(_fontPt*(96/72)); /* pt→px */
+  pages.forEach(p=>{
+    p.style.padding=''; p.style.minHeight=''; p.style.boxSizing='';
+    p.style.maxWidth=''; p.style.transform=''; p.style.transformOrigin='';
+    if(_scale===1){
+      p.style.width=''; p.style.marginBottom='';
+    } else {
+      p.style.width=Math.round(_A4W_PX*_scale)+'px';
+      p.style.marginBottom='16px';
+    }
+    /* 폰트 크기: 페이지 전체에 적용 (table 포함 상속) */
+    p.style.fontSize=fontPx+'px';
+    p.style.lineHeight='1.8'; /* 폰트 변경 시 줄간격 유지 */
+  });
+  document.getElementById('pw-zoom-lbl').textContent=Math.round(_scale*100)+'%';
+  const lbl=document.getElementById('pw-font-lbl');
+  if(lbl)lbl.textContent=_fontPt+'pt';
+}
+
+function _applyFont(){
+  const lbl=document.getElementById('pw-font-lbl');
+  if(lbl)lbl.textContent=_fontPt+'pt';
+  const fontPx=Math.round(_fontPt*(96/72)*10)/10;
+  if(_pptOn){
+    /* PPT 모드: 현재 페이지 비율 계산 후 pages에 직접 적용 */
+    const pages=_getPages();
+    if(pages.length){
+      const curW=parseFloat(pages[0].style.width)||window.innerWidth;
+      const ratio=curW/_A4W_PX;
+      const szPx=Math.round(_fontPt*(96/72)*ratio*10)/10;
+      pages.forEach(p=>{ p.style.fontSize=szPx+'px'; p.style.lineHeight='1.8'; });
+    }
+    /* body-inner도 함께 적용 (상속 보조) */
+    const bi=document.getElementById('body-inner');
+    const ratio=window.innerWidth/_A4W_PX;
+    if(bi)bi.style.fontSize=Math.round(_fontPt*(96/72)*ratio*10)/10+'px';
+  } else {
+    /* 일반 모드: preview-page에 직접 fontSize 적용 */
+    document.querySelectorAll('.preview-page').forEach(p=>{
+      p.style.fontSize=fontPx+'px';
+      p.style.lineHeight='1.8';
+    });
+    /* zoom 레이블도 갱신 */
+    const zl=document.getElementById('pw-zoom-lbl');
+    if(zl)zl.textContent=Math.round(_scale*100)+'%';
+  }
+}
+function pwFontUp(){_fontPt=Math.min(FONT_MAX,_fontPt+FONT_STEP);_applyFont();}
+function pwFontDown(){_fontPt=Math.max(FONT_MIN,_fontPt-FONT_STEP);_applyFont();}
+function pwFontReset(){_fontPt=11;_applyFont();}
+
+/* 창 너비에 fit */
+function _fitToWindow(){
+  const avail=window.innerWidth-40;
+  _scale=Math.max(MIN_S, Math.min(MAX_S, Math.floor((avail/_A4W_PX)*100)/100));
+  _applyScale();
+}
+
+/* PPT 모드 전용 zoom: 페이지 비례 조정 (vw 기준 ±15%) */
+function _pptZoomExternal(delta){
+  const pages=_getPages();
+  if(!pages.length)return;
+  const curW=parseFloat(pages[0].style.width)||window.innerWidth;
+  const newW=Math.round(Math.max(window.innerWidth*0.5,
+                        Math.min(window.innerWidth*2.0, curW+delta*_A4W_PX)));
+  const ratio=newW/_A4W_PX;
+  const fontPx=Math.round(_fontPt*(96/72)*ratio*10)/10;
+  pages.forEach(p=>{
+    p.style.width=newW+'px';
+    p.style.padding=Math.round(22*_MM*ratio)+'px '+Math.round(18*_MM*ratio)+'px';
+    p.style.minHeight=Math.round(297*_MM*ratio)+'px';
+    p.style.fontSize=fontPx+'px';
+    p.style.lineHeight='1.8';
+  });
+  const bi=document.getElementById('body-inner');
+  bi.style.fontSize=fontPx+'px';
+  document.getElementById('pw-zoom-lbl').textContent=Math.round(ratio*100)+'%';
+}
+
+function pwZoomIn(){
+  if(_pptOn){ _pptZoomExternal(+0.15); return; }
+  _scale=Math.min(MAX_S, Math.round((_scale+STEP_S)*100)/100);
+  _applyScale();
+}
+function pwZoomOut(){
+  if(_pptOn){ _pptZoomExternal(-0.15); return; }
+  _scale=Math.max(MIN_S, Math.round((_scale-STEP_S)*100)/100);
+  _applyScale();
+}
+function pwZoomReset(){ _scale=1.0; _applyScale(); }
+
+/* ══ 전체화면 ══ */
+function pwFullscreen(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+
+/* ══ PPT 모드 ══
+   전체화면 후 vw에 맞게 각 페이지 width/padding/fontSize 직접 설정.
+   transform 없음 → 잘림 없음.
+   zoom 버튼은 PPT 모드 중 비활성.
+*/
+let _pptOn=false;
+function _getPages(){ return [...document.querySelectorAll('.preview-page')]; }
+
+function _pptApply(){
+  const vw=window.innerWidth;
+  const ratio=vw/_A4W_PX;
+  const fontPx=Math.round(_fontPt*(96/72)*ratio*10)/10;
+  _getPages().forEach(p=>{
+    p.style.transform=''; p.style.transformOrigin='';
+    p.style.width=vw+'px';
+    p.style.maxWidth='none';
+    p.style.padding=Math.round(22*_MM*ratio)+'px '+Math.round(18*_MM*ratio)+'px';
+    p.style.minHeight=Math.round(297*_MM*ratio)+'px';
+    p.style.marginBottom='0';
+    p.style.boxSizing='border-box';
+    p.style.fontSize=fontPx+'px';
+    p.style.lineHeight='1.8';
+  });
+  const bi=document.getElementById('body-inner');
+  bi.style.fontSize=fontPx+'px';
+  bi.style.alignItems='flex-start';
+  document.getElementById('pw-zoom-lbl').textContent=Math.round(ratio*100)+'%';
+  _updatePptPg();
+}
+
+function _pptRestore(){
+  _getPages().forEach(p=>{
+    p.style.width=''; p.style.padding=''; p.style.minHeight='';
+    p.style.marginBottom=''; p.style.boxSizing=''; p.style.maxWidth='';
+  });
+  const bi=document.getElementById('body-inner');
+  bi.style.fontSize=''; bi.style.alignItems='';
+  document.getElementById('pw-zoom-lbl').style.opacity='';
+  _applyScale();
+  /* font lbl 복원 */
+  const fl=document.getElementById('pw-font-lbl');
+  if(fl)fl.textContent=_fontPt+'pt';
+}
+
+function _vpH(){ return window.innerHeight-36; }
+
+function _pptStep(dir){
+  const bi=document.getElementById('body-inner');
+  const vh=_vpH();
+  let next=bi.scrollTop+dir*vh;
+  next=Math.max(0,next);
+  _getPages().forEach(p=>{
+    if(Math.abs(next-p.offsetTop)<vh*0.18) next=p.offsetTop;
+  });
+  next=Math.min(next, bi.scrollHeight-bi.clientHeight);
+  bi.scrollTo({top:next, behavior:'smooth'});
+  setTimeout(_updatePptPg,350);
+}
+
+function _updatePptPg(){
+  const bi=document.getElementById('body-inner');
+  const pages=_getPages(); if(!pages.length) return;
+  const mid=bi.scrollTop+_vpH()/2;
+  let best=0,bestD=Infinity;
+  pages.forEach((p,i)=>{
+    const d=Math.abs(p.offsetTop+p.offsetHeight/2-mid);
+    if(d<bestD){bestD=d;best=i;}
+  });
+  const pgText=(best+1)+' / '+pages.length;
+  document.getElementById('pw-ppt-pg').textContent=pgText;
+  document.getElementById('pw-pg-lbl').textContent=pgText;
+}
+
+function pwPptPrev(){ _pptStep(-1); }
+function pwPptNext(){ _pptStep(1); }
+
+function pwTogglePPT(autoStart){
+  const btn=document.getElementById('pw-ppt-btn');
+  const nav=document.getElementById('pw-ppt-nav');
+  if(!_pptOn){
+    _pptOn=true;
+    document.body.classList.add('ppt-mode');
+    btn.classList.add('active'); btn.textContent='🎬 종료';
+    nav.classList.add('vis');
+    PRES.show(); /* 프레젠테이션 도구 툴바 표시 */
+    const doApply=()=>requestAnimationFrame(()=>{
+      _pptApply();
+      document.getElementById('body-inner').scrollTop=0;
+    });
+    if(!document.fullscreenElement){
+      document.documentElement.requestFullscreen()
+        .then(()=>setTimeout(doApply,120))
+        .catch(()=>doApply());
+    } else { doApply(); }
+    window._pptResizeH=()=>{
+      if(!_pptOn) return;
+      const bi=document.getElementById('body-inner');
+      const r=bi.scrollTop/Math.max(1,bi.scrollHeight);
+      _pptApply();
+      setTimeout(()=>{bi.scrollTop=r*bi.scrollHeight;_updatePptPg();},50);
+    };
+    window.addEventListener('resize',window._pptResizeH);
+  } else {
+    _pptOn=false;
+    document.body.classList.remove('ppt-mode');
+    btn.classList.remove('active'); btn.textContent='🎬 PPT';
+    nav.classList.remove('vis');
+    PRES.hide(); /* 도구 툴바 숨김 */
+    _pptRestore();
+    if(document.fullscreenElement) document.exitFullscreen();
+    if(window._pptResizeH){ window.removeEventListener('resize',window._pptResizeH); window._pptResizeH=null; }
+    document.getElementById('pw-pg-lbl').textContent=_getPages().length+' 페이지';
+  }
+}
+
+/* ══ 프레젠테이션 도구 (PRES) ══
+   도구: select(기본), pan(이동), pen(펜), hl(형광펜), laser(포인터)
+   캔버스에 drawing, pan은 body-inner 스크롤 조작
+*/
+const PRES=(()=>{
+  let tool='laser', penColor='#e63030', penSize=4;
+  let hlColor='#ffe040', hlSize=18, hlAlpha=0.40;
+  let drawing=false;
+  let panStartY=0, panStartScroll=0;
+  let canvas,ctx,overlay,laserDot;
+  let _init=false;
+
+  function init(){
+    if(_init)return; _init=true;
+    overlay=document.getElementById('pres-overlay');
+    canvas=document.getElementById('pres-canvas');
+    laserDot=document.getElementById('laser-dot');
+
+    function resize(){
+      const imgData=ctx?ctx.getImageData(0,0,canvas.width,canvas.height):null;
+      canvas.width=window.innerWidth;
+      canvas.height=window.innerHeight;
+      ctx=canvas.getContext('2d');
+      if(imgData)ctx.putImageData(imgData,0,0);
+    }
+    resize();
+    window.addEventListener('resize',resize);
+
+    /* mousemove는 document에 등록 → 오버레이 밖에서도 레이저/pan 추적 */
+    document.addEventListener('mousemove',onMove);
+    overlay.addEventListener('mousedown',onDown);
+    document.addEventListener('mouseup',onUp);
+
+    /* 마우스 휠로 스크롤 (pan/laser 도구일 때) */
+    window.addEventListener('wheel',e=>{
+      if(!['pan','laser','select'].includes(tool))return;
+      const bi=document.getElementById('body-inner');
+      if(bi){bi.scrollTop+=e.deltaY;setTimeout(_updatePptPg,100);}
+    },{passive:true});
+  }
+
+  function setTool(t){
+    tool=t;
+    if(!overlay)return;
+    document.querySelectorAll('#pres-toolbar .pt-tool').forEach(b=>{
+      b.classList.toggle('active-tool',b.dataset.tool===t);
+    });
+    /* 오버레이 pointer-events */
+    overlay.className='';
+    if(t==='laser'){
+      overlay.className='mode-pointer';
+      laserDot.style.display='block';
+    } else {
+      laserDot.style.display='none';
+      if(t==='pan') overlay.className='mode-pan';
+      else if(t==='pen'||t==='hl'||t==='eraser') overlay.className='mode-pen';
+    }
+    /* 옵션 패널 */
+    document.getElementById('pt-pen-opts').style.display=(t==='pen')?'flex':'none';
+    document.getElementById('pt-hl-opts').style.display=(t==='hl')?'flex':'none';
+  }
+
+  function onDown(e){
+    if(tool==='pan'){
+      drawing=true;
+      panStartY=e.clientY;
+      const bi=document.getElementById('body-inner');
+      panStartScroll=bi?bi.scrollTop:0;
+      return;
+    }
+    if(tool==='pen'||tool==='hl'||tool==='eraser'){
+      drawing=true;
+      /* 경로 시작: canvas 기준 좌표로 변환 */
+      const cr=canvas.getBoundingClientRect();
+      const sx=e.clientX-cr.left, sy=e.clientY-cr.top;
+      ctx.beginPath();
+      _setCtxStyle();
+      ctx.moveTo(sx,sy);
+      /* 첫 점 기록 — onMove가 다른 좌표계 쓰는 버그 방지 */
+      canvas._lastX=sx; canvas._lastY=sy;
+    }
+  }
+
+  function _setCtxStyle(){
+    if(tool==='eraser'){
+      ctx.globalCompositeOperation='destination-out';
+      ctx.globalAlpha=1;
+      ctx.lineWidth=24;
+      ctx.strokeStyle='rgba(0,0,0,1)';
+    } else if(tool==='pen'){
+      ctx.globalCompositeOperation='source-over';
+      ctx.globalAlpha=1;
+      ctx.strokeStyle=penColor;
+      ctx.lineWidth=penSize;
+    } else {
+      ctx.globalCompositeOperation='source-over';
+      ctx.globalAlpha=hlAlpha;
+      ctx.strokeStyle=hlColor;
+      ctx.lineWidth=hlSize;
+    }
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+  }
+
+  function onMove(e){
+    /* 레이저: overlay 밖에서도 추적 */
+    if(tool==='laser'){
+      laserDot.style.left=e.clientX+'px';
+      laserDot.style.top=e.clientY+'px';
+      return;
+    }
+    if(!drawing)return;
+    if(tool==='pan'){
+      const bi=document.getElementById('body-inner');
+      if(bi)bi.scrollTop=panStartScroll+(panStartY-e.clientY);
+      return;
+    }
+    if(tool==='pen'||tool==='hl'||tool==='eraser'){
+      const cr=canvas.getBoundingClientRect();
+      const cx=e.clientX-cr.left, cy=e.clientY-cr.top;
+      ctx.moveTo(canvas._lastX!==undefined?canvas._lastX:cx,
+                 canvas._lastY!==undefined?canvas._lastY:cy);
+      ctx.lineTo(cx,cy);
+      ctx.stroke();
+      ctx.beginPath();
+      canvas._lastX=cx; canvas._lastY=cy;
+    }
+  }
+
+  function onUp(){
+    drawing=false;
+    if(canvas){canvas._lastX=undefined;canvas._lastY=undefined;}
+    if(ctx){ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';}
+  }
+
+  function clearCanvas(){
+    if(ctx)ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+
+  function show(){
+    init();
+    const tb=document.getElementById('pres-toolbar');
+    if(tb){
+      /* 이전 포지션 클래스 복원 */
+      tb.classList.remove('vis','pos-bottom','pos-right','pos-left');
+      tb.classList.add('vis');
+      if(_posClasses[_posIdx]) tb.classList.add(_posClasses[_posIdx]);
+    }
+    const ov=document.getElementById('pres-overlay');
+    if(ov) ov.style.display='block';
+    setTool('laser');
+  }
+  function hide(){
+    const tb=document.getElementById('pres-toolbar');
+    if(tb) tb.classList.remove('vis','pos-bottom','pos-right','pos-left');
+    const ov=document.getElementById('pres-overlay');
+    if(ov) ov.style.display='none';
+    if(laserDot)laserDot.style.display='none';
+    clearCanvas();
+    tool='laser'; _posIdx=0;
+  }
+
+  /* 툴바 위치 순환: 상단(기본) → 하단 → 우측 → 좌측 → 상단 */
+  const _posClasses=['','pos-bottom','pos-right','pos-left'];
+  const _posLabels=['📌⬆','📌⬇','📌▶','📌◀'];
+  let _posIdx=0;
+  function cyclePos(){
+    const tb=document.getElementById('pres-toolbar');
+    if(!tb||!tb.classList.contains('vis'))return;
+    _posIdx=(_posIdx+1)%_posClasses.length;
+    /* 기존 위치 클래스 제거 후 새 클래스 추가 */
+    tb.classList.remove('pos-bottom','pos-right','pos-left');
+    if(_posClasses[_posIdx]) tb.classList.add(_posClasses[_posIdx]);
+    const btn=document.getElementById('pt-pos-btn');
+    if(btn)btn.title='현재: '+['상단','하단','우측','좌측'][_posIdx]+' → 클릭으로 변경';
+  }
+
+  function _updHlUI(){
+    const sl=document.getElementById('pt-hl-size-lbl');
+    const al=document.getElementById('pt-hl-alpha-lbl');
+    if(sl)sl.textContent=hlSize;
+    if(al)al.textContent=Math.round(hlAlpha*100)+'%';
+  }
+  return{
+    show,hide,setTool,clearCanvas,cyclePos,
+    setPenColor(col){penColor=col},
+    setPenSize(s){penSize=+s},
+    setHlColor(col){hlColor=col},
+    setHlSize(s){hlSize=+s; _updHlUI();},
+    setHlAlpha(v){hlAlpha=+v/100; _updHlUI();},
+    hlSizeUp(){hlSize=Math.min(60,hlSize+2); _updHlUI();},
+    hlSizeDown(){hlSize=Math.max(4,hlSize-2); _updHlUI();},
+    hlAlphaUp(){hlAlpha=Math.min(0.90,+(hlAlpha+0.05).toFixed(2)); _updHlUI();},
+    hlAlphaDown(){hlAlpha=Math.max(0.02,+(hlAlpha-0.05).toFixed(2)); _updHlUI();}
+  };
+})();
+
+/* ══ Trans ══ */
+let _transOn=false;
+function pwToggleTrans(){
+  _transOn=!_transOn;
+  const btn=document.getElementById('pw-trans-btn');
+  document.body.classList.toggle('trans-mode',_transOn);
+  btn.classList.toggle('active',_transOn);
+  btn.textContent=_transOn?'↕ Portrait':'↔ Trans';
+  if(_pptOn){setTimeout(()=>{_pptApply();},80);}
+  else {_applyScale();}
+}
+
+/* ══ Dark 반전 테마 ══ */
+let _darkOn=false;
+function pwToggleDark(){
+  _darkOn=!_darkOn;
+  const btn=document.getElementById('pw-dark-btn');
+  document.body.classList.toggle('dark-theme',_darkOn);
+  btn.classList.toggle('active-dark',_darkOn);
+  btn.textContent=_darkOn?'☀ Light':'◑ Dark';
+}
+
+/* ══ 키보드 단축키 ══ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='F11'){e.preventDefault();pwFullscreen();return;}
+  if(!_pptOn)return;
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key==='PageDown'||e.key===' '){e.preventDefault();pwPptNext();}
+  else if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();pwPptPrev();}
+  else if(e.key==='Escape'){e.preventDefault();pwTogglePPT();}
+  else if(e.key==='Home'){e.preventDefault();document.getElementById('body-inner').scrollTo({top:0,behavior:'smooth'});}
+  else if(e.key==='End'){const bi=document.getElementById('body-inner');bi.scrollTo({top:bi.scrollHeight,behavior:'smooth'});}
+  /* 프레젠테이션 도구 단축키 1~6 */
+  else if(e.key==='1')PRES.setTool('laser');
+  else if(e.key==='2')PRES.setTool('select');
+  else if(e.key==='3')PRES.setTool('pan');
+  else if(e.key==='4')PRES.setTool('pen');
+  else if(e.key==='5')PRES.setTool('hl');
+  else if(e.key==='6')PRES.setTool('eraser');
+  else if(e.key==='p'||e.key==='P')PRES.cyclePos();
+});
+
+/* ══ 마우스 휠 스크롤 (PPT 모드) ══ */
+window.addEventListener('wheel',e=>{
+  if(!_pptOn)return;
+  const bi=document.getElementById('body-inner');
+  bi.scrollTop+=e.deltaY;
+  setTimeout(_updatePptPg,100);
+},{passive:true});
+
+/* 페이지 수 표시 + 창 크기에 항상 fit */
+window.addEventListener('load',()=>{
+  const n=document.querySelectorAll('.preview-page').length;
+  document.getElementById('pw-pg-lbl').textContent='1 / '+n;
+  _fitToWindow();
+  /* 일반 모드 스크롤 시 페이지 표시 갱신 */
+  const bi=document.getElementById('body-inner');
+  bi.addEventListener('scroll',()=>{
+    if(_pptOn)return; /* PPT 모드는 _updatePptPg가 처리 */
+    const pages=[...document.querySelectorAll('.preview-page')];
+    if(!pages.length)return;
+    const mid=bi.scrollTop+window.innerHeight*0.3;
+    let cur=0;
+    for(let i=0;i<pages.length;i++){if(pages[i].offsetTop<=mid)cur=i;}
+    document.getElementById('pw-pg-lbl').textContent=(cur+1)+' / '+pages.length;
+  },{passive:true});
+});<\/script></body></html>`;
   }
 
   // 이슈1 수정: 메시지 리스너를 open() 밖에서 1회만 등록
@@ -1162,17 +2885,17 @@ let _st;window.addEventListener('scroll',()=>{clearTimeout(_st);_st=setTimeout((
   }
 
   function open(){
+    _initMsgListener();
     const title=el('doc-title').value;
     if(win&&!win.closed){win.focus();sync();return}
     const w=920,h=Math.floor(window.screen.height*.88);
     const left=window.screenX+window.outerWidth+10,top=window.screenY;
     try{
-      win=window.open('','md_pv_v7',`width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+      win=window.open('','_blank',`width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
       if(!win)throw 0;
       win.document.open();win.document.write(buildHTML(el('editor').value,title));win.document.close();
       el('pw-btn').classList.add('open');
       win.addEventListener('beforeunload',()=>el('pw-btn').classList.remove('open'));
-      _initMsgListener(); // 최초 1회만 실제 등록됨
     }catch(e){alert('팝업이 차단되었습니다.');}
   }
 
@@ -1190,20 +2913,160 @@ let _st;window.addEventListener('scroll',()=>{clearTimeout(_st);_st=setTimeout((
   }
 
   function forceRefresh(){if(win&&!win.closed){const t=el('doc-title').value;try{win.document.open();win.document.write(buildHTML(el('editor').value,t));win.document.close()}catch(e){}}else open()}
-  function checkClosed(){if(win&&win.closed)el('pw-btn').classList.remove('open')}
+  function checkClosed(){if(win&&win.closed){el('pw-btn').classList.remove('open');win=null;}}
   function setRM(v){rm=v}
-  return{open,sync,forceRefresh,checkClosed,pushScroll,setRM};
+
+  /* PPT 모드로 바로 열기 */
+  function openPPT(){
+    _initMsgListener();
+    const title=el('doc-title').value;
+    /* 이미 창이 열려있으면 재사용 */
+    if(win&&!win.closed){
+      win.focus();
+      // 약간 딜레이 후 PPT 시작 메시지
+      setTimeout(()=>{try{win.postMessage({type:'startPPT'},'*')}catch(e){}},300);
+      return;
+    }
+    const w=Math.floor(window.screen.width*.9);
+    const h=Math.floor(window.screen.height*.9);
+    const left=Math.floor((window.screen.width-w)/2);
+    const top=Math.floor((window.screen.height-h)/2);
+    try{
+      win=window.open('','_blank',`width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=no`);
+      if(!win)throw 0;
+      win.document.open();win.document.write(buildHTML(el('editor').value,title));win.document.close();
+      el('pw-btn').classList.add('open');
+      win.addEventListener('beforeunload',()=>el('pw-btn').classList.remove('open'));
+      // 로드 완료 후 PPT 자동 시작
+      setTimeout(()=>{try{win.postMessage({type:'startPPT'},'*')}catch(e){}},800);
+    }catch(e){alert('팝업이 차단되었습니다.');}
+  }
+
+  return{open,sync,forceRefresh,checkClosed,pushScroll,setRM,openPPT};
 })();
 
 /* ═══════════════════════════════════════════════════════════
-   SCROLL SYNC (editor ↔ inline preview ↔ popup)
+   SCROLL SYNC — 헤딩 앵커 기반 동기화
+   에디터의 현재 스크롤 위치에서 직전 헤딩을 찾아
+   미리보기의 같은 헤딩으로 점프 + 헤딩 사이 비율로 보정
 ═══════════════════════════════════════════════════════════ */
 const SS=(()=>{
-  let el2=false,pl=false,t=null;
+  let lock=false,t=null;
+
+  /* 에디터 라인 기반 헤딩 맵 빌드
+     반환: [{line, id, edY}] — 에디터 스크롤 px 좌표 포함 */
+  function buildEdMap(ed){
+    const lines=ed.value.split('\n');
+    const lineH=ed.scrollHeight/Math.max(1,lines.length); /* 줄당 평균 높이 */
+    const map=[];
+    lines.forEach((ln,i)=>{
+      const m=ln.match(/^(#{1,3})\s+(.+)/);
+      if(!m)return;
+      const text=m[2].replace(/[*_`]/g,'');
+      const id='h-'+text.toLowerCase().replace(/[^a-z0-9가-힣\s]/g,'').replace(/\s+/g,'-').substring(0,50);
+      map.push({line:i,id,edY:i*lineH});
+    });
+    return map;
+  }
+
+  /* 에디터 scrollTop → 직전 헤딩 + 구간 내 비율 */
+  function edScrollToAnchor(ed){
+    const map=buildEdMap(ed);
+    if(!map.length)return null;
+    const st=ed.scrollTop;
+    let prev=map[0],next=null;
+    for(let i=0;i<map.length;i++){
+      if(map[i].edY<=st+2){prev=map[i];next=map[i+1]||null;}
+      else break;
+    }
+    const segLen=next?next.edY-prev.edY:ed.scrollHeight-prev.edY;
+    const ratio=segLen>0?Math.min(1,(st-prev.edY)/segLen):0;
+    return{id:prev.id,ratio,nextId:next?next.id:null};
+  }
+
+  /* 미리보기에서 헤딩 id → scrollTop 계산 */
+  function pvYofId(pc,id){
+    const el2=pc.querySelector(`#${id}`);
+    if(!el2)return null;
+    return el2.offsetTop - (el2.closest('.preview-page')?.offsetTop||0)
+         + (el2.closest('.preview-page')?.offsetTop||0)
+         - pc.offsetTop + pc.scrollTop
+         - el2.offsetParent?.offsetTop||0;
+  }
+  function pvAbsY(pc,id){
+    const h=pc.querySelector(`#${id}`);
+    if(!h)return null;
+    /* getBoundingClientRect 기반 — 스크롤 포함 절대값 */
+    const pcRect=pc.getBoundingClientRect();
+    const hRect=h.getBoundingClientRect();
+    return pc.scrollTop+(hRect.top-pcRect.top);
+  }
+
+  /* 에디터 → 미리보기 동기화 */
+  function syncEdToPv(){
+    const ed=el('editor'),pc=el('preview-container');
+    const anchor=edScrollToAnchor(ed);
+    if(!anchor){
+      /* 헤딩 없으면 비율 fallback */
+      const r=ed.scrollTop/Math.max(1,ed.scrollHeight-ed.clientHeight);
+      pc.scrollTop=r*(pc.scrollHeight-pc.clientHeight);
+      PW.pushScroll(r);
+      return;
+    }
+    const y0=pvAbsY(pc,anchor.id);
+    if(y0===null){
+      const r=ed.scrollTop/Math.max(1,ed.scrollHeight-ed.clientHeight);
+      pc.scrollTop=r*(pc.scrollHeight-pc.clientHeight);
+      return;
+    }
+    const y1=anchor.nextId?pvAbsY(pc,anchor.nextId):null;
+    const segPv=y1!==null?y1-y0:pc.scrollHeight-y0;
+    pc.scrollTop=y0+segPv*anchor.ratio;
+    const rGlobal=pc.scrollTop/Math.max(1,pc.scrollHeight-pc.clientHeight);
+    PW.pushScroll(rGlobal);
+  }
+
+  /* 미리보기 → 에디터 동기화 (비율 기반 fallback 유지) */
+  function syncPvToEd(){
+    const ed=el('editor'),pc=el('preview-container');
+    const r=pc.scrollTop/Math.max(1,pc.scrollHeight-pc.clientHeight);
+    /* 미리보기에서 현재 보이는 헤딩을 역으로 찾아 에디터 점프 */
+    const map=buildEdMap(ed);
+    if(!map.length){
+      ed.scrollTop=r*(ed.scrollHeight-ed.clientHeight);
+      return;
+    }
+    /* 미리보기에서 scrollTop 직전 헤딩 */
+    let bestId=null,bestY=-Infinity;
+    map.forEach(m=>{
+      const y=pvAbsY(pc,m.id);
+      if(y!==null&&y<=pc.scrollTop+8&&y>bestY){bestY=y;bestId=m.id;}
+    });
+    if(!bestId){
+      ed.scrollTop=r*(ed.scrollHeight-ed.clientHeight);
+      return;
+    }
+    const idx=map.findIndex(m=>m.id===bestId);
+    const cur=map[idx],nxt=map[idx+1]||null;
+    const pvSeg=nxt?pvAbsY(pc,nxt.id)-bestY:pc.scrollHeight-bestY;
+    const pvOff=Math.max(0,pc.scrollTop-bestY);
+    const segRatio=pvSeg>0?Math.min(1,pvOff/pvSeg):0;
+    const edSeg=nxt?nxt.edY-cur.edY:ed.scrollHeight-cur.edY;
+    ed.scrollTop=cur.edY+edSeg*segRatio;
+  }
+
   function init(){
     const ed=el('editor'),pc=el('preview-container');
-    ed.addEventListener('scroll',()=>{if(pl)return;clearTimeout(t);t=setTimeout(()=>{const r=ed.scrollTop/Math.max(1,ed.scrollHeight-ed.clientHeight);pl=true;pc.scrollTop=r*(pc.scrollHeight-pc.clientHeight);PW.pushScroll(r);setTimeout(()=>pl=false,60)},5)},{passive:true});
-    pc.addEventListener('scroll',()=>{if(el2)return;clearTimeout(t);t=setTimeout(()=>{const r=pc.scrollTop/Math.max(1,pc.scrollHeight-pc.clientHeight);el2=true;const ed2=el('editor');ed2.scrollTop=r*(ed2.scrollHeight-ed2.clientHeight);PW.pushScroll(r);setTimeout(()=>el2=false,60)},5)},{passive:true});
+    ed.addEventListener('scroll',()=>{
+      if(lock)return;
+      clearTimeout(t);
+      t=setTimeout(()=>{lock=true;syncEdToPv();setTimeout(()=>lock=false,80);},8);
+    },{passive:true});
+    pc.addEventListener('scroll',()=>{
+      if(lock)return;
+      clearTimeout(t);
+      t=setTimeout(()=>{lock=true;syncPvToEd();setTimeout(()=>lock=false,80);},8);
+    },{passive:true});
   }
   return{init};
 })();
@@ -1217,12 +3080,41 @@ const TOC=(()=>{
     const list=el('toc-list');const hs=[];const cnt=[0,0,0];
     md.split('\n').forEach(line=>{const m=line.match(/^(#{1,3})\s+(.+)/);if(!m)return;const lv=m[1].length,text=m[2].replace(/[*_`]/g,'');const id='h-'+text.toLowerCase().replace(/[^a-z0-9가-힣\s]/g,'').replace(/\s+/g,'-').substring(0,50);cnt[lv-1]++;for(let i=lv;i<3;i++)cnt[i]=0;const num=lv===1?cnt[0]:lv===2?`${cnt[0]}.${cnt[1]}`:`${cnt[0]}.${cnt[1]}.${cnt[2]}`;hs.push({lv,text,id,num})});
     if(!hs.length){list.innerHTML='<div style="padding:12px;color:var(--tx3);font-size:12px">헤딩(#)을 추가하면 자동 생성됩니다.</div>';return}
-    list.innerHTML=hs.map(h=>`<div class="toc-item" data-level="${h.lv}" onclick="TOC.go('${h.id}')"><span class="toc-num">${h.num}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.text}</span></div>`).join('');
+    list.innerHTML=hs.map(h=>`<div class="toc-item" data-level="${h.lv}" data-id="${h.id}" onclick="TOC.go('${h.id}')"><span class="toc-num">${h.num}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.text}</span></div>`).join('');
     attachObs();
   }
   function go(id){const e=document.querySelector(`#preview-container #${id}`);if(e){e.scrollIntoView({behavior:'smooth',block:'start'});document.querySelectorAll('.toc-item').forEach(i=>i.classList.remove('active'));document.querySelectorAll(`.toc-item[data-id="${id}"]`).forEach(i=>i.classList.add('active'))}}
   function attachObs(){if(obs)obs.disconnect();const pc=el('preview-container');obs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){const id=e.target.id;document.querySelectorAll('.toc-item').forEach(i=>i.classList.remove('active'));document.querySelectorAll(`.toc-item[data-id="${id}"]`).forEach(i=>i.classList.add('active'))}})},{root:pc,threshold:.15});pc.querySelectorAll('h1,h2,h3').forEach(h=>obs.observe(h))}
-  return{build,go};
+
+  /* 목차 자동 삽입 — 문서 맨 앞(또는 첫 h1 앞)에 마크다운 목차 블록 삽입 */
+  function insertTOC(){
+    const ed=el('editor');
+    const md=ed.value;
+    const lines=md.split('\n');
+    const hs=[];const cnt=[0,0,0];
+    lines.forEach(ln=>{
+      const m=ln.match(/^(#{1,3})\s+(.+)/);
+      if(!m)return;
+      const lv=m[1].length,text=m[2].replace(/[*_`[\]()]/g,'').trim();
+      const id='h-'+text.toLowerCase().replace(/[^a-z0-9가-힣\s]/g,'').replace(/\s+/g,'-').substring(0,50);
+      cnt[lv-1]++;for(let i=lv;i<3;i++)cnt[i]=0;
+      const num=lv===1?`${cnt[0]}`:lv===2?`${cnt[0]}.${cnt[1]}`:`${cnt[0]}.${cnt[1]}.${cnt[2]}`;
+      const indent='  '.repeat(lv-1);
+      hs.push(`${indent}- [${num}. ${text}](#${id})`);
+    });
+    if(!hs.length){alert('헤딩(#)이 없어 목차를 생성할 수 없습니다.');return;}
+    const tocBlock=`## 목차\n\n${hs.join('\n')}\n\n---\n\n`;
+    /* 이미 목차 블록이 있으면 교체, 없으면 앞에 삽입 */
+    const existing=/^## 목차\n[\s\S]*?---\n\n/m;
+    if(existing.test(md)){
+      ed.value=md.replace(existing,tocBlock);
+    } else {
+      ed.value=tocBlock+md;
+    }
+    US.snap();App.render();
+  }
+
+  return{build,go,insertTOC};
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -2548,6 +4440,7 @@ const ED={
   },
   pageBreak(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'\n\n<div class="page-break"></div>\n\n')},
   lineBreak(){const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,'<br>\n')},
+  insertNbsp(){const ed=this.ed();if(!ed)return;const s=ed.selectionStart,e=ed.selectionEnd;ins(ed,s,e,'&nbsp;');US.snap();},
   link(){const text=el('link-text').value||'링크';const url=el('link-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`[${text}](${url})`);App.hideModal('link-modal');el('link-text').value='';el('link-url').value=''},
   image(){const alt=el('img-alt').value||'이미지';const url=el('img-url').value||'#';const ed=this.ed(),s=ed.selectionStart;ins(ed,s,s,`![${alt}](${url})`);el('img-alt').value='';el('img-url').value='';App.hideModal('image-modal')},
   math(){const ed=this.ed(),s=ed.selectionStart,e=ed.selectionEnd,sel=ed.value.substring(s,e);ins(ed,s,e,sel?`$$\n${sel}\n$$`:'\n$$\n\\phi = \\frac{\\lambda_2}{c^2}\n$$\n')},
@@ -3226,6 +5119,14 @@ function handleKey(e){
   if(!inEd){if(k==='A+?'){e.preventDefault();App.showHK()}return}
   if(k==='C+Z'){e.preventDefault();US.undo();return}
   if(k==='C+S+Z'||k==='C+Y'){e.preventDefault();US.redo();return}
+  // Ctrl+Shift+Space → &nbsp; 삽입 (줄바꿈 다음 위치에 공백 추가)
+  if(k==='C+S+ '){
+    e.preventDefault();
+    const ed=el('editor'),s=ed.selectionStart,v=ed.value;
+    // 현재 위치에 &nbsp; 삽입
+    ins(ed,s,ed.selectionEnd,'&nbsp;');
+    US.snap();return;
+  }
   // Alt+ArrowUp/Down — move line
   if(k==='A+ArrowUp'){e.preventDefault();ED.moveLine(-1);return}
   if(k==='A+ArrowDown'){e.preventDefault();ED.moveLine(1);return}
@@ -3244,7 +5145,7 @@ function handleKey(e){
     'S+A+,':()=>FS.dec(),'S+A+<':()=>FS.dec(),
     'S+A+ArrowDown':()=>ED.dupLine(),
     'C+S':()=>App.showSaveDlg(),'C+F':()=>App.toggleFind(),
-    'C+S+P':()=>PW.open(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),'C+S+G':()=>Scholar.show(),
+    'C+S+P':()=>PW.open(),'C+S+T':()=>PW.openPPT(),'C+S+R':()=>App.toggleRM(),'C+S+C':()=>App.showCite(),'C+S+G':()=>Scholar.show(),
     'A+?':()=>App.showHK(),
   };
   if(map[k]){e.preventDefault();map[k]()}
@@ -3368,7 +5269,7 @@ const App={
     const showFn=el('show-footnotes-chk').checked;
     const pages=splitPages(md);
     const html=pages.map((p,i)=>`<div class="preview-page${this.rm?' rm':''}" data-page="${i+1}">${mdRender(p,showFn)}</div>`).join('');
-    const CSS=`body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px}.preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 4px 30px rgba(0,0,0,.4);font-family:'Libre Baskerville',Georgia,serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:20px}.preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb}.preview-page h1{font-size:21pt;font-weight:700;margin:0 0 14px;border-bottom:2px solid #1a1a2e;padding-bottom:8px}.preview-page h2{font-size:15pt;margin:20px 0 10px;font-weight:700}.preview-page h3{font-size:12pt;margin:16px 0 7px;font-weight:700}.preview-page p{margin:0 0 11px}.preview-page ul,.preview-page ol{margin:0 0 11px;padding-left:22px}.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:10pt}.preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}.preview-page td{padding:6px 11px;border:1px solid #d0d0e0}.preview-page tr:nth-child(even) td{background:#f7f7fc}.preview-page code{font-family:monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}.preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;margin:11px 0;font-size:9pt}.preview-page pre code{background:none;color:inherit}.preview-page a{color:#5b4ce4}.preview-page img{max-width:100%}.preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}.preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}.preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
+    const CSS=`body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px}.preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 4px 30px rgba(0,0,0,.4);font-family:'Libre Baskerville',Georgia,serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:20px}.preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb}.preview-page h1{font-size:21pt;font-weight:700;margin:0 0 14px;border-bottom:2px solid #1a1a2e;padding-bottom:8px}.preview-page h2{font-size:15pt;margin:20px 0 10px;font-weight:700}.preview-page h3{font-size:12pt;margin:16px 0 7px;font-weight:700}.preview-page p{margin:0 0 11px}.preview-page ul,.preview-page ol{margin:0 0 11px;padding-left:22px}.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:inherit}.preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}.preview-page td{padding:6px 11px;border:1px solid #d0d0e0}.preview-page tr:nth-child(even) td{background:#f7f7fc}.preview-page code{font-family:monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}.preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;margin:11px 0;font-size:9pt}.preview-page pre code{background:none;color:inherit}.preview-page a{color:#5b4ce4}.preview-page img{max-width:100%}.preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}.preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}.preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
     const fullHtml=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${title}</title><style>${CSS}</style></head><body>${html}</body></html>`;
     dlBlob(fullHtml,(el('doc-title').value||'document').replace(/[^a-z0-9가-힣]/gi,'_')+'.html','text/html;charset=utf-8');
     this.hideModal('save-modal');
@@ -3378,7 +5279,7 @@ const App={
     const showFn=document.getElementById('show-footnotes-chk')?el('show-footnotes-chk').checked:true;
     const pages=splitPages(md);
     const html=pages.map((p,i)=>`<div class="preview-page${this.rm?' rm':''}" data-page="${i+1}">${mdRender(p,showFn)}</div>`).join('');
-    const CSS=`@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px}.preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 4px 30px rgba(0,0,0,.4);font-family:'Libre Baskerville',Georgia,serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:20px}.preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb}.preview-page h1{font-size:21pt;font-weight:700;margin:0 0 14px;border-bottom:2px solid #1a1a2e;padding-bottom:8px}.preview-page h2{font-size:15pt;margin:20px 0 10px;font-weight:700}.preview-page h3{font-size:12pt;margin:16px 0 7px;font-weight:700}.preview-page p{margin:0 0 11px}.preview-page ul,.preview-page ol{margin:0 0 11px;padding-left:22px}.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:10pt}.preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}.preview-page td{padding:6px 11px;border:1px solid #d0d0e0}.preview-page tr:nth-child(even) td{background:#f7f7fc}.preview-page code{font-family:'JetBrains Mono',monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}.preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;margin:11px 0;font-size:9pt}.preview-page pre code{background:none;color:inherit}.preview-page img{max-width:100%}.preview-page a{color:#5b4ce4}.preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}.preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}.preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
+    const CSS=`@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:20px 0 40px}.preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 4px 30px rgba(0,0,0,.4);font-family:'Libre Baskerville',Georgia,serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:20px}.preview-page::after{content:"— " attr(data-page) " —";position:absolute;bottom:10mm;left:50%;transform:translateX(-50%);font-family:sans-serif;font-size:9pt;color:#bbb}.preview-page h1{font-size:21pt;font-weight:700;margin:0 0 14px;border-bottom:2px solid #1a1a2e;padding-bottom:8px}.preview-page h2{font-size:15pt;margin:20px 0 10px;font-weight:700}.preview-page h3{font-size:12pt;margin:16px 0 7px;font-weight:700}.preview-page p{margin:0 0 11px}.preview-page ul,.preview-page ol{margin:0 0 11px;padding-left:22px}.preview-page table{width:100%;border-collapse:collapse;margin:11px 0;font-size:inherit}.preview-page th{background:#1a1a2e;color:#fff;padding:7px 11px;text-align:left}.preview-page td{padding:6px 11px;border:1px solid #d0d0e0}.preview-page tr:nth-child(even) td{background:#f7f7fc}.preview-page code{font-family:'JetBrains Mono',monospace;font-size:9pt;background:#f0f0f8;padding:1px 4px;border-radius:3px;color:#5b4ce4}.preview-page pre{background:#1a1a2e;color:#e8e8f0;padding:14px;border-radius:6px;margin:11px 0;font-size:9pt}.preview-page pre code{background:none;color:inherit}.preview-page img{max-width:100%}.preview-page a{color:#5b4ce4}.preview-page .footnote-highlight{background:#f0f0f0;color:#1a1a2e;border-radius:2px;padding:0 2px}.preview-page .footnote-def{background:#f5f5f5;color:#1a1a2e;border-left:3px solid #bbb;padding:4px 10px;margin:4px 0;font-size:9.5pt}.preview-page .footnotes-section{border-top:1px solid #d0d0e0;margin-top:24px;padding-top:10px;font-size:9.5pt;color:#444}@media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}.preview-page::after{display:none}}`;
     const fullHtml=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${title}</title><style>${CSS}</style></head><body>${html}<script>window.onload=function(){window.print();}<\/script></body></html>`;
     const w=window.open('','_blank','width=900,height=700');
     if(w){w.document.open();w.document.write(fullHtml);w.document.close();}
@@ -3386,27 +5287,31 @@ const App={
     this.hideModal('save-modal');
   },
 
-  sample(){return`# Markdown PDF Editor Pro V9
+  sample(){return`# Markdown PDF Editor Pro
 
-**제작: 박중희(연세대학교 심리학과 겸임교수/경기대 교직학부 겸임교수)**
+**제작: 박중희(연세대 심리학과 겸임교수)**
 
 - 논문 집필을 위한 에디터로 연구와 논문을 위한 도구입니다.
 - 경기대학교 교육산업전공자
 - 연세대학교 심리과학 이노베이션 대학원 심리트랙 전공자
 
-## 이번 업데이트 신기능
+## V20 업데이트 신기능
 
 모든 기능이 통합된 **연구·논문 전용 에디터**입니다.
 
 ### 주요 기능 목록
 
-| 기능 | 단축키 | 설명 |
+| 기능 | 단축키 / 버튼 | 설명 |
 | :-- | :-- | :-- |
 | 코드 블록 (마지막 언어) | **Alt+C** | 마지막 사용 언어 즉시 삽입 |
 | 코드 블록 (언어 선택) | ⌨ Code 버튼 | 언어 선택 모달 |
 | 인용 삽입 | **Ctrl+Shift+C** | 참고문헌 관리자 |
 | Research Mode | **Ctrl+Shift+R** | 단락 줄번호 표시 |
 | 저장 | **Ctrl+S** | MD / TXT / HTML 선택 |
+| **단축키 목록** | **Alt+?** | 단축키 표시 (편집 가능) |
+| **표 HTML 정돈** | ✦ Tidy 버튼 | 병합 후 들여쓰기 정리 |
+| **미리보기 복사** | 📋 복사 버튼 | 서식 있는 복사 (Word·구글독스) |
+| **A4 구분선** | 📄 A4 버튼 | 297mm 위치에 빨간 점선 표시 |
 
 ---
 
@@ -3462,8 +5367,8 @@ $$
 (function(){
   // 1. Manifest 동적 생성
   const manifest={
-    name:'Markdown PDF Editor Pro V9',
-    short_name:'MD PRO V9',
+    name:'Markdown PDF Editor Pro',
+    short_name:'MD PRO V20',
     description:'연구·논문 전용 마크다운 에디터',
     start_url:'.',
     display:'standalone',
@@ -3482,7 +5387,7 @@ $$
   // 2. Service Worker 인라인 등록
   if('serviceWorker' in navigator){
     const swCode=`
-const CACHE='mdpro-v9-cache-v1';
+const CACHE='mdpro-v17-cache-v1';
 const ASSETS=['/'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{})));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
@@ -3497,4 +5402,7 @@ self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>
 window.addEventListener('DOMContentLoaded',()=>App.init());
 </script>
 </body>
-</html>
+</html>.ippt-tool{background:none;border:1px solid rgba(255,255,255,.15);border-radius:5px;color:#ccc;cursor:pointer;padding:1px 5px;transition:all .15s}
+.ippt-tool:hover{background:rgba(255,255,255,.12);color:#fff}
+.ippt-tool.active-tool{background:rgba(240,192,96,.25);color:#f7d06a;border-color:#f0c060}
+
