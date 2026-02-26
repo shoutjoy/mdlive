@@ -9240,34 +9240,62 @@ const App = {
 
     let startX = 0, startEdW = 0, totalW = 0, dragging = false;
 
-    resizer.addEventListener('mousedown', e => {
+    function startDrag(clientX) {
         if (edPane.classList.contains('hidden') || pvPane.classList.contains('hidden')) return;
-        e.preventDefault();
         dragging  = true;
-        startX    = e.clientX;
+        startX    = clientX;
         startEdW  = edPane.getBoundingClientRect().width;
         totalW    = wrap.getBoundingClientRect().width - resizer.offsetWidth;
         document.body.classList.add('resizing');
         resizer.classList.add('dragging');
-    });
-
-    document.addEventListener('mousemove', e => {
+    }
+    function moveDrag(clientX) {
         if (!dragging) return;
-        const dx    = e.clientX - startX;
+        const dx    = clientX - startX;
         const newW  = Math.max(120, Math.min(totalW - 120, startEdW + dx));
         const ratio = newW / totalW;
         applyRatio(ratio);
-    });
-
-    document.addEventListener('mouseup', e => {
+    }
+    function endDrag() {
         if (!dragging) return;
         dragging = false;
         document.body.classList.remove('resizing');
         resizer.classList.remove('dragging');
-        /* 비율 저장 */
         const r = edPane.getBoundingClientRect().width / (wrap.getBoundingClientRect().width - resizer.offsetWidth);
         localStorage.setItem('mdpro_split_ratio', r.toFixed(4));
+    }
+
+    resizer.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        startDrag(e.clientX);
     });
+
+    document.addEventListener('mousemove', e => {
+        if (!dragging) return;
+        moveDrag(e.clientX);
+    });
+
+    document.addEventListener('mouseup', e => {
+        endDrag();
+    });
+
+    /* 터치: 모바일에서 에디터·미리보기 구분선 조절 (리사이저에서만 시작, UI 내에서만 동작) */
+    resizer.addEventListener('touchstart', e => {
+        if (e.touches.length !== 1) return;
+        e.preventDefault();
+        startDrag(e.touches[0].clientX);
+    }, { passive: false });
+
+    document.addEventListener('touchmove', e => {
+        if (!dragging) return;
+        if (e.touches.length !== 1) return;
+        e.preventDefault();
+        moveDrag(e.touches[0].clientX);
+    }, { passive: false });
+
+    document.addEventListener('touchend', endDrag);
+    document.addEventListener('touchcancel', endDrag);
 
     /* 더블클릭: 50:50 리셋 */
     resizer.addEventListener('dblclick', () => {
@@ -10294,7 +10322,15 @@ const CharMap = (() => {
     function positionResizer(w) {
         const el = getEl();
         if (!el) return;
-        el.style.left = (w - 3) + 'px';
+        const half = el.offsetWidth / 2;
+        el.style.left = (w - half) + 'px';
+        /* 앱 UI 영역(사이드바·메인 행) 안에서만 높이/위치 적용 — 모바일에서 화면 전체 터치 방지 */
+        const main = document.getElementById('main');
+        if (main) {
+            const rect = main.getBoundingClientRect();
+            el.style.top = rect.top + 'px';
+            el.style.height = rect.height + 'px';
+        }
     }
 
     function onMouseDown(e) {
@@ -10305,6 +10341,30 @@ const CharMap = (() => {
         getEl().classList.add('dragging');
         document.body.classList.add('resizing');
         e.preventDefault();
+    }
+
+    function onTouchStart(e) {
+        if (e.touches.length !== 1) return;
+        _dragging = true;
+        _startX = e.touches[0].clientX;
+        _startW = getSidebarW();
+        getEl().classList.add('dragging');
+        document.body.classList.add('resizing');
+    }
+
+    function onTouchMove(e) {
+        if (!_dragging) return;
+        if (e.touches.length !== 1) return;
+        e.preventDefault();
+        const dx = e.touches[0].clientX - _startX;
+        setWidth(_startW + dx);
+    }
+
+    function onTouchEnd() {
+        if (!_dragging) return;
+        _dragging = false;
+        getEl().classList.remove('dragging');
+        document.body.classList.remove('resizing');
     }
 
     function onMouseMove(e) {
@@ -10333,8 +10393,12 @@ const CharMap = (() => {
 
         positionResizer(getSidebarW());
         el.addEventListener('mousedown', onMouseDown);
+        el.addEventListener('touchstart', onTouchStart, { passive: true });
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', onTouchEnd);
+        document.addEventListener('touchcancel', onTouchEnd);
 
         el.addEventListener('dblclick', () => setWidth(DEFAULT_W));
 
@@ -10344,6 +10408,7 @@ const CharMap = (() => {
                 .observe(appEl, { attributes: true, attributeFilter: ['class'] });
         }
         window.addEventListener('resize', () => positionResizer(getSidebarW()));
+        window.addEventListener('load', () => positionResizer(getSidebarW()));
     }
 
     if (document.readyState === 'loading') {

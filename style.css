@@ -743,7 +743,9 @@ body {
     border-right: 1px solid var(--bd);
     display: flex;
     flex-direction: column;
-    overflow: hidden
+    overflow: hidden;
+    container-type: inline-size;
+    container-name: sidebar;
 }
 
 #sb-hdr {
@@ -1177,6 +1179,7 @@ body {
     text-overflow: ellipsis;
     border-left: 2px solid transparent;
     position: relative;
+    min-width: 0;                 /* flex 자식이 줄어들 수 있게 */
 }
 .file-item:hover {
     background: var(--bg3);
@@ -1189,7 +1192,8 @@ body {
 }
 .file-item-icon { flex-shrink: 0; font-size: 12px; }
 .file-item-name {
-    flex: 1;
+    flex: 1 1 0%;
+    min-width: 0;                 /* 줄어들어서 말줄임되게, 파일명이 가려지지 않게 */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1212,7 +1216,7 @@ body {
     padding-left: 4px;
 }
 
-/* 크기 + 날짜 메타 정보 */
+/* 크기 + 날짜 메타 정보 — 파일명 옆에 배치, 넘치지 않게 */
 .file-item-meta {
     font-size: 9px;
     color: #7a9abf;               /* 청회색 — 크기/날짜 구분감 */
@@ -1220,8 +1224,25 @@ body {
     flex-shrink: 0;
     padding-left: 4px;
     white-space: nowrap;
+    max-width: 72px;              /* 좁은 창에서 파일명을 가리지 않게 */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .file-item.active .file-item-meta { color: rgba(124,106,247,.7); }
+
+/* 사이드바가 좁을 때 순차적으로 숨김: del → move → share → meta */
+@container sidebar (max-width: 400px) {
+    .file-item .file-del-btn { display: none !important; }
+}
+@container sidebar (max-width: 360px) {
+    .file-item .file-move-btn { display: none !important; }
+}
+@container sidebar (max-width: 320px) {
+    .file-item .file-share-btn { display: none !important; }
+}
+@container sidebar (max-width: 280px) {
+    .file-item-meta { display: none !important; }
+}
 
 /* 파일 삭제 버튼 — 호버 시 밝게 표시 */
 .file-del-btn {
@@ -1255,7 +1276,7 @@ body {
     font-size: 11px;
     padding: 2px 4px;
     border-radius: 4px;
-    color: transparent;
+    color: #6acff740;             /* 항상 옅게 보이게 */
     transition: color .15s, background .15s;
     line-height: 1;
 }
@@ -1277,7 +1298,7 @@ body {
     font-size: 11px;
     padding: 2px 4px;
     border-radius: 4px;
-    color: transparent;
+    color: #f76a6a55;             /* 항상 옅게 보이게 */
     transition: color .15s, background .15s;
     line-height: 1;
     margin-left: 1px;
@@ -1302,12 +1323,13 @@ body {
     padding: 0;
 }
 
-/* main */
+/* main — 입력창·미리보기 영역, 사이드바와 구분되는 선 */
 #main {
     grid-area: main;
     display: flex;
     flex-direction: column;
-    overflow: hidden
+    overflow: hidden;
+    border-left: 1px solid var(--bd);
 }
 
 #find-bar {
@@ -1347,15 +1369,40 @@ body {
     position: relative
 }
 
-/* Split Resizer */
+/* Split Resizer — 터치 영역(레이어) + 디스플레이(시각) 분리, 시각 두께는 sidebar-resizer와 동일 6px */
 #split-resizer {
-    width: 5px;
+    width: 6px;
+    min-width: 6px;
     flex-shrink: 0;
     background: var(--bd);
     cursor: col-resize;
     position: relative;
     transition: background .15s;
     z-index: 10;
+}
+/* 모바일/터치: 터치 영역 28px, 디스플레이는 가운데 6px만 표시(sidebar-resizer와 동일 두께) */
+@media (hover: none) and (pointer: coarse) {
+    #split-resizer {
+        width: 15px;
+        min-width: 3px;
+        background: transparent;
+    }
+    #split-resizer::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        transform: translateX(-50%);
+        background: var(--bd);
+        transition: background .15s;
+        z-index: 1;
+    }
+    #split-resizer:hover::after,
+    #split-resizer.dragging::after {
+        background: #7c6af7;
+    }
 }
 #split-resizer:hover,
 #split-resizer.dragging {
@@ -1367,22 +1414,35 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 1px;
-    height: 32px;
-    background: currentColor;
+    width: 2px;
+    height: 40px;
+    background: #7c6af7;
     border-radius: 2px;
-    opacity: .5;
+    opacity: 0;
+    transition: opacity .15s;
+    z-index: 2;
 }
-/* Sidebar Resizer */
+#split-resizer:hover::before,
+#split-resizer.dragging::before {
+    opacity: .8;
+}
+/* Sidebar Resizer — 앱 콘텐츠 영역(사이드바·메인) 내에서만 표시·동작 */
 #sidebar-resizer {
     position: fixed;
-    top: 0;
+    top: 116px; /* titlebar(36) + tab-bar(36) + toolbar(44) 아래 */
+    left: 0;
     width: 6px;
-    height: 100vh;
+    height: calc(100vh - 142px); /* 142 = 36+36+44+26(상태바) */
     cursor: col-resize;
     background: transparent;
     z-index: 200;
     transition: background .15s;
+}
+/* 모바일/터치: 터치 영역만 넓힘 (시각적 두께는 얇게) */
+@media (hover: none) and (pointer: coarse) {
+    #sidebar-resizer {
+        width: 28px;
+    }
 }
 #sidebar-resizer:hover,
 #sidebar-resizer.dragging {
@@ -3581,7 +3641,7 @@ kbd {
     transition: transform .15s;
 }
 .ft-folder-icon { font-size: 12px; flex-shrink: 0; }
-.ft-folder-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ft-folder-name { flex: 1 1 0%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ft-count {
     font-size: 9px;
     color: #58c8f8;
@@ -3610,7 +3670,7 @@ kbd {
 .ft-folder-hdr:hover .fg-add-btn { opacity: 1; }
 .fg-add-btn:hover { color: #a8ffb0 !important; text-shadow: 0 0 6px rgba(110,240,122,.5); }
 
-/* 파일 공유 버튼 */
+/* 파일 공유 버튼 — 항상 표시 (호버 시 강조) */
 .file-share-btn {
     background: none;
     border: none;
@@ -3621,7 +3681,7 @@ kbd {
     border-radius: 3px;
     line-height: 1;
     flex-shrink: 0;
-    opacity: 0;
+    opacity: 0.9;
     transition: opacity .15s, color .15s;
 }
 .file-item:hover .file-share-btn,
