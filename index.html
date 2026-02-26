@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <!-- GitHub Pages 캐시 방지 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a24">
+  <meta name="description" content="연구·논문 전용 마크다운 에디터 — 박중희">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MD PRO V20">
+  <link rel="manifest" id="pwa-manifest">
+  <title>Markdown PDF Editor Pro</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Figtree:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // GitHub Pages 배포 시 구버전 Service Worker(blob: URL) 즉시 해제
+    // → 오래된 캐시가 새 JS/CSS를 덮어쓰는 문제 방지
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(reg) {
+          var sw = reg.active || reg.waiting || reg.installing;
+          if (sw && sw.scriptURL && sw.scriptURL.startsWith('blob:')) {
+            reg.unregister();
+            console.log('[MDPro] 구버전 blob SW 해제됨');
+          }
+        });
+      });
+      // 모든 caches 삭제 (버전 업 시 강제 클리어)
+      if (window.caches) {
+        caches.keys().then(function(keys) {
+          var old = keys.filter(function(k) { return k !== 'mdpro-v20-cache-v1'; });
+          old.forEach(function(k) { caches.delete(k); });
+        });
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- TITLEBAR -->
+    <header id="titlebar">
+      <div id="app-logo">
+        <div class="logo-icon">M</div>MD PRO By 박중희 PhD
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;min-width:0;position:relative">
+        <span id="titlebar-path-display"
+          style="font-size:12px;font-family:var(--fm);color:var(--tx2);
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+            max-width:100%;letter-spacing:0.01em;display:block"
+          title="">Untitled Document</span>
+        <input id="doc-title" type="text" value="Untitled Document" spellcheck="false"
+          style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px">
+      </div>
+      <div id="tba">
+        <span id="rm-badge">RESEARCH</span>
+        <button class="btn btn-sm btn-tmpl" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
+        <button class="btn btn-sm btn-research" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)"
+          data-key="Ctrl+Shift+R">🔬 Research</button>
+        <button class="btn btn-sm btn-ref" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용"
+          data-key="Ctrl+Shift+C">📚 References</button>
+        <button class="btn btn-sm" id="ed-sync-btn" onclick="SS.toggle()" data-tooltip="스크롤 동기화 ON/OFF (Shift+Alt+M)" data-key="Shift+Alt+M" style="font-size:10px;padding:0 8px;height:24px;color:#6af7b0;border:1px solid rgba(106,247,176,.35);border-radius:4px;font-weight:600;background:rgba(106,247,176,.12)">🔗 동기화</button>
+        <button class="btn btn-sm btn-scholar" onclick="Scholar.show()" data-tooltip="Google Scholar 검색 (새 창)"
+          data-key="Ctrl+Shift+G">🔎 Scholar</button>
+        <button class="btn btn-sm" onclick="AiPPT.open()" data-tooltip="AI PPT — ScholarSlide에서 슬라이드 만들기"
+          data-key="Ctrl+Shift+P"
+          style="background:rgba(247,201,106,.15);border-color:rgba(247,201,106,.4);color:#f7c96a;font-weight:600">📊 AI PPT</button>
+      </div>
+    </header>
+
+    <!-- TAB BAR: [새파일][열기][저장][모두저장][인쇄] | 탭목록 -->
+    <div id="tab-bar">
+      <!-- 좌측 고정 파일 액션 버튼들 -->
+      <div id="tab-file-actions">
+        <button class="tfab tfab-new" title="새 파일 (Ctrl+N)" onclick="TM.newTab()">
+          <span class="tfab-icon">＋</span><span class="tfab-label">새파일</span>
+        </button>
+        <button class="tfab tfab-open" title="파일 열기 (Ctrl+O)" onclick="TM.openFile()">
+          <span class="tfab-icon">📂</span><span class="tfab-label">열기</span>
+        </button>
+        <button class="tfab tfab-save" title="저장 (Ctrl+S)" onclick="App.showSaveDlg()">
+          <span class="tfab-icon">💾</span><span class="tfab-label">저장</span>
+        </button>
+        <button class="tfab tfab-saveall" id="tab-save-all-btn" title="모두 저장 (Ctrl+Shift+S)" onclick="TM.saveAll()">
+          <span class="tfab-icon">🗂</span><span class="tfab-label">모두저장</span>
+        </button>
+        <button class="tfab tfab-print" title="인쇄 / PDF (Ctrl+P)" onclick="App.printDoc()">
+          <span class="tfab-icon">🖨</span><span class="tfab-label">인쇄</span>
+        </button>
+        <input type="file" id="tab-file-input" accept=".md,.txt,.html" multiple style="display:none" onchange="TM._onFileSelected(event)">
+      </div>
+      <!-- 구분선 -->
+      <div class="tab-file-actions-sep"></div>
+      <!-- 탭 목록 (스크롤 가능) -->
+      <div id="tab-list"></div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div id="toolbar">
+      <!-- ☰ 사이드바 토글 -->
+      <div class="tg"><button class="tb" onclick="App.toggleSidebar()" data-tooltip="사이드바">☰</button></div>
+      <div class="ts"></div>
+
+      <!-- 🟡 헤딩 — 노란색 계열 -->
+      <div class="tg">
+        <button class="tb tb-heading" onclick="ED.h(1)" data-tooltip="제목 H1" data-key="Ctrl+Alt+1"><b>H1</b></button>
+        <button class="tb tb-heading" onclick="ED.h(2)" data-tooltip="제목 H2" data-key="Ctrl+Alt+2"><b>H2</b></button>
+        <button class="tb tb-heading" onclick="ED.h(3)" data-tooltip="제목 H3" data-key="Ctrl+Alt+3"><b>H3</b></button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🟠 텍스트 서식 — 오렌지 계열 -->
+      <div class="tg">
+        <button class="tb tb-fmt" id="bold-btn" onclick="ED.bold()" data-tooltip="Smart Bold"
+          data-key="Ctrl+B"><b>B</b></button>
+        <button class="tb tb-fmt" id="italic-btn" onclick="ED.italic()" data-tooltip="기울임꼴"
+          data-key="Ctrl+I"><i>I</i></button>
+        <button class="tb tb-fmt" onclick="ED.strike()" data-tooltip="취소선">S̶</button>
+        <button class="tb tb-fmt" onclick="ED.inlineCode()" data-tooltip="인라인 코드"><code
+            style="font-size:10px">`c`</code></button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🟠 글자 크기 — 오렌지 계열 -->
+      <div class="tg" style="gap:0">
+        <button class="tb tb-fmt" onclick="FS.dec()" data-tooltip="선택 글자 크기 줄이기 (Shift+Alt+,)"
+          style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">−</button>
+        <div id="fsize-display"
+          style="min-width:38px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#f7a06a;line-height:26px;cursor:pointer;user-select:none;background:#2a2a3a;border-top:1px solid #3a3a50;border-bottom:1px solid #3a3a50"
+          data-tooltip="한번 클릭: 목록 / 두번 클릭: 직접 입력" onclick="FS.clickPick(event)" ondblclick="FS.startEdit(event)">12pt
+        </div>
+        <input id="fsize-input" type="text" value="12" onblur="FS.endEdit()" onkeydown="FS.editKey(event)"
+          style="display:none;width:46px;text-align:center;font-family:var(--fm);font-size:12px;font-weight:600;color:#f7a06a;background:#2a2a3a;border:1px solid var(--ac);border-radius:3px;outline:none;padding:0 4px;height:22px;line-height:22px">
+        <button class="tb tb-fmt" onclick="FS.inc()" data-tooltip="선택 글자 크기 키우기 (Shift+Alt+.)"
+          style="min-width:22px;font-size:14px;font-weight:700;padding:0 4px">+</button>
+      </div>
+
+      <!-- 🟠 색상 — 오렌지 계열 -->
+      <div class="tg">
+        <button class="tb tb-fmt" id="fc-btn" onclick="App.openColorPicker('text')" data-tooltip="글자 색상"
+          style="flex-direction:column;gap:1px">
+          <span style="font-size:11px;font-weight:700">A</span>
+          <span id="fc-bar" style="width:14px;height:2px;border-radius:1px;background:#e8e8f0"></span>
+        </button>
+        <button class="tb tb-fmt" id="hl-btn" onclick="App.openColorPicker('bg')" data-tooltip="형광펜 하이라이트"
+          style="flex-direction:column;gap:1px">
+          <span style="font-size:11px">🖊</span>
+          <span id="hl-bar"
+            style="width:14px;height:2px;border-radius:1px;background:transparent;border:1px solid var(--bd)"></span>
+        </button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🟢 정렬 — 형광 초록 계열 -->
+      <div class="tg">
+        <button class="tb tb-layout" onclick="ED.align('left')" data-tooltip="왼쪽 정렬" data-key="Shift+Alt+L">⇤</button>
+        <button class="tb tb-layout" onclick="ED.align('center')" data-tooltip="가운데 정렬"
+          data-key="Shift+Alt+C">⇔</button>
+        <button class="tb tb-layout" onclick="ED.align('right')" data-tooltip="오른쪽 정렬" data-key="Shift+Alt+R">⇥</button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🟢 목록·인용 — 형광 초록 계열 -->
+      <div class="tg">
+        <button class="tb tb-layout" onclick="ED.list('ul')" data-tooltip="목록">• List</button>
+        <button class="tb tb-layout" id="txt2list-btn" onclick="ED.textToList()" data-tooltip="선택한 텍스트 → 목록 항목 (줄마다 • 추가)" data-key="Shift+Alt+L">≡ List</button>
+        <button class="tb tb-layout" onclick="ED.bquote()" data-tooltip="인용구" data-key="Ctrl+.">❝</button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🔵 표 — 파란/보라 계열 -->
+      <div class="tg">
+        <button class="tb tb-table" onclick="ED.table()" data-tooltip="표 삽입" data-key="Alt+8">⊞ 표</button>
+        <button class="tb tb-table" onclick="ED.tableRow()" data-tooltip="행 추가" data-key="Alt+9">+행</button>
+        <button class="tb tb-table" onclick="ED.tableCol()" data-tooltip="열 추가" data-key="Alt+0">+열</button>
+        <button class="tb tb-table" onclick="ED.mergeH()" data-tooltip="가로 병합 (colspan)"
+          data-key="Alt+Shift+H">⊞H</button>
+        <button class="tb tb-table" onclick="ED.mergeV()" data-tooltip="세로 병합 (rowspan)"
+          data-key="Alt+Shift+V">⊞V</button>
+        <button class="tb tb-table" onclick="ED.textToTable()" data-tooltip="선택 텍스트를 표로 변환 (쉼표/탭/파이프 구분자 자동 감지)"
+          data-key="Alt+7">⇥표</button>
+        <button class="tb tb-table-tidy" onclick="ED.tidyTable()" data-tooltip="HTML 표 들여쓰기 정돈 (커서를 표 안에 놓고 실행)">✦
+          Tidy</button>
+        <button class="tb tb-table" onclick="ED.mdTableToHtml()" data-tooltip="마크다운 표를 HTML 표로 변환 (커서를 표 안에 두거나 선택 후 실행)" data-key="Alt+H">⇄ HTML표</button>
+        <button class="tb tb-table" onclick="App.showCaption('table')" data-tooltip="표 캡션">〈표〉</button>
+        <button class="tb tb-table" onclick="App.showCaption('fig')" data-tooltip="그림 캡션">[그림]</button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🔵 코드 — 파란/보라 계열 -->
+      <div class="tg">
+        <button class="tb tb-code" onclick="App.showCode()" data-tooltip="코드 블록 언어 선택 (메뉴) / Alt+C = 마지막 언어 직접 삽입">⌨
+          Code</button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🔴 삽입/특수 — 분홍/연보라 계열 -->
+      <div class="tg">
+        <button class="tb tb-insert" onclick="ED.pageBreak()" data-tooltip="페이지 나누기" data-key="Ctrl+Enter">⋯ PB</button>
+        <button class="tb tb-insert" onclick="ED.lineBreak()" data-tooltip="줄바꿈 &lt;br&gt;"
+          data-key="Ctrl+Shift+Enter">↩</button>
+        <button class="tb tb-insert" onclick="ED.insertNbsp()" data-tooltip="불연속 공백 &amp;nbsp; 삽입"
+          data-key="Ctrl+Shift+Space">⎵</button>
+        <button class="tb tb-insert" onclick="App.showImg()" data-tooltip="이미지">🖼</button>
+        <button class="tb tb-insert" onclick="App.showLink()" data-tooltip="링크 (새 탭)">🔗</button>
+        <button class="tb tb-insert" onclick="ED.footnote()" data-tooltip="각주">†</button>
+        <button class="tb tb-insert" onclick="ED.math()" data-tooltip="수식(LaTeX)">∑</button>
+        <button class="tb tb-insert" onclick="App.showCite()" data-tooltip="인용 삽입" data-key="Ctrl+Shift+C">📖</button>
+        <button class="tb tb-insert" onclick="STATS.show()" data-tooltip="APA 통계 삽입"
+          data-key="Shift+Alt+9">𝑓(x)</button>
+        <button class="tb tb-insert" onclick="App.insertDate()" data-tooltip="오늘 날짜 삽입 (YYYY-MM-DD)"
+          data-key="Ctrl+Shift+D">📅</button>
+        <button class="tb tb-insert" onclick="CharMap.show()" data-tooltip="문자표 — 특수문자 삽입 (Ctrl+Q)"
+          data-key="Ctrl+Q">Ω</button>
+        <button class="tb tb-translate" onclick="Translator.show()" data-tooltip="번역기 (Shift+Alt+G)"
+          data-key="Shift+Alt+G">🌐</button>
+      </div>
+      <div class="ts"></div>
+
+      <!-- 🔍 찾기 -->
+      <div class="tg"><button class="tb tb-util" onclick="App.toggleFind()" data-tooltip="찾기/바꾸기"
+          data-key="Ctrl+F">🔍</button></div>
+      <div class="spacer"></div>
+
+      <!-- ⚙ 보기 모드 -->
+      <div class="tg">
+        <button class="tb tb-view" onclick="App.setViewCycle('split')" id="vm-split" data-tooltip="분할 보기 (Alt+1)"
+          data-key="Alt+1">Split</button>
+        <button class="tb tb-view" onclick="App.setViewCycle('editor')" id="vm-editor" data-tooltip="에디터만 (Alt+2)"
+          data-key="Alt+2">Edit</button>
+        <button class="tb tb-view" onclick="App.setViewCycle('preview')" id="vm-preview" data-tooltip="미리보기만 (Alt+3)"
+          data-key="Alt+3">View</button>
+      </div>
+      <div class="ts"></div>
+      <div class="tg">
+        <button class="tb tb-pv" id="pw-btn" onclick="PW.open()" data-tooltip="새창 미리보기" data-key="Ctrl+Shift+P">🗗
+          PV</button>
+        <button class="tb tb-pv" onclick="PW.openPPT()" data-tooltip="PPT 모드로 바로 열기" data-key="Ctrl+Shift+T">🎬
+          PPT</button>
+        <button class="tb tb-pv" onclick="PW.forceRefresh()" data-tooltip="새창 강제 새로고침">↻</button>
+      </div>
+      <div class="ts"></div>
+      <div class="tg">
+        <button class="tb tb-sys" onclick="App.toggleTheme()" data-tooltip="테마 전환">◑</button>
+        <button class="tb tb-sys active" id="ln-btn" onclick="LN.toggle()" data-tooltip="줄 번호">ln</button>
+        <button class="tb tb-sys" onclick="App.showHK()" data-tooltip="단축키 목록" data-key="Alt+?">?</button>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <nav id="sidebar">
+      <!-- 사이드바 탭 헤더 -->
+      <div id="sb-tabs">
+        <button class="sb-tab active" id="sb-tab-toc" onclick="SB.switchTab('toc')">📑 목차</button>
+        <button class="sb-tab" id="sb-tab-files" onclick="SB.switchTab('files')">🗂 파일</button>
+      </div>
+
+      <!-- TOC 패널 -->
+      <div id="sb-panel-toc" class="sb-panel active">
+        <div id="sb-hdr">
+          <div style="display:flex;gap:4px;align-items:center;padding:4px 8px">
+            <button class="btn btn-g btn-sm" style="font-size:10px;padding:1px 7px" onclick="TOC.insertTOC()"
+              data-tooltip="목차 자동 삽입">📑 삽입</button>
+            <button class="btn-ic" onclick="TOC.build(document.getElementById('editor').value)"
+              data-tooltip="목차 새로고침">↻</button>
+          </div>
+        </div>
+        <div id="toc-list">
+          <div style="padding:12px;color:var(--tx3);font-size:12px">헤딩(#) 추가 시 자동 생성</div>
+        </div>
+      </div>
+
+      <!-- FILES 패널 -->
+      <div id="sb-panel-files" class="sb-panel">
+
+        <!-- 소스 전환 탭: 로컬 / GitHub -->
+        <div id="files-src-tabs">
+          <button class="fsrc-tab active" id="fsrc-local" onclick="SB.switchSource('local')">💻 로컬</button>
+          <button class="fsrc-tab" id="fsrc-github" onclick="SB.switchSource('github')">🐙 GitHub</button>
+        </div>
+
+        <!-- 로컬 서브패널 -->
+        <div id="files-sub-local" class="files-sub active">
+          <div id="files-hdr">
+            <button class="btn btn-g btn-sm" id="files-folder-btn" onclick="FM.selectFolder()"
+              title="폴더 선택">📁 선택</button>
+            <span id="files-folder-name" title="선택된 폴더">미선택</span>
+            <button class="btn-ic" id="files-refresh-btn" onclick="FM.refresh()"
+              title="실제 파일 동기화" style="display:none">↻</button>
+            <button class="btn btn-g btn-sm" id="files-open-btn" onclick="FM.openInExplorer()"
+              title="선택된 로컬 폴더를 파일 탐색기에서 열기" style="display:none">📂 폴더 열기</button>
+          </div>
+          <div id="files-search">
+            <input type="text" id="files-search-input" placeholder="파일 검색..." oninput="FM.search(this.value)">
+          </div>
+          <div id="files-list">
+            <div class="files-empty">폴더를 선택하면 .md/.txt/.html 파일 목록이 표시됩니다</div>
+          </div>
+          <!-- 로컬 액션 바: 항상 표시 -->
+          <div id="fm-local-actions">
+            <button id="fm-newfile-btn" onclick="FM.createLocalFile()" title="현재 폴더에 새 파일 만들기">
+              <span class="fm-act-icon">📄</span>
+              <span class="fm-act-label">새 파일</span>
+            </button>
+            <button id="fm-mkdir-btn" onclick="FM.createFolder()" title="현재 폴더에 새 폴더 만들기">
+              <span class="fm-act-icon">📁</span>
+              <span class="fm-act-label">새 폴더</span>
+            </button>
+          </div>
+          <!-- GitHub 동기화 바: 폴더 선택 후 표시 -->
+          <div id="fm-sync-bar" style="display:none">
+            <div id="fm-git-actions">
+              <button id="fm-clone-btn" onclick="FM.cloneFromGitHub()" title="GitHub → 로컬 폴더 Clone URL 복사">
+                <span>⎘</span> Clone
+              </button>
+              <button id="fm-pull-btn" onclick="FM.pullFromGitHub()" title="GitHub → 로컬 캐시 (Pull)">
+                <span id="fm-pull-icon">⬇</span> Pull
+              </button>
+              <button id="fm-sync-btn" onclick="FM.syncToGitHub()" title="로컬 캐시 → GitHub (Push)">
+                <span id="fm-sync-icon">⬆</span> Push
+              </button>
+              <span id="fm-sync-status"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GitHub 서브패널 -->
+        <div id="files-sub-github" class="files-sub">
+          <div id="gh-hdr">
+            <button class="btn btn-g btn-sm" id="gh-settings-btn" onclick="GH.showSettings()"
+              title="GitHub 설정">⚙ 설정</button>
+            <button class="btn btn-ac btn-sm" id="gh-quick-connect-btn"
+              onclick="GH.quickConnect()" title="GitHub 연결 테스트 & 저장"
+              style="font-size:9.5px;padding:3px 7px">연결 테스트 &amp; 저장</button>
+            <a id="gh-repo-link" href="#" target="_blank" title="GitHub 저장소 열기"
+              style="display:none" class="btn-ic">↗</a>
+            <span id="gh-repo-name" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">미연결</span>
+            <button class="btn-ic" id="gh-refresh-btn" onclick="GH.refresh()"
+              title="새로고침" style="display:none">↻</button>
+          </div>
+          <!-- 새 커밋 알람 배너 -->
+          <div id="gh-new-commits-banner" style="display:none">
+            <span id="gh-new-commits-msg"></span>
+            <button onclick="GH.dismissCommitBanner()">✕</button>
+          </div>
+          <!-- 기기 활동 표시 -->
+          <div id="gh-device-bar" style="display:none">
+            <span id="gh-device-info"></span>
+          </div>
+          <div id="gh-search">
+            <div style="display:flex;gap:4px;align-items:center">
+              <input type="text" id="gh-search-input" placeholder="파일 검색..."
+                oninput="GH.search(this.value)" style="flex:1">
+              <button class="btn-ic" onclick="App.showCommitHistory()"
+                title="커밋 히스토리" style="font-size:11px;padding:2px 5px;flex-shrink:0">📜</button>
+            </div>
+          </div>
+          <div id="gh-list">
+            <div class="files-empty">GitHub 저장소를 연결하세요</div>
+          </div>
+          <!-- GitHub 액션 바: 새 파일 / 새 폴더 -->
+          <div id="gh-local-actions" style="display:none">
+            <button id="gh-newfile-btn" onclick="GH.createNewFile()" title="현재 GitHub 저장소에 새 파일 만들기">
+              <span class="fm-act-icon">📄</span>
+              <span class="fm-act-label">새 파일</span>
+            </button>
+            <button id="gh-mkdir-btn" onclick="GH.createNewFolder()" title="현재 GitHub 저장소에 새 폴더 만들기">
+              <span class="fm-act-icon">📁</span>
+              <span class="fm-act-label">새 폴더</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="sb-stats">
+        <span id="sw">0 단어</span><span id="sc">0 자</span><span id="sp">약 0 페이지</span>
+        <button onclick="PVShare.openModal()" title="md-viewer 공유 관리"
+          style="margin-left:6px;background:rgba(88,200,248,.15);
+            border:1px solid rgba(88,200,248,.35);border-radius:5px;
+            color:#58c8f8;font-size:10px;padding:2px 8px;cursor:pointer;
+            font-family:var(--fm);font-weight:600;white-space:nowrap">
+          📤 공개된노트 설정</button>
+      </div>
+    </nav>
+
+    <!-- SIDEBAR RESIZER -->
+    <div id="sidebar-resizer" title="드래그하여 사이드바 너비 조절"></div>
+
+    <!-- MAIN -->
+    <main id="main">
+      <div id="find-bar">
+        <span style="font-size:11px;color:var(--tx3)">찾기</span>
+        <input id="fi" type="text" placeholder="검색어..." onkeydown="App.findKey(event)">
+        <span style="font-size:11px;color:var(--tx3)">바꾸기</span>
+        <input id="ri" type="text" placeholder="바꿀 내용...">
+        <button class="btn btn-g btn-sm" onclick="App.findNext()">다음</button>
+        <button class="btn btn-g btn-sm" onclick="App.replaceOne()">바꾸기</button>
+        <button class="btn btn-g btn-sm" onclick="App.replaceAll()">모두</button>
+        <button class="btn-ic" onclick="App.toggleFind()">✕</button>
+        <span id="fc-cnt" style="font-size:11px;color:var(--tx3)"></span>
+      </div>
+      <div id="editor-wrap">
+        <div id="editor-pane">
+          <div id="ed-hdr">
+            <span class="pane-lbl"><span></span>MARKDOWN</span>
+            <span class="spacer"></span>
+            <div style="display:flex;align-items:center;gap:3px;margin-right:6px">
+              <button class="tb tb-sys" onclick="EZ.dec()" data-tooltip="에디터 축소 (Ctrl+9)" style="font-size:13px;font-weight:700;height:20px;padding:0 5px">−</button>
+              <span id="ez-lbl" style="font-size:9.5px;font-family:var(--fm);color:#6acff7;min-width:30px;text-align:center">축소</span>
+              <button class="tb tb-sys" onclick="EZ.inc()" data-tooltip="에디터 확대 (Ctrl+0)" style="font-size:13px;font-weight:700;height:20px;padding:0 5px">＋</button>
+            </div>
+          </div>
+          <div id="ed-container">
+            <div id="line-numbers" class="vis">
+              <div class="lnc" id="lnc"></div>
+            </div>
+            <textarea id="editor" class="wln" placeholder="# 제목을 입력하세요&#10;&#10;여기에 Markdown을 작성하세요.&#10;Alt+? → 단축키 목록"
+              spellcheck="false"></textarea>
+          </div>
+        </div>
+        <!-- SPLIT RESIZER -->
+        <div id="split-resizer" title="드래그하여 창 크기 조절"></div>
+        <div id="preview-pane">
+          <div id="pv-hdr">
+            <span class="pane-lbl"><span style="background:var(--ac2)"></span>PV</span>
+            <span id="pg-cnt" style="font-size:9px;color:var(--ac);font-family:var(--fm);margin-left:4px"></span>
+            <span id="render-ts" style="font-size:9px;color:#6af7c0;font-family:var(--fm);margin-left:4px;font-weight:600"></span>
+            <span class="spacer"></span>
+            <div style="display:flex;align-items:center;gap:3px">
+              <!-- 확대/축소 -->
+              <button class="tb tb-sys" onclick="PV.zoomOut()" data-tooltip="미리보기 축소"
+                style="font-size:14px;font-weight:700">－</button>
+              <span id="pv-zoom-lbl"
+                style="font-size:10px;font-family:var(--fm);color:#6acff7;min-width:32px;text-align:center">100%</span>
+              <button class="tb tb-sys" onclick="PV.zoomIn()" data-tooltip="미리보기 확대"
+                style="font-size:14px;font-weight:700">＋</button>
+              <div class="ts"></div>
+              <!-- PPT 모드 -->
+              <button class="tb" id="ppt-btn" onclick="PV.togglePPT()"
+                data-tooltip="PPT 모드 — 패널 너비에 맞춰 확대 후 페이지 단위 이동 (↑↓ 키)"
+                style="font-size:10px;padding:0 7px;height:22px;color:#f0c060;border:1px solid rgba(240,192,96,.35);border-radius:4px;font-weight:600">🎬
+                PPT</button>
+              <button class="tb" id="pv-trans-btn" onclick="PV.toggleTrans()"
+                data-tooltip="페이지 방향 전환 (가로/세로)"
+                style="font-size:10px;padding:0 7px;height:22px;color:#f0c060;border:1px solid rgba(240,192,96,.35);border-radius:4px;font-weight:600">↔
+                Trans</button>
+              <div class="ts"></div>
+              <!-- 폰트 크기 -->
+              <div class="ts"></div>
+              <span style="font-size:9px;color:rgba(255,255,255,.4);font-family:var(--fm)">폰트</span>
+              <button class="tb tb-sys" onclick="PV.fontDown()" data-tooltip="폰트 축소" style="font-size:11px">ᴬ－</button>
+              <span id="pv-font-lbl"
+                style="font-size:10px;font-family:var(--fm);color:#6acff7;min-width:28px;text-align:center">11pt</span>
+              <button class="tb tb-sys" onclick="PV.fontUp()" data-tooltip="폰트 확대" style="font-size:11px">ᴬ＋</button>
+              <div class="ts"></div>
+              <!-- Dark 테마 -->
+              <button class="tb" id="pv-dark-btn" onclick="PV.toggleDark()" data-tooltip="미리보기 다크 테마 토글"
+                style="font-size:10px;padding:0 7px;height:22px;color:#7ab8ff;border:1px solid rgba(100,160,255,.3);border-radius:4px;font-weight:600">◑
+                Dark</button>
+              <div class="ts"></div>
+              <button class="tb tb-a4" id="a4-ruler-btn" onclick="A4Ruler.toggle()"
+                data-tooltip="A4 페이지 구분선 표시/숨기기 — 297mm 위치에 빨간 점선">📄 A4</button>
+              <button class="tb tb-copy-rich" id="copy-rich-btn" onclick="CP.copyRich()"
+                data-tooltip="서식 있는 복사 — Word·구글독스에 붙여넣기 시 서식 유지">📋 복사</button>
+              <button class="tb tb-copy-text" id="copy-text-btn" onclick="CP.copyText()"
+                data-tooltip="텍스트 복사 — 서식 없이 순수 텍스트만">Ａ 텍스트</button>
+              <button class="tb" id="ai-ppt-btn" onclick="AiPPT.open()"
+                data-tooltip="AI PPT — 현재 문서를 ScholarSlide에서 슬라이드로 변환"
+                style="font-size:10px;padding:0 7px;height:22px;color:#f7c96a;border:1px solid rgba(247,201,106,.35);border-radius:4px;font-weight:600;background:rgba(247,201,106,.10)">📊 AI PPT</button>
+              <button class="tb" id="pv-sync-btn" onclick="SS.toggle()"
+                data-tooltip="에디터 ↔ PV 스크롤 동기화 ON/OFF"
+                style="font-size:10px;padding:0 7px;height:22px;color:#6af7b0;border:1px solid rgba(106,247,176,.35);border-radius:4px;font-weight:600;background:rgba(106,247,176,.12)">🔗 동기화 ON</button>
+              <button class="tb" id="pv-share-btn" onclick="PVShare.copy()"
+                data-tooltip="현재 문서 공유 링크 복사 (GitHub 저장 파일만 가능)"
+                style="font-size:10px;padding:0 7px;height:22px;color:#58c8f8;border:1px solid rgba(88,200,248,.3);border-radius:4px;font-weight:600;display:none">🔗 공유</button>
+            </div>
+          </div>
+          <div id="preview-container">
+          </div>
+          <!-- PPT 네비게이션 -->
+          <div id="ppt-nav">
+            <button onclick="PV.pptPrev()" title="이전 페이지 [←]">◀</button>
+            <span id="ppt-pg">1 / 1</span>
+            <button onclick="PV.pptNext()" title="다음 페이지 [→]">▶</button>
+            <div style="width:1px;height:16px;background:rgba(255,255,255,.2);margin:0 4px"></div>
+            <button onclick="PV.togglePPT()" title="PPT 모드 종료 [Esc]"
+              style="font-size:13px;opacity:.6;background:none;border:none;cursor:pointer;color:#ddd;padding:0 4px">✕</button>
+          </div>
+        </div>
+      </div>
+      <div id="error-panel">
+        <div id="ep-hdr"><span>⚠ 오류</span><button class="btn-ic" onclick="App.closeErr()">✕</button></div>
+        <div id="ep-list"></div>
+      </div>
+    </main>
+
+    <!-- STATUSBAR -->
+    <div id="statusbar">
+      <div class="si" id="autosave-indicator">
+        <div class="save-dot" id="save-dot"></div><span id="save-st">저장됨</span>
+      </div>
+      <div class="ss">|</div>
+      <div class="si" id="cursor-pos">줄 1, 열 1</div>
+      <div class="ss">|</div>
+      <div class="si" id="sel-info"></div>
+      <div class="ssp"></div>
+      <div class="si" id="error-count" onclick="App.toggleErr()"></div>
+      <div class="ss" id="ec-sep" style="display:none">|</div>
+      <div class="si">UTF-8</div>
+      <div class="ss">|</div>
+      <div class="si" id="mode-ind">NORMAL</div>
+    </div>
+  </div><!-- #app -->
+
+  <!-- GITHUB SETTINGS MODAL -->
+  <div class="ov" id="gh-modal" onclick="if(event.target===this)GH.hideSettings()">
+    <div class="modal" style="max-width:460px">
+      <div class="mh">
+        <span>🐙 GitHub 연결 설정</span>
+        <button class="btn-ic" onclick="GH.hideSettings()">✕</button>
+      </div>
+
+      <!-- ── 주소 3개 한눈에 보기/편집 ── -->
+      <div style="padding:10px 16px 8px;background:rgba(160,144,255,.06);
+          border-bottom:1px solid rgba(160,144,255,.15);display:flex;flex-direction:column;gap:7px">
+
+        <!-- 앱 소스 -->
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:10.5px;color:var(--tx3);white-space:nowrap;width:80px;flex-shrink:0">이 앱 소스</span>
+          <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0">
+            <a id="app-src-link" href="https://github.com/shoutjoy/mdlive" target="_blank" rel="noopener noreferrer"
+              style="font-size:11px;color:#a090ff;text-decoration:none;font-family:var(--fm);
+                padding:2px 7px;border-radius:4px;background:rgba(160,144,255,.12);
+                border:1px solid rgba(160,144,255,.25);white-space:nowrap;overflow:hidden;
+                text-overflow:ellipsis;max-width:160px"
+              onmouseover="this.style.background='rgba(160,144,255,.22)'"
+              onmouseout="this.style.background='rgba(160,144,255,.12)'">shoutjoy/mdlive ↗</a>
+            <input id="app-src-input-inline" type="text" placeholder="owner/repo"
+              style="display:none;font-size:11px;font-family:var(--fm);padding:2px 7px;
+                border-radius:4px;background:var(--bg3);border:1px solid var(--ac);
+                color:var(--tx);outline:none;flex:1;min-width:80px"
+              onkeydown="if(event.key==='Enter')_saveAppSrc();if(event.key==='Escape')_cancelAppSrc()">
+            <button onclick="_editAppSrc()"
+              style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid rgba(160,144,255,.3);
+                background:transparent;color:var(--tx3);cursor:pointer;flex-shrink:0" title="편집">✏️</button>
+            <button id="app-src-save-inline" onclick="_saveAppSrc()"
+              style="display:none;font-size:10px;padding:2px 7px;border-radius:3px;
+                border:1px solid rgba(106,247,176,.4);background:rgba(106,247,176,.1);
+                color:#6af7b0;cursor:pointer;flex-shrink:0">저장</button>
+          </div>
+        </div>
+
+        <!-- 저장소 -->
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:10.5px;color:var(--tx3);white-space:nowrap;width:80px;flex-shrink:0">저장소</span>
+          <input type="text" id="gh-repo-input" class="gh-input"
+            placeholder="username/my-notes" autocomplete="off" spellcheck="false"
+            style="flex:1;font-size:12px;padding:4px 8px">
+        </div>
+
+        <!-- md-viewer -->
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-size:10.5px;color:var(--tx3);white-space:nowrap;width:80px;flex-shrink:0">md-viewer 공유</span>
+          <input type="text" id="pvs-repo-inline" class="gh-input"
+            placeholder="owner/md-viewer" autocomplete="off" spellcheck="false"
+            style="flex:1;font-size:12px;padding:4px 8px">
+        </div>
+
+      </div>
+      <script>
+      /* 저장된 앱 소스 주소 복원 */
+      (function(){
+        var saved = localStorage.getItem('mdpro_app_src');
+        if(saved){
+          var lnk=document.getElementById('app-src-link');
+          if(lnk){ lnk.href='https://github.com/'+saved; lnk.textContent=saved+' ↗'; }
+        }
+        /* md-viewer 저장소 복원 */
+        var pvsaved = localStorage.getItem('pvshare_cfg');
+        if(pvsaved){ try{ var pc=JSON.parse(pvsaved); var pi=document.getElementById('pvs-repo-inline'); if(pi&&pc.repo) pi.value=pc.repo; }catch(e){} }
+      })();
+      function _editAppSrc(){
+        var lnk=document.getElementById('app-src-link');
+        var inp=document.getElementById('app-src-input-inline');
+        var sav=document.getElementById('app-src-save-inline');
+        inp.value=lnk.href.replace('https://github.com/','');
+        lnk.style.display='none'; inp.style.display=''; sav.style.display='';
+        inp.focus(); inp.select();
+      }
+      function _saveAppSrc(){
+        var inp=document.getElementById('app-src-input-inline');
+        var lnk=document.getElementById('app-src-link');
+        var sav=document.getElementById('app-src-save-inline');
+        var val=inp.value.trim().replace(/^\/+/,'').replace(/\/+$/,'');
+        if(!val)return;
+        lnk.href='https://github.com/'+val; lnk.textContent=val+' ↗';
+        localStorage.setItem('mdpro_app_src',val);
+        lnk.style.display=''; inp.style.display='none'; sav.style.display='none';
+      }
+      function _cancelAppSrc(){
+        var lnk=document.getElementById('app-src-link');
+        var inp=document.getElementById('app-src-input-inline');
+        var sav=document.getElementById('app-src-save-inline');
+        lnk.style.display=''; inp.style.display='none'; sav.style.display='none';
+      }
+      </script>
+
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div class="gh-field">
+          <label class="gh-label">Personal Access Token (PAT)</label>
+          <input type="password" id="gh-token-input" class="gh-input"
+            placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+          <div class="gh-hint">
+            GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) →
+            <b>repo</b> 권한 체크 후 생성
+            <a href="https://github.com/settings/tokens/new" target="_blank">토큰 발급 →</a>
+          </div>
+        </div>
+        <div class="gh-field">
+          <label class="gh-label">브랜치</label>
+          <input type="text" id="gh-branch-input" class="gh-input"
+            placeholder="main" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="gh-field">
+          <label class="gh-label">폴더 경로 (비워두면 루트 전체)</label>
+          <input type="text" id="gh-path-input" class="gh-input"
+            placeholder="notes/  또는 비워두기" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="gh-field">
+          <label class="gh-label">이 기기 이름 (커밋 메시지에 자동 삽입)</label>
+          <input type="text" id="gh-device-input" class="gh-input"
+            placeholder="예: MacBook, 연구실PC, iPad" autocomplete="off" spellcheck="false">
+          <div class="gh-hint">커밋 히스토리에서 어느 기기에서 작성했는지 추적할 수 있습니다</div>
+        </div>
+        <div id="gh-conn-status"></div>
+        <div class="mf">
+          <button class="btn btn-g btn-sm" onclick="GH.hideSettings()">취소</button>
+          <button class="btn btn-ac btn-sm" onclick="GH.saveSettings()">연결 테스트 &amp; 저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMIT HISTORY MODAL -->
+  <div class="ov" id="gh-history-modal" onclick="if(event.target===this)App.hideModal('gh-history-modal')">
+    <div class="modal" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column">
+      <div class="mh">
+        <span>&#x1F4DC; 커밋 히스토리</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span id="gh-history-repo" style="font-size:10px;color:var(--tx3)"></span>
+          <button class="btn-ic" onclick="GH.refreshHistory()" title="새로고침">&#x21BB;</button>
+          <button class="btn-ic" onclick="App.hideModal('gh-history-modal')">&#x2715;</button>
+        </div>
+      </div>
+      <div style="padding:8px 12px;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <input type="text" id="gh-history-search" placeholder="커밋 메시지 / 작성자 검색..."
+          oninput="GH.filterHistory(this.value)"
+          style="width:100%;background:var(--bg3);border:1px solid var(--bd);border-radius:5px;color:var(--tx);font-size:11px;padding:5px 9px;outline:none;box-sizing:border-box">
+      </div>
+      <div id="gh-history-list" style="flex:1;overflow-y:auto;padding:4px 0;scrollbar-width:thin"></div>
+      <div class="mf">
+        <span id="gh-history-count" style="font-size:10.5px;color:var(--tx3)"></span>
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('gh-history-modal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GH SAVE OPTIONS MODAL -->
+  <div class="ov" id="gh-save-modal" onclick="if(event.target===this)App.hideModal('gh-save-modal')">
+    <div class="modal gh-save-modal-box" id="gh-save-modal-box"
+      style="min-width:460px;width:clamp(460px,55vw,780px);max-width:90vw;overflow:visible;position:relative">
+      <!-- 리사이즈 핸들 (우측 하단) -->
+      <div id="gh-save-resize-handle"
+        style="position:absolute;bottom:0;right:0;width:18px;height:18px;cursor:se-resize;
+               display:flex;align-items:flex-end;justify-content:flex-end;padding:3px;
+               color:var(--tx3);font-size:11px;user-select:none;z-index:10"
+        title="드래그하여 크기 조절">⊿</div>
+      <!-- 리사이즈 핸들 (우측 중간) -->
+      <div id="gh-save-resize-right"
+        style="position:absolute;top:50%;right:-4px;transform:translateY(-50%);
+               width:8px;height:40px;cursor:ew-resize;border-radius:4px;
+               background:var(--bd);opacity:0.5;z-index:10"
+        title="드래그하여 너비 조절"></div>
+      <div class="mh">
+        <span>💾 저장 방법 선택</span>
+        <button class="btn-ic" onclick="App.hideModal('gh-save-modal')">✕</button>
+      </div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:11px;color:var(--tx3);display:block;margin-bottom:4px">파일 경로 / 파일명</label>
+          <input type="text" id="gh-save-file-path" class="gh-input"
+            placeholder="경로/파일명.md" autocomplete="off"
+            style="font-size:12px;font-family:monospace;width:100%;box-sizing:border-box">
+        </div>
+        <!-- 커밋 메시지 -->
+        <div class="gh-field" id="gh-save-commit-section">
+          <label class="gh-label">커밋 메시지</label>
+          <input type="text" id="gh-save-commit-msg" class="gh-input"
+            placeholder="Update 파일명" autocomplete="off"
+            style="width:100%;box-sizing:border-box">
+        </div>
+        <!-- 파일명 변경 감지 안내 -->
+        <div id="gh-rename-notice" style="display:none;font-size:10.5px;padding:8px 10px;
+          background:rgba(247,201,106,.1);border:1px solid rgba(247,201,106,.3);
+          border-radius:6px;color:#f7c96a;line-height:1.6">
+          <b>⚠ 파일명이 변경되었습니다</b><br>
+          <span id="gh-rename-detail"></span><br>
+          GitHub에서 기존 파일을 삭제하고 새 이름으로 생성합니다.
+        </div>
+        <!-- 버튼 행 1: 저장 옵션 -->
+        <div class="mf" style="gap:6px;flex-wrap:wrap">
+          <button class="btn btn-g btn-sm" onclick="App.hideModal('gh-save-modal')">취소</button>
+          <button class="btn btn-g btn-sm" onclick="App.ghSaveLocal()"
+            title="현재 내용을 .md 파일로 다운로드">💾 로컬</button>
+          <button class="btn btn-ac btn-sm" id="gh-save-commit-btn"
+            onclick="App.ghSaveCommit()">🐙 GitHub 커밋</button>
+        </div>
+        <!-- 버튼 행 2: 공개 Push 옵션 -->
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button class="btn btn-sm" style="flex:1;
+              background:rgba(88,200,248,.12);border:1px solid rgba(88,200,248,.35);color:#58c8f8"
+            onclick="App.hideModal('gh-save-modal');PVShare.quickPushCurrent()"
+            title="md-viewer 저장소에만 Push — GitHub 커밋 없음">
+            📤 md-viewer만 Push</button>
+          <button class="btn btn-sm" style="flex:1;
+              background:rgba(106,247,176,.1);border:1px solid rgba(106,247,176,.3);color:#6af7b0"
+            onclick="App.ghSaveAndPushViewer()"
+            title="GitHub 커밋 + md-viewer Push 동시 실행">
+            🐙+📤 커밋 &amp; 공개</button>
+        </div>
+        <!-- 크기 힌트 -->
+        <div style="text-align:right;font-size:10px;color:var(--tx3);margin-top:2px;user-select:none">
+          ↔ 우측 또는 ⊿ 모서리 드래그로 크기 조절
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ MODALS ═══════════════ -->
+
+  <!-- HOTKEY OVERLAY -->
+  <div id="hk-overlay" onclick="App.hideHK()">
+    <div id="hk-panel" onclick="event.stopPropagation()">
+      <h2>
+        <span>⌨ 단축키 목록</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-g btn-sm" id="hk-edit-btn" onclick="HK.toggleEdit()" style="font-size:11px">✎
+            편집</button>
+          <button class="btn-ic" onclick="App.hideHK()">✕</button>
+        </div>
+      </h2>
+
+      <!-- 편집 모드 안내 -->
+      <div id="hk-edit-hint"
+        style="display:none;background:rgba(124,106,247,.1);border:1px solid var(--ac);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--tx2);line-height:1.6">
+        <b style="color:var(--ac)">편집 모드</b> — 설명 클릭 후 수정 | 단축키 클릭 후 수정 | <kbd
+          style="background:var(--bg5);border:1px solid var(--bd);border-radius:3px;padding:1px 5px;font-size:10px">Del</kbd>
+        행 삭제 | <button onclick="HK.addRow()" class="btn btn-g btn-sm"
+          style="font-size:10px;padding:2px 7px;vertical-align:middle">+ 행 추가</button>
+      </div>
+
+      <!-- 단축키 목록 렌더 영역 -->
+      <div id="hk-list-wrap"></div>
+
+      <div style="margin-top:10px;font-size:11px;color:var(--tx3)" id="hk-footer-note">
+        표 내부: Tab→다음 셀 | Enter→새 행 | ⌨ Code 버튼→언어 선택 | Alt+C→마지막 언어 직접 삽입
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end" id="hk-edit-actions"
+        style="display:none">
+        <button class="btn btn-g btn-sm" onclick="HK.resetDefault()">↩ 기본값 복원</button>
+        <button class="btn btn-p btn-sm" onclick="HK.saveEdit()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVE DIALOG -->
+  <div class="ov" id="save-modal" onclick="if(event.target===this)App.hideModal('save-modal')">
+    <div class="modal" style="max-width:420px">
+      <div class="mh">
+        <span>&#x1F4BE; 저장 방법 선택</span>
+        <button class="btn-ic" onclick="App.hideModal('save-modal')">&#x2715;</button>
+      </div>
+      <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+        <!-- 현재 저장 위치 표시 -->
+        <div id="save-current-info" style="display:none;padding:8px 10px;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;font-size:11px">
+          <div style="color:var(--tx3);margin-bottom:3px">현재 저장 위치</div>
+          <div id="save-current-path" style="color:var(--ac);font-family:var(--fm);word-break:break-all"></div>
+        </div>
+        <!-- 형식 버튼들 -->
+        <button class="btn btn-g" style="justify-content:flex-start;padding:10px 13px;gap:10px" onclick="App.saveMD()">
+          <span style="font-size:17px">&#x1F4DD;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600;font-size:12px">Markdown (.md)</div>
+            <div style="font-size:10.5px;color:var(--tx2)">원본 마크다운 파일</div>
+          </div>
+        </button>
+        <button class="btn btn-g" style="justify-content:flex-start;padding:10px 13px;gap:10px" onclick="App.saveTXT()">
+          <span style="font-size:17px">&#x1F4C4;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600;font-size:12px">Plain Text (.txt)</div>
+            <div style="font-size:10.5px;color:var(--tx2)">마크다운 기호 제거한 텍스트</div>
+          </div>
+        </button>
+        <button class="btn btn-g" style="justify-content:flex-start;padding:10px 13px;gap:10px" onclick="App.saveHTML()">
+          <span style="font-size:17px">&#x1F310;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600;font-size:12px">HTML (.html)</div>
+            <div style="font-size:10.5px;color:var(--tx2)">A4 다중 페이지 스타일 포함</div>
+          </div>
+        </button>
+        <button class="btn btn-g" style="justify-content:flex-start;padding:10px 13px;gap:10px" onclick="App.printDoc()">
+          <span style="font-size:17px">&#x1F5A8;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600;font-size:12px">인쇄 / PDF로 저장</div>
+            <div style="font-size:10.5px;color:var(--tx2)">브라우저 인쇄창 &rarr; PDF (전체 페이지)</div>
+          </div>
+        </button>
+        <!-- GitHub 커밋 버튼 -->
+        <button class="btn" id="save-git-btn" onclick="App.saveAndGitCommit()"
+          style="justify-content:flex-start;padding:10px 13px;gap:10px;background:rgba(124,106,247,.15);border:1px solid rgba(124,106,247,.4);color:#c0baff">
+          <span style="font-size:17px">&#x1F419;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600;font-size:12px">GitHub 커밋</div>
+            <div style="font-size:10.5px;opacity:.75">지정폴더 저장 후 이 파일만 GitHub에 커밋</div>
+          </div>
+        </button>
+        <!-- md-viewer Push 버튼 -->
+        <button class="btn" onclick="App.hideModal('save-modal');PVShare.quickPushCurrent()"
+          style="justify-content:flex-start;padding:10px 13px;gap:10px;background:rgba(88,200,248,.12);border:1px solid rgba(88,200,248,.35);color:#58c8f8">
+          <span style="font-size:17px">📤</span>
+          <div style="text-align:left">
+            <div style="font-weight:600;font-size:12px">md-viewer에 Push (공개)</div>
+            <div style="font-size:10.5px;opacity:.75">md-viewer 저장소에 push → 공유 링크 발급</div>
+          </div>
+        </button>
+        <!-- 각주 설정 -->
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
+          <span>&#x1F516;</span>
+          <div style="flex:1;font-size:11px;color:var(--tx)">주석([^n]) 표시</div>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)">
+            <input type="checkbox" id="show-footnotes-chk" checked style="accent-color:var(--ac)"> 표시
+          </label>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-g btn-sm" onclick="App.hideModal('save-modal')">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- APA STATS MODAL -->
+  <div class="ov" id="stats-modal">
+    <div class="modal" style="max-width:560px">
+      <h3>𝑓(x) APA 통계 결과 삽입 <span style="font-size:11px;color:var(--tx3);font-weight:400">Shift+Alt+9</span></h3>
+      <!-- Analysis type selector -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="stats-type-row">
+        <button class="btn btn-tog btn-sm active" onclick="STATS.setType('ttest')" id="st-ttest">t-test</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('anova')" id="st-anova">ANOVA</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('regression')" id="st-regression">Regression</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('correlation')"
+          id="st-correlation">Correlation</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('chisq')" id="st-chisq">Chi-square</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('sem')" id="st-sem">SEM</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('logistic')" id="st-logistic">Logistic</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('multilevel')" id="st-multilevel">Multilevel</button>
+        <button class="btn btn-tog btn-sm" onclick="STATS.setType('custom')" id="st-custom"
+          style="border-color:var(--ac2);color:var(--ac2)">✎ Custom</button>
+      </div>
+      <!-- Fields area -->
+      <div id="stats-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"></div>
+      <!-- Custom area (hidden by default) -->
+      <div id="stats-custom-area" style="display:none;margin-bottom:10px">
+        <div class="fg"><label class="fl">커스텀 이름</label><input class="fi" id="custom-name" type="text"
+            placeholder="예: Mixed ANOVA"></div>
+        <div class="fg"><label class="fl">출력 포맷 <span style="color:var(--tx3);font-size:10px">{변수명} 사용</span></label>
+          <input class="fi" id="custom-fmt" type="text" placeholder="예: (F({df1}, {df2}) = {F}, p = {p})">
+        </div>
+        <div class="fg" id="custom-vars-area"><label class="fl">변수 목록 <span style="color:var(--tx3);font-size:10px">콤마로
+              구분</span></label>
+          <input class="fi" id="custom-vars" type="text" placeholder="df1, df2, F, p"
+            oninput="STATS.updateCustomVars()">
+        </div>
+        <div id="custom-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"></div>
+        <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+          <button class="btn btn-g btn-sm" onclick="STATS.saveCustom()">💾 저장</button>
+          <select id="custom-saved-sel" class="fi" style="width:auto;flex:1;padding:4px 8px;font-size:11px"
+            onchange="STATS.loadCustom(this.value)">
+            <option value="">— 저장된 커스텀 —</option>
+          </select>
+          <button class="btn btn-g btn-sm" style="color:var(--er)" onclick="STATS.deleteCustom()">삭제</button>
+        </div>
+      </div>
+      <!-- Preview -->
+      <div
+        style="background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-family:var(--fm);font-size:12px;color:var(--tx);min-height:28px">
+        <span style="font-size:10px;color:var(--tx3);margin-right:6px">미리보기:</span><span id="stats-preview"
+          style="color:var(--ac)"></span>
+      </div>
+      <div class="mf">
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('stats-modal')">취소</button>
+        <button class="btn btn-p btn-sm" onclick="STATS.insert()">삽입</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CITATION MANAGER -->
+  <div class="ov" id="cite-modal">
+    <div class="modal xl">
+      <h3>📚 참고문헌 관리 &amp; 인용 삽입</h3>
+      <div class="tab-row">
+        <div class="tab active" onclick="CM.tab('add')">① 참고문헌 추가</div>
+        <div class="tab" onclick="CM.tab('cite')">② 인용 삽입</div>
+        <div class="tab" onclick="CM.tab('convert')">③ 스타일 변환</div>
+        <div class="tab" onclick="CM.tab('lib')">④ 저장된 목록</div>
+        <div class="tab" onclick="CM.tab('search')" style="color:var(--ac2)">⑤ 🔎 논문 검색</div>
+      </div>
+
+      <!-- ADD -->
+      <div class="tp active" id="cp-add">
+        <div class="fg">
+          <label class="fl">입력 구분 방식</label>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button id="sep-blank-btn" class="btn btn-tog active btn-sm" style="flex:1" onclick="CM.setSep('blank')">
+              📋 빈 줄로 구분<br><span style="font-size:10px;color:inherit;opacity:.8">항목 사이에 빈 줄 1개</span>
+            </button>
+            <button id="sep-line-btn" class="btn btn-tog btn-sm" style="flex:1" onclick="CM.setSep('line')">
+              ↵ 엔터(줄바꿈)로 구분<br><span style="font-size:10px;color:inherit;opacity:.8">각 줄 = 1개 참고문헌</span>
+            </button>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">APA 형식 참고문헌 붙여넣기</label>
+          <textarea id="cite-raw" class="fi" style="min-height:130px" placeholder="여기에 참고문헌을 붙여넣으세요..."></textarea>
+          <div style="display:flex;gap:8px;margin-top:7px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-p btn-sm" onclick="CM.parse()">앱에서 사용하기 →</button>
+            <button class="btn btn-g btn-sm" onclick="document.getElementById('cite-raw').value=''">지우기</button>
+            <label class="btn btn-g btn-sm" style="cursor:pointer">📁 TXT 불러오기<input type="file" accept=".txt,.bib,.ris"
+                style="display:none" onchange="CM.loadFile(event)"></label>
+            <span id="cite-msg" style="font-size:11px;color:var(--ok)"></span>
+          </div>
+          <div style="margin-top:7px;font-size:11px;color:var(--tx3)" id="sep-desc">현재: 빈 줄로 구분 — 항목 사이에 빈 줄 하나를 넣어
+            구분하세요.</div>
+        </div>
+      </div>
+
+      <!-- CITE -->
+      <div class="tp" id="cp-cite">
+        <div style="display:flex;gap:7px;margin-bottom:9px;align-items:center">
+          <input type="text" id="cite-search" class="fi" style="flex:1" placeholder="저자, 연도, 키워드로 검색..."
+            oninput="CM.filter()">
+          <button class="btn btn-g btn-sm" onclick="CM.selAll()">전체 선택</button>
+          <button class="btn btn-g btn-sm" onclick="CM.clrSel()">선택 해제</button>
+        </div>
+        <div id="cite-list-area">
+          <div class="cite-empty">추가 탭에서 먼저 참고문헌을 입력하세요.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <label style="font-size:12px;color:var(--tx2)">삽입 형식:</label>
+          <select id="cite-style" class="fi" style="width:auto;padding:4px 8px">
+            <option value="inline">인라인: (저자, 연도)</option>
+            <option value="narrative">서술형: 저자(연도)</option>
+            <option value="multi">복수: (A, 연도; B, 연도)</option>
+            <option value="footnote">각주: [^n]</option>
+          </select>
+          <span id="cite-sc" style="font-size:11px;color:var(--tx3);margin-left:auto">0개 선택됨</span>
+        </div>
+      </div>
+
+      <!-- CONVERT -->
+      <div class="tp" id="cp-convert">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--tx2)">입력 스타일:</label>
+          <select id="from-style" class="fi" style="width:auto;padding:4px 8px">
+            <option value="apa" selected>APA 7 (기본)</option>
+            <option value="mla">MLA 9</option>
+            <option value="chicago">Chicago (Author-Date)</option>
+            <option value="vancouver">Vancouver</option>
+          </select>
+          <span style="font-size:12px;color:var(--tx2)">→ 변환 대상:</span>
+          <select id="to-style" class="fi" style="width:auto;padding:4px 8px">
+            <option value="mla" selected>MLA 9</option>
+            <option value="apa">APA 7</option>
+            <option value="chicago">Chicago (Author-Date)</option>
+            <option value="vancouver">Vancouver</option>
+          </select>
+          <button class="btn btn-p btn-sm" onclick="CM.convertStyle()">변환</button>
+        </div>
+        <div class="fg">
+          <label class="fl">변환할 참고문헌 (저장 목록 미선택 시 직접 입력)</label>
+          <textarea id="conv-input" class="fi" style="min-height:80px"
+            placeholder="Kim, J. H., &amp; Lee, S. (2023). SEM in education. Journal of Educational Research, 45(2), 123–145."></textarea>
+        </div>
+        <div class="fg">
+          <label class="fl">변환 결과 <span id="conv-label" style="color:var(--ac);font-weight:600"></span></label>
+          <textarea id="conv-output" class="fi" style="min-height:80px" readonly
+            placeholder="변환 결과가 여기 표시됩니다..."></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-g btn-sm" onclick="CM.copyConverted()">📋 복사</button>
+          <button class="btn btn-p btn-sm" onclick="CM.insertConverted()">에디터에 삽입</button>
+        </div>
+      </div>
+
+      <!-- LIB -->
+      <div class="tp" id="cp-lib">
+        <div style="display:flex;gap:7px;margin-bottom:9px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--tx2)">저장 <span id="lib-cnt"
+              style="color:var(--ac);font-weight:600">0</span>건</span>
+          <span class="spacer"></span>
+          <button class="btn btn-g btn-sm" onclick="CM.insertRefSection()">📄 참고문헌 섹션 삽입</button>
+          <button class="btn btn-g btn-sm" onclick="CM.downloadLib()">⬇ 목록 다운로드</button>
+          <button class="btn btn-g btn-sm" style="color:var(--er)" onclick="CM.clearAll()">전체 삭제</button>
+        </div>
+        <div id="lib-list">
+          <div class="cite-empty">저장된 참고문헌이 없습니다.</div>
+        </div>
+      </div>
+
+      <!-- SEARCH TAB -->
+      <div class="tp" id="cp-search">
+        <!-- 검색창 -->
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <label class="fl">제목 / 저자 / 키워드</label>
+            <input class="fi" id="ref-q" type="text" placeholder="예) self-efficacy academic achievement Korea"
+              onkeydown="if(event.key==='Enter')RefSearch.search()">
+          </div>
+          <div style="flex:0 0 auto">
+            <label class="fl">출판연도 이후</label>
+            <select class="fi" id="ref-year" style="padding:7px 8px;width:auto">
+              <option value="">전체</option>
+              <option value="2020">2020~</option>
+              <option value="2018">2018~</option>
+              <option value="2015">2015~</option>
+              <option value="2010">2010~</option>
+            </select>
+          </div>
+          <div style="flex:0 0 auto">
+            <label class="fl">검색 DB</label>
+            <select class="fi" id="ref-db" style="padding:7px 8px;width:auto">
+              <option value="crossref">CrossRef (전체)</option>
+              <option value="openalex">OpenAlex (오픈액세스)</option>
+            </select>
+          </div>
+          <button class="btn btn-p" onclick="RefSearch.search()" style="height:36px;padding:0 16px;flex-shrink:0">🔎
+            검색</button>
+          <button class="btn btn-g btn-sm" onclick="RefSearch.openScholar()" style="height:36px;flex-shrink:0"
+            title="Google Scholar 새 창">Scholar ↗</button>
+        </div>
+
+        <!-- 상태/결과수 -->
+        <div id="ref-status" style="font-size:11px;color:var(--tx3);min-height:18px;margin-bottom:6px"></div>
+
+        <!-- 결과 목록 -->
+        <div id="ref-results"
+          style="border:1px solid var(--bd);border-radius:var(--r);background:var(--bg3);min-height:80px;max-height:340px;overflow-y:auto">
+          <div class="cite-empty" id="ref-placeholder">검색어를 입력하고 🔎 검색을 누르세요.<br><span
+              style="font-size:10px;color:var(--tx3)">CrossRef: 1억 건+ | OpenAlex: 오픈액세스 논문 특화</span></div>
+        </div>
+
+        <!-- 하단 안내 -->
+        <div style="margin-top:8px;font-size:10px;color:var(--tx3);line-height:1.7">
+          ✅ <b>+ 추가</b> 클릭 → APA 형식으로 ④ 저장된 목록에 자동 저장 &nbsp;|&nbsp;
+          📋 <b>복사</b> 클릭 → 클립보드로 복사 &nbsp;|&nbsp;
+          결과가 없으면 <b>Scholar ↗</b>로 직접 검색
+        </div>
+      </div>
+      <button class="btn btn-g btn-sm" onclick="App.hideModal('cite-modal')">닫기</button>
+      <button class="btn btn-p btn-sm" id="cite-ins-btn" onclick="CM.insert()" style="display:none">✔ 선택 항목 인용
+        삽입</button>
+    </div>
+  </div>
+  </div>
+
+  <!-- CODE MODAL (toolbar button) -->
+  <div class="ov" id="code-modal">
+    <div class="modal" style="max-width:380px">
+      <h3>코드 블록 언어 선택</h3>
+      <div class="mb">
+        <select class="fi" id="code-lang">
+          <option value="">없음</option>
+          <option value="python">Python</option>
+          <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="java">Java</option>
+          <option value="c">C</option>
+          <option value="cpp">C++</option>
+          <option value="r">R</option>
+          <option value="matlab">MATLAB</option>
+          <option value="sql">SQL</option>
+          <option value="bash">Bash/Shell</option>
+          <option value="latex">LaTeX</option>
+          <option value="html">HTML</option>
+          <option value="css">CSS</option>
+          <option value="json">JSON</option>
+          <option value="yaml">YAML</option>
+          <option value="markdown">Markdown</option>
+        </select>
+      </div>
+      <div class="mf">
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('code-modal')">취소</button>
+        <button class="btn btn-p btn-sm" onclick="ED.codeBlockModal()">삽입</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINK MODAL -->
+  <div class="ov" id="link-modal">
+    <div class="modal" style="max-width:420px">
+      <h3>🔗 링크 삽입 <span style="font-size:11px;color:var(--ac2)">(새 탭)</span></h3>
+      <div class="mb">
+        <div class="fg"><label class="fl">표시 텍스트</label><input class="fi" id="link-text" type="text"
+            placeholder="링크 텍스트"></div>
+        <div class="fg"><label class="fl">URL</label><input class="fi" id="link-url" type="text"
+            placeholder="https://..."></div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('link-modal')">취소</button>
+        <button class="btn btn-p btn-sm" onclick="ED.link()">삽입</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGE MODAL -->
+  <div class="ov" id="image-modal">
+    <div class="modal" style="max-width:480px">
+      <h3>🖼 이미지 삽입</h3>
+      <!-- Drag & Drop Zone -->
+      <div id="img-dropzone"
+        style="border:2px dashed var(--bd);border-radius:8px;padding:20px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .2s;background:var(--bg3)"
+        onclick="document.getElementById('img-file-input').click()" ondragover="IMG.dragOver(event)"
+        ondragleave="IMG.dragLeave(event)" ondrop="IMG.drop(event)">
+        <div id="img-drop-text" style="font-size:13px;color:var(--tx2)">🖼 이미지를 드래그하거나 클릭해서 선택</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:4px">PNG, JPG, GIF, WebP 지원 · Base64로 자동 삽입</div>
+        <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMG.fileSelected(event)">
+      </div>
+      <div id="img-preview-wrap" style="display:none;margin-bottom:12px;text-align:center">
+        <img id="img-preview" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid var(--bd)">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="flex:1;height:1px;background:var(--bd)"></div>
+        <span style="font-size:11px;color:var(--tx3)">또는 URL 입력</span>
+        <div style="flex:1;height:1px;background:var(--bd)"></div>
+      </div>
+      <div class="mb">
+        <div class="fg"><label class="fl">Alt 텍스트</label><input class="fi" id="img-alt" type="text"
+            placeholder="이미지 설명"></div>
+        <div class="fg"><label class="fl">URL 또는 경로</label><input class="fi" id="img-url" type="text"
+            placeholder="https://..."></div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('image-modal')">취소</button>
+        <button class="btn btn-p btn-sm" onclick="ED.image()">삽입</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLOR PICKER MODAL -->
+  <!-- SCHOLAR SEARCH MODAL -->
+  <div class="ov" id="scholar-modal">
+    <div class="modal" style="max-width:520px">
+      <h3>🔎 Google Scholar 검색</h3>
+      <div class="fg">
+        <label class="fl">검색어 (논문 제목, 저자, 키워드 등)</label>
+        <div style="display:flex;gap:7px">
+          <input class="fi" id="scholar-q" type="text" placeholder="예) structural equation modeling education Korea"
+            style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+          <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">검색 옵션</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <label style="font-size:12px;color:var(--tx2)">언어:</label>
+          <select id="scholar-lang" class="fi" style="width:auto;padding:4px 8px">
+            <option value="ko">한국어 우선</option>
+            <option value="">전체</option>
+            <option value="en">영어 우선</option>
+          </select>
+          <label style="font-size:12px;color:var(--tx2)">기간:</label>
+          <select id="scholar-year" class="fi" style="width:auto;padding:4px 8px">
+            <option value="">전체 기간</option>
+            <option value="2024">2024년~</option>
+            <option value="2022">2022년~</option>
+            <option value="2020">2020년~</option>
+            <option value="2015">2015년~</option>
+            <option value="2010">2010년~</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--tx2);cursor:pointer">
+            <input type="checkbox" id="scholar-review" style="accent-color:var(--ac)"> 리뷰 논문만
+          </label>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px;line-height:1.6">
+        💡 검색 결과는 <b>Google Scholar 새 창</b>에서 열립니다.<br>
+        논문 제목 클릭 → 인용 버튼 → APA 복사 → 📚 References 탭에 붙여넣기
+      </div>
+      <div class="fg" id="scholar-recent-wrap" style="display:none">
+        <label class="fl">최근 검색어</label>
+        <div id="scholar-recent" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-g btn-sm" onclick="Scholar.clear()">검색어 초기화</button>
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('scholar-modal')">닫기</button>
+        <button class="btn btn-p btn-sm" onclick="Scholar.search()">🔎 Scholar 검색</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ov" id="color-modal">
+    <div class="modal" style="max-width:400px">
+      <h3 id="color-modal-title">글자 색상 설정</h3>
+      <div class="fg">
+        <label class="fl">빠른 선택</label>
+        <div class="csw-row" id="color-swatches"></div>
+      </div>
+      <div class="fg">
+        <div style="display:flex;gap:6px;align-items:center">
+          <div style="flex:1">
+            <label class="fl">직접 입력 (Hex 또는 색상명)</label>
+            <input class="fi" id="color-hex" type="text" placeholder="#ff0000" style="font-family:var(--fm)"
+              oninput="ColorPicker.updatePreview(this.value)">
+          </div>
+          <!-- 네이티브 color input (hidden) -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;margin-top:14px">
+            <label id="eyedrop-btn" class="btn btn-g btn-sm"
+              style="cursor:pointer;padding:5px 8px;display:flex;flex-direction:column;align-items:center;gap:2px"
+              title="스포이드 / 색상 팔레트">
+              <span style="font-size:16px">🎨</span>
+              <span style="font-size:9px">팔레트</span>
+              <input type="color" id="color-native"
+                style="position:absolute;opacity:0;width:0;height:0;pointer-events:none"
+                oninput="ColorPicker.fromNative(this.value)" onchange="ColorPicker.fromNative(this.value)">
+            </label>
+            <button id="eyedropper-btn" class="btn btn-g btn-sm"
+              style="padding:5px 8px;display:flex;flex-direction:column;align-items:center;gap:2px"
+              onclick="ColorPicker.eyedrop()" title="화면에서 색상 추출 (스포이드)">
+              <span style="font-size:16px">💉</span>
+              <span style="font-size:9px">스포이드</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <label class="fl" style="margin:0;flex-shrink:0">미리보기:</label>
+        <div id="color-preview"
+          style="flex:1;padding:5px 12px;border-radius:4px;font-size:13px;border:1px solid var(--bd);transition:all .15s">
+          샘플 텍스트 / Sample Text</div>
+      </div>
+      <div id="eyedrop-support-msg" style="font-size:10px;color:var(--tx3);margin-bottom:8px;display:none">⚠ 스포이드는
+        Chrome/Edge에서만 지원됩니다.</div>
+      <div class="mf">
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('color-modal')">취소</button>
+        <button class="btn btn-p btn-sm" onclick="App.applyColor()">적용</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAPTION MODAL -->
+  <div class="ov" id="caption-modal">
+    <div class="modal" style="max-width:520px">
+      <h3 id="cap-title">표 캡션 삽입</h3>
+      <div class="fg">
+        <label class="fl">형식 선택 (클릭으로 선택)</label>
+        <div id="cap-opts" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div class="fg" style="flex:0 0 80px">
+          <label class="fl">번호</label>
+          <input class="fi" id="cap-num" type="text" placeholder="1" oninput="App.updateCapPreview()">
+        </div>
+        <div class="fg" style="flex:1">
+          <label class="fl">설명 / 제목</label>
+          <input class="fi" id="cap-desc" type="text" placeholder="내용을 입력하세요" oninput="App.updateCapPreview()">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">미리보기</label>
+        <div id="cap-preview"
+          style="background:var(--bg3);border:1px solid var(--bd);border-radius:var(--r);padding:8px 12px;font-family:var(--fm);font-size:12px;color:var(--tx);min-height:28px">
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-g btn-sm" onclick="App.hideModal('caption-modal')">취소</button>
+        <button class="btn btn-p btn-sm" onclick="App.insertCaption()">삽입</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEMPLATE MODAL -->
+  <div class="ov" id="tmpl-modal">
+    <div class="modal lg">
+      <h3>📋 논문 양식 선택</h3>
+      <p style="font-size:12px;color:var(--tx2);margin-bottom:14px">선택하면 에디터에 구조가 자동 삽입됩니다. 기존 내용은 유지됩니다.</p>
+      <div class="tmpl-grid" id="tmpl-grid"></div>
+      <div class="mf"><button class="btn btn-g btn-sm" onclick="App.hideModal('tmpl-modal')">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- FORMAT QUICK PANEL (Alt+L) -->
+  <div id="fmt-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h4 style="font-size:13px;font-weight:600;color:var(--txh);margin:0">✏️ 서식 설정 <span
+          style="font-size:10px;color:var(--tx3);font-weight:400">Alt+L</span></h4>
+      <button class="btn-ic" onclick="FP.hide()" style="font-size:14px">✕</button>
+    </div>
+    <!-- font size -->
+    <div class="fmt-row">
+      <span class="fmt-lbl">글자 크기</span>
+      <button class="btn btn-g btn-sm" style="padding:2px 8px;font-size:13px;font-weight:700"
+        onclick="FP.fsz(-1)">−</button>
+      <select id="fp-fsize" class="fi" style="flex:1;padding:3px 6px;font-size:12px" onchange="FP.applyFsize()">
+        <option>8pt</option>
+        <option>9pt</option>
+        <option>10pt</option>
+        <option>11pt</option>
+        <option selected>12pt</option>
+        <option>13pt</option>
+        <option>14pt</option>
+        <option>15pt</option>
+        <option>16pt</option>
+        <option>18pt</option>
+        <option>20pt</option>
+        <option>22pt</option>
+        <option>24pt</option>
+        <option>28pt</option>
+        <option>32pt</option>
+        <option>36pt</option>
+        <option>40pt</option>
+        <option>48pt</option>
+        <option>50pt</option>
+      </select>
+      <button class="btn btn-g btn-sm" style="padding:2px 8px;font-size:13px;font-weight:700"
+        onclick="FP.fsz(1)">+</button>
+    </div>
+    <!-- font color -->
+    <div class="fmt-row">
+      <span class="fmt-lbl">글자 색</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
+        <input type="color" id="fp-fc" value="#e8e8f0"
+          style="width:30px;height:26px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0"
+          onchange="FP.applyColor()">
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <div class="csw" style="background:#e8e8f0" onclick="FP.setFc('#e8e8f0')" title="흰색계"></div>
+          <div class="csw" style="background:#ff4444" onclick="FP.setFc('#ff4444')" title="빨강"></div>
+          <div class="csw" style="background:#ff8800" onclick="FP.setFc('#ff8800')" title="주황"></div>
+          <div class="csw" style="background:#ffcc00" onclick="FP.setFc('#ffcc00')" title="노랑"></div>
+          <div class="csw" style="background:#44cc44" onclick="FP.setFc('#44cc44')" title="초록"></div>
+          <div class="csw" style="background:#00aaff" onclick="FP.setFc('#00aaff')" title="파랑"></div>
+          <div class="csw" style="background:#aa44ff" onclick="FP.setFc('#aa44ff')" title="보라"></div>
+          <div class="csw" style="background:#ff44aa" onclick="FP.setFc('#ff44aa')" title="핑크"></div>
+          <div class="csw" style="background:#333333" onclick="FP.setFc('#333333')" title="검정"></div>
+          <div class="csw" style="background:#5b4ce4" onclick="FP.setFc('#5b4ce4')" title="인디고"></div>
+        </div>
+      </div>
+    </div>
+    <!-- highlight -->
+    <div class="fmt-row">
+      <span class="fmt-lbl">형광펜</span>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;flex:1">
+        <input type="color" id="fp-hl" value="#fff176"
+          style="width:30px;height:26px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0"
+          onchange="FP.applyHL()">
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <div class="csw" style="background:#fff176" onclick="FP.setHL('#fff176')" title="노랑"></div>
+          <div class="csw" style="background:#ffcc80" onclick="FP.setHL('#ffcc80')" title="오렌지"></div>
+          <div class="csw" style="background:#ef9a9a" onclick="FP.setHL('#ef9a9a')" title="빨강"></div>
+          <div class="csw" style="background:#80cbc4" onclick="FP.setHL('#80cbc4')" title="민트"></div>
+          <div class="csw" style="background:#a5d6a7" onclick="FP.setHL('#a5d6a7')" title="초록"></div>
+          <div class="csw" style="background:#90caf9" onclick="FP.setHL('#90caf9')" title="파랑"></div>
+          <div class="csw" style="background:#ce93d8" onclick="FP.setHL('#ce93d8')" title="보라"></div>
+          <div class="csw" style="background:#f48fb1" onclick="FP.setHL('#f48fb1')" title="핑크"></div>
+          <div class="csw" style="background:#ffecb3" onclick="FP.setHL('#ffecb3')" title="연노랑"></div>
+          <div class="csw"
+            style="background:repeating-linear-gradient(45deg,#888,#888 2px,transparent 2px,transparent 6px);border:1px solid #888"
+            onclick="FP.setHL('none')" title="없음"></div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right;margin-top:4px">
+      <button class="btn btn-g btn-sm" onclick="FP.hide()">닫기</button>
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <!-- 파일 삭제 확인 모달 -->
+  <div class="ov" id="del-confirm-modal" onclick="if(event.target===this)DelConfirm.hide()">
+    <div class="modal" style="max-width:400px">
+      <div class="mh" style="border-bottom:2px solid rgba(247,106,106,.4)">
+        <span style="color:#f76a6a;display:flex;align-items:center;gap:7px">
+          <span style="font-size:18px">🗑</span> 파일 삭제
+        </span>
+        <button class="btn-ic" onclick="DelConfirm.hide()">✕</button>
+      </div>
+      <div style="padding:18px 18px 14px;display:flex;flex-direction:column;gap:12px">
+        <!-- 경고 영역 -->
+        <div style="background:rgba(247,106,106,.08);border:1px solid rgba(247,106,106,.3);border-radius:8px;padding:12px 14px">
+          <div style="font-size:12px;color:var(--tx2);margin-bottom:6px">삭제할 파일</div>
+          <div style="font-size:14px;font-weight:700;color:#f76a6a;word-break:break-all;margin-bottom:4px" id="dc-filename"></div>
+          <div style="font-size:10px;color:var(--tx3);font-family:var(--fm);word-break:break-all" id="dc-filepath"></div>
+        </div>
+        <!-- 유형 배지 -->
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="dc-type-badge" style="font-size:10px;padding:2px 9px;border-radius:20px;border:1px solid;font-weight:600"></span>
+          <span style="font-size:11px;color:var(--tx3)">이 파일을 영구적으로 삭제합니다.</span>
+        </div>
+        <!-- GitHub 커밋 메시지 (GitHub만 표시) -->
+        <div id="dc-commit-wrap">
+          <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">커밋 메시지</label>
+          <input type="text" id="dc-commit-msg" class="gh-input" placeholder="Delete 파일명" style="width:100%;box-sizing:border-box">
+        </div>
+        <!-- 경고 문구 -->
+        <div style="font-size:11px;color:#f7a06a;display:flex;align-items:flex-start;gap:6px">
+          <span>⚠</span>
+          <span>삭제된 파일은 복구할 수 없습니다. 계속하시겠습니까?</span>
+        </div>
+      </div>
+      <div class="mf" style="padding:10px 18px 16px">
+        <button class="btn btn-g btn-sm" onclick="DelConfirm.hide()">취소</button>
+        <button class="btn btn-sm" id="dc-confirm-btn" onclick="DelConfirm.confirm()"
+          style="background:rgba(247,106,106,.2);border:1px solid rgba(247,106,106,.5);color:#f76a6a;font-weight:600;padding:5px 18px">
+          🗑 삭제 확인
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 번역기 모달 -->
+  <div class="ov" id="translator-modal" onclick="if(event.target===this)Translator.hide()">
+    <div class="modal" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column">
+      <div class="mh">
+        <span>🌐 번역기</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:var(--tx3)">Ctrl+Enter → 번역 &nbsp;|&nbsp; Shift+Alt+G</span>
+          <button class="btn-ic" onclick="Translator.hide()">✕</button>
+        </div>
+      </div>
+      <!-- 언어 선택 -->
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:10px;color:var(--tx3)">원본 언어</label>
+          <select id="tr-src-lang" class="fi" style="padding:5px 8px;font-size:12px">
+            <option value="ko">🇰🇷 한국어</option>
+            <option value="en">🇺🇸 영어</option>
+            <option value="ja">🇯🇵 일본어</option>
+            <option value="zh">🇨🇳 중국어</option>
+            <option value="fr">🇫🇷 프랑스어</option>
+            <option value="de">🇩🇪 독일어</option>
+            <option value="es">🇪🇸 스페인어</option>
+            <option value="ru">🇷🇺 러시아어</option>
+            <option value="pt">🇵🇹 포르투갈어</option>
+            <option value="it">🇮🇹 이탈리아어</option>
+            <option value="ar">🇸🇦 아랍어</option>
+          </select>
+        </div>
+        <button class="btn btn-g" onclick="Translator.swapLang()"
+          style="margin-top:16px;padding:5px 10px;font-size:16px;flex-shrink:0" title="언어 전환">⇄</button>
+        <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:10px;color:var(--tx3)">번역 언어</label>
+          <select id="tr-tgt-lang" class="fi" style="padding:5px 8px;font-size:12px">
+            <option value="en">🇺🇸 영어</option>
+            <option value="ko">🇰🇷 한국어</option>
+            <option value="ja">🇯🇵 일본어</option>
+            <option value="zh">🇨🇳 중국어</option>
+            <option value="fr">🇫🇷 프랑스어</option>
+            <option value="de">🇩🇪 독일어</option>
+            <option value="es">🇪🇸 스페인어</option>
+            <option value="ru">🇷🇺 러시아어</option>
+            <option value="pt">🇵🇹 포르투갈어</option>
+            <option value="it">🇮🇹 이탈리아어</option>
+            <option value="ar">🇸🇦 아랍어</option>
+          </select>
+        </div>
+        <button class="btn btn-p" onclick="Translator.translate()"
+          style="margin-top:16px;padding:5px 18px;flex-shrink:0;font-size:12px;font-weight:600">🌐 번역</button>
+      </div>
+      <!-- 본문 -->
+      <div style="display:flex;flex:1;overflow:hidden;min-height:200px">
+        <!-- 입력 -->
+        <div style="flex:1;display:flex;flex-direction:column;border-right:1px solid var(--bd)">
+          <div style="padding:5px 12px;font-size:10px;color:var(--tx3);font-weight:600;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
+            <span>원본</span>
+            <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.clearInput()">✕ 지우기</button>
+          </div>
+          <textarea id="tr-input" class="fi"
+            style="flex:1;resize:none;border:none;border-radius:0;background:var(--bg2);font-size:13px;line-height:1.7;padding:12px;outline:none;color:var(--tx);font-family:inherit;min-height:120px"
+            placeholder="번역할 텍스트 입력…&#10;(에디터에서 선택 후 열면 자동 입력)"
+            oninput="Translator.onInput()"></textarea>
+          <div style="padding:3px 10px;font-size:10px;color:var(--tx3);border-top:1px solid var(--bd);flex-shrink:0">
+            <span id="tr-input-count">0자</span>
+          </div>
+        </div>
+        <!-- 출력 -->
+        <div style="flex:1;display:flex;flex-direction:column;position:relative">
+          <div style="padding:5px 12px;font-size:10px;color:var(--tx3);font-weight:600;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
+            <span>번역 결과</span>
+            <div style="display:flex;gap:4px">
+              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.copyResult()" title="복사">📋</button>
+              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openBrowser()" title="Google 번역에서 열기">↗</button>
+            </div>
+          </div>
+          <div id="tr-output"
+            style="flex:1;overflow-y:auto;padding:12px;font-size:13px;line-height:1.7;color:var(--tx);background:var(--bg3);white-space:pre-wrap;word-break:break-word;min-height:120px">
+            <span style="color:var(--tx3);font-style:italic">번역 결과가 여기에 표시됩니다.</span>
+          </div>
+          <!-- 로딩 -->
+          <div id="tr-loading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:5;align-items:center;justify-content:center;border-radius:0 0 8px 0">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;color:#fff">
+              <div class="tr-spinner"></div>
+              <span style="font-size:12px">번역 중…</span>
+            </div>
+          </div>
+          <div id="tr-status" style="padding:3px 10px;font-size:10px;color:var(--tx3);border-top:1px solid var(--bd);flex-shrink:0;min-height:20px"></div>
+        </div>
+      </div>
+      <!-- 하단 -->
+      <div style="padding:8px 12px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--tx2)">삽입:</span>
+        <select id="tr-insert-mode" class="fi" style="padding:3px 6px;font-size:11px">
+          <option value="replace">선택 영역 교체</option>
+          <option value="after">선택 뒤에 추가</option>
+          <option value="newline">다음 줄에 삽입</option>
+          <option value="both">원문 + 번역 함께</option>
+        </select>
+        <div style="flex:1"></div>
+        <button class="btn btn-g btn-sm" onclick="Translator.hide()">닫기</button>
+        <button class="btn btn-p btn-sm" id="tr-insert-btn" onclick="Translator.insertResult()" disabled>✔ 에디터에 삽입</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 문자표 모달 -->
+  <div class="ov" id="charmap-modal" onclick="if(event.target===this)CharMap.hide()">
+    <div class="modal" style="max-width:620px;max-height:85vh;display:flex;flex-direction:column">
+      <div class="mh">
+        <span>Ω 문자표 — 특수문자 삽입</span>
+        <button class="btn-ic" onclick="CharMap.hide()">✕</button>
+      </div>
+      <!-- 카테고리 탭 -->
+      <div id="cm-cat-tabs" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;border-bottom:1px solid var(--bd);flex-shrink:0"></div>
+      <!-- 검색 -->
+      <div style="padding:6px 12px;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <input type="text" id="cm-search" class="fi" placeholder="문자 이름으로 검색 (예: arrow, star, 화살표)..." oninput="CharMap.search(this.value)" style="width:100%;box-sizing:border-box">
+      </div>
+      <!-- 문자 그리드 -->
+      <div id="cm-grid" style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start"></div>
+      <!-- 하단 미리보기 + 삽입 -->
+      <div style="padding:8px 12px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div id="cm-preview" style="font-size:28px;min-width:38px;text-align:center;line-height:1.2">—</div>
+        <div style="flex:1">
+          <div id="cm-name" style="font-size:11px;color:var(--tx2)">문자를 선택하세요</div>
+          <div id="cm-code" style="font-size:10px;color:var(--tx3);font-family:var(--fm)"></div>
+        </div>
+        <button class="btn btn-p btn-sm" onclick="CharMap.insert()" id="cm-insert-btn" disabled>삽입</button>
+        <button class="btn btn-g btn-sm" onclick="CharMap.hide()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="index.js"></script>
+  
+
+<!-- ═══ AppLock 잠금 오버레이 ═══ -->
+<div id="app-lock-overlay" style="
+  display:none; position:fixed; inset:0; z-index:99990;
+  background:rgba(10,10,20,.97); backdrop-filter:blur(12px);
+  justify-content:center; align-items:center; flex-direction:column;">
+  <div style="
+    background:rgba(30,30,50,.98); border:1px solid rgba(255,255,255,.12);
+    border-radius:16px; padding:36px 40px; width:340px; max-width:90vw;
+    box-shadow:0 20px 80px rgba(0,0,0,.7); text-align:center; color:#eee;
+    font-family:sans-serif;">
+    <div id="lock-title" style="font-size:22px;font-weight:700;margin-bottom:6px;">🔒 MD Pro Locked</div>
+    <div id="lock-sub" style="font-size:12px;color:#888;margin-bottom:24px;">비밀번호를 입력하여 잠금 해제</div>
+    <input id="lock-pw-input" type="password" placeholder="비밀번호"
+      onkeydown="if(event.key==='Enter')AppLock.handleLockBtn()"
+      style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;
+             border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);
+             color:#eee;font-size:15px;outline:none;margin-bottom:10px;">
+    <div id="lock-pw2-row" style="display:none;margin-bottom:10px;">
+      <input id="lock-pw2-input" type="password" placeholder="비밀번호 확인"
+        onkeydown="if(event.key==='Enter')AppLock.handleLockBtn()"
+        style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;
+               border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);
+               color:#eee;font-size:15px;outline:none;">
+    </div>
+    <div id="lock-error" style="color:#f08080;font-size:12px;min-height:18px;margin-bottom:10px;"></div>
+    <button id="lock-btn" onclick="AppLock.handleLockBtn()" style="
+      width:100%;padding:11px;border-radius:8px;border:none;
+      background:linear-gradient(135deg,#5b4ce4,#7c6ff7);
+      color:#fff;font-size:15px;font-weight:600;cursor:pointer;">잠금 해제</button>
+    <!-- 비밀번호 분실 링크 -->
+    <div id="lock-forgot-row" style="margin-top:14px;">
+      <button onclick="AppLock.showReset()" style="
+        background:none;border:none;color:#6af7b0;font-size:11px;
+        cursor:pointer;text-decoration:underline;padding:0;">
+        비밀번호를 잊으셨나요?
+      </button>
+    </div>
+
+    <!-- ── 리셋 패널 (기본 숨김) ── -->
+    <div id="lock-reset-panel" style="display:none;margin-top:16px;border-top:1px solid rgba(255,255,255,.1);padding-top:16px;text-align:left;">
+      <div style="font-size:12px;color:#aaa;margin-bottom:10px;line-height:1.6;">
+        ⚠ 비밀번호를 잃어버리셨나요?<br>
+        <span style="color:#f7d06a;">GitHub 토큰을 입력하면 데이터를 복호화 후<br>새 비밀번호로 재설정합니다.</span>
+      </div>
+      <input id="lock-reset-token" type="password" placeholder="GitHub 토큰 입력 (ghp_...)"
+        style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;
+               border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);
+               color:#eee;font-size:13px;outline:none;margin-bottom:8px;"
+        onkeydown="if(event.key==='Enter')AppLock.doReset()">
+      <input id="lock-reset-pw" type="password" placeholder="새 비밀번호 (4자 이상)"
+        style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;
+               border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);
+               color:#eee;font-size:13px;outline:none;margin-bottom:8px;"
+        onkeydown="if(event.key==='Enter')AppLock.doReset()">
+      <input id="lock-reset-pw2" type="password" placeholder="새 비밀번호 확인"
+        style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;
+               border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);
+               color:#eee;font-size:13px;outline:none;margin-bottom:8px;"
+        onkeydown="if(event.key==='Enter')AppLock.doReset()">
+      <div id="lock-reset-error" style="color:#f08080;font-size:11px;min-height:16px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="AppLock.doReset()" style="
+          flex:1;padding:9px;border-radius:8px;border:none;
+          background:linear-gradient(135deg,#e44c4c,#f77c6a);
+          color:#fff;font-size:13px;font-weight:600;cursor:pointer;">재설정</button>
+        <button onclick="AppLock.hideReset()" style="
+          flex:1;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+          background:none;color:#aaa;font-size:13px;cursor:pointer;">취소</button>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:#555;line-height:1.5;">
+        * 기존 암호화 데이터를 삭제하고 다시 암호화합니다.<br>
+        * GitHub 토큰은 서버로 전송되지 않습니다.
+      </div>
+    </div>
+
+    <div style="margin-top:16px;font-size:11px;color:#555;">
+      MD Pro · 로컬 AES-256 암호화
+    </div>
+  </div>
+</div>
+
+</body>
+
+</html>
