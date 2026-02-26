@@ -818,6 +818,72 @@ body {
     flex-direction: column;
     gap: 2px
 }
+#sb-stats.sb-stats-one-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px
+}
+#sb-stats.sb-stats-one-row #gh-newfile-btn,
+#sb-stats.sb-stats-one-row #gh-mkdir-btn {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 4px 8px;
+    font-size: 10px;
+}
+
+/* sb-stats 한 칸 아래: 새 커밋/기기 메시지 (공개설정·새파일·새폴더보다 작은 글씨) */
+#sb-gh-messages {
+    flex-shrink: 0;
+    padding: 4px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-top: 1px solid var(--bd);
+    font-size: 8px;
+    line-height: 1.35;
+    color: var(--tx3);
+}
+#sb-gh-messages #gh-new-commits-banner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(247, 201, 106, .12);
+    border: 1px solid rgba(247, 201, 106, .3);
+    color: var(--tx2);
+    font-size: 8px;
+}
+#sb-gh-messages #gh-new-commits-banner * {
+    font-size: inherit;
+}
+#sb-gh-messages #gh-new-commits-banner button {
+    flex-shrink: 0;
+    padding: 0 4px;
+    font-size: 9px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: .85;
+}
+#sb-gh-messages #gh-device-bar {
+    padding: 2px 6px 0;
+    font-size: 8px;
+    color: var(--tx3);
+}
+#sb-gh-messages #gh-device-bar #gh-device-info {
+    font-size: 8px;
+}
+#sb-gh-messages #gh-commit-history-btn {
+    font-size: 11px;
+    padding: 2px 6px;
+    color: var(--tx3);
+}
+#sb-gh-messages #gh-commit-history-btn:hover {
+    color: var(--tx2);
+}
 
 /* ─── FILES 소스 탭 (로컬 / GitHub) ────────────────────── */
 #files-src-tabs {
@@ -933,6 +999,126 @@ body {
     padding: 4px 0;
     scrollbar-width: thin;
     scrollbar-color: var(--bd) transparent;
+}
+
+/* GitHub 액션 바: 1행 [새파일][새폴더] / 2행 [자동새로고침][초설정][시간표시] */
+.gh-actions-box {
+    border-top: 1px solid var(--bd);
+    background: var(--bg3);
+    flex-shrink: 0;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.gh-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.gh-actions-row-top #gh-newfile-btn,
+.gh-actions-row-top #gh-mkdir-btn {
+    flex: 1;
+    min-width: 0;
+}
+.gh-actions-row-bottom .gh-ar-btn {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+/* ON/OFF 원형: ON=어두운 레드 채운 원, OFF=무색(테두리만) 원 */
+.gh-ar-btn.gh-ar-btn-circle {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--bd);
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.gh-ar-btn.gh-ar-btn-circle .gh-ar-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--tx3);
+}
+.gh-ar-btn.gh-ar-btn-circle.on .gh-ar-dot {
+    background: #8b2a2a;
+    border-color: #8b2a2a;
+}
+.gh-ar-btn.gh-ar-btn-circle.off .gh-ar-dot {
+    background: transparent;
+    border-color: var(--tx3);
+}
+.gh-ar-btn:not(.gh-ar-btn-circle) {
+    border-radius: 5px;
+    font-size: 10px;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all .2s;
+    border: 1px solid rgba(106, 247, 176, .35);
+    background: rgba(106, 247, 176, .1);
+    color: #6af7b0;
+}
+.gh-ar-countdown {
+    font-size: 11px;
+    color: #c0c0c8;
+    min-width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.gh-ar-setting-btn {
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--bd);
+    background: rgba(255, 255, 255, .06);
+    color: var(--tx2);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* GitHub 설정 모달 내 자동새로고침 행 */
+.gh-modal-ar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--bd);
+    background: var(--bg3);
+}
+.gh-modal-ar-row .gh-ar-btn { flex: 1; min-width: 0; }
+.gh-modal-ar-row .gh-ar-countdown { flex-shrink: 0; }
+
+/* 스테이터스바 내 자동새로고침 (줄·열 다음) */
+#statusbar-ar-wrap {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+#statusbar-ar-wrap .gh-ar-btn.gh-ar-btn-circle {
+    width: 18px;
+    height: 18px;
+}
+#statusbar-ar-wrap .gh-ar-btn.gh-ar-btn-circle .gh-ar-dot {
+    width: 8px;
+    height: 8px;
+}
+#statusbar-ar-wrap .gh-ar-setting-btn.gh-ar-statusbar {
+    padding: 2px 5px;
+    font-size: 11px;
+    min-width: 0;
+}
+#statusbar-ar-wrap .gh-ar-countdown {
+    font-size: 10px;
+    min-width: 24px;
 }
 
 /* GitHub 파일 아이템은 .file-item 동일 스타일 재사용 */
@@ -1316,6 +1502,17 @@ body {
     margin-left: auto;
     flex-shrink: 0;
 }
+#files-hidden-toggle-btn {
+    flex-shrink: 0;
+    font-size: 13px;
+}
+#files-hidden-toggle-btn.active {
+    color: #58c8f8;
+    opacity: 1;
+}
+#files-hidden-toggle-btn:not(.active) {
+    opacity: 0.6;
+}
 
 /* 사이드바 탭 - FILES 패널 전체 레이아웃 보정 */
 #sb-panel-toc #sb-hdr {
@@ -1479,7 +1676,8 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-right: 1px solid var(--bd)
+    border-right: 1px solid var(--bd);
+    min-width: 0
 }
 
 #editor-pane.hidden {
@@ -1494,6 +1692,22 @@ body {
     border-bottom: 1px solid var(--bd);
     gap: 6px;
     height: 30px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bd) transparent
+}
+
+#ed-hdr > div {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px
+}
+
+#ed-hdr > .pane-lbl {
     flex-shrink: 0
 }
 
@@ -1518,6 +1732,22 @@ body {
     flex: 1;
     position: relative;
     overflow: hidden
+}
+
+#editor-line-highlight {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 21px;
+    pointer-events: none;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 2px;
+    display: none;
+    transition: none;
+}
+#editor-line-highlight.vis {
+    display: block;
 }
 
 #line-numbers {
@@ -1571,7 +1801,9 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
-    scrollbar-color: var(--bd) transparent
+    scrollbar-color: var(--bd) transparent;
+    position: relative;
+    z-index: 0;
 }
 
 #editor.wln {
@@ -1587,7 +1819,8 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden
+    overflow: hidden;
+    min-width: 0
 }
 
 #preview-pane.hidden {
@@ -1602,6 +1835,24 @@ body {
     border-bottom: 1px solid #3a3a58;
     gap: 6px;
     height: 30px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.25) transparent
+}
+
+#pv-hdr > div {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px
+}
+
+#pv-hdr > .pane-lbl,
+#pv-hdr > #pg-cnt,
+#pv-hdr > #render-ts {
     flex-shrink: 0
 }
 
@@ -1971,6 +2222,99 @@ body.trans-mode .preview-page {
     border: none;
 }
 
+/* Slide Mode — 16:9 PPT 카드 렌더링 */
+#preview-container.slide-mode {
+    background: #2a2e3e;
+    padding: 40px 16px 60px;
+    font-size: 15px;
+}
+
+.ppt-slide {
+    width: 960px;
+    max-width: 100%;
+    aspect-ratio: 16/9;
+    background: #1a1e2e;
+    margin: 40px auto;
+    padding: 60px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    border-radius: 12px;
+    position: relative;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+/* 슬라이드 모드에서 Trans(↔) → Portrait(세로) 전환 */
+body.trans-mode #preview-container.slide-mode .ppt-slide {
+    width: 540px;
+    max-width: 100%;
+    aspect-ratio: 9/16;
+}
+
+.ppt-slide .slide-inner {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    color: #e0e0ec;
+    font-family: var(--fs);
+    font-size: 1em;
+}
+
+/* em 기준으로 해서 폰트 확대/축소(ᴬ－/ᴬ＋) 시 함께 스케일 */
+.ppt-slide h1 {
+    font-size: 2em;
+    margin: 0 0 24px;
+    color: #fff;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.ppt-slide h2 { font-size: 1.5em; margin: 16px 0 12px; color: #e8e8f0; }
+.ppt-slide h3 { font-size: 1.25em; margin: 12px 0 8px; color: #d8d8e8; }
+
+.ppt-slide ul {
+    font-size: 1.25em;
+    line-height: 1.6;
+    margin: 12px 0;
+    padding-left: 28px;
+}
+
+.ppt-slide ol { font-size: 1.25em; line-height: 1.6; margin: 12px 0; padding-left: 28px; }
+.ppt-slide li { margin-bottom: 6px; }
+.ppt-slide p { margin: 0 0 12px; font-size: 1.125em; line-height: 1.5; }
+
+.ppt-slide .slide-num {
+    position: absolute;
+    bottom: 16px;
+    right: 24px;
+    font-size: 0.75em;
+    color: rgba(255,255,255,.4);
+    font-family: var(--fm);
+}
+
+.ppt-slide.slide-overflow .slide-inner {
+    outline: 2px solid #e74c3c;
+    outline-offset: 2px;
+}
+
+.ppt-slide.slide-bullet-warn { outline: 2px solid #f39c12; outline-offset: 2px; }
+.ppt-slide .slide-bullet-warn-msg {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 0.625em;
+    color: #f39c12;
+    background: rgba(243,156,18,.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+#slide-mode-btn.active {
+    background: rgba(124,106,247,.25);
+    border-color: rgba(124,106,247,.5);
+    color: #b8a8f7;
+}
+
 /* PPT 네비 오버레이 */
 #ppt-nav {
     display: none;
@@ -2189,6 +2533,63 @@ body.trans-mode .preview-page {
     background: rgba(124, 106, 247, .25)
 }
 
+/* 에디터만 별도 테마 (전체와 무관하게 에디터만 다크/라이트) */
+#editor-pane[data-editor-theme=light] #editor-pane,
+#editor-pane[data-editor-theme=light] {
+    background: #fdfcff;
+}
+#editor-pane[data-editor-theme=light] #editor {
+    background: #fdfcff;
+    color: #1a1a30;
+    caret-color: #5040b0;
+}
+#editor-pane[data-editor-theme=light] #editor::selection {
+    background: rgba(124, 106, 247, .25);
+}
+#editor-pane[data-editor-theme=light] #ln-col,
+#editor-pane[data-editor-theme=light] #line-numbers {
+    background: #f0eef8;
+    border-right-color: #d8d4f0;
+}
+#editor-pane[data-editor-theme=light] .lnc,
+#editor-pane[data-editor-theme=light] .ln {
+    color: #9090b8;
+}
+
+#editor-pane[data-editor-theme=dark] #editor-pane,
+#editor-pane[data-editor-theme=dark] {
+    background: #0d0d1a;
+}
+#editor-pane[data-editor-theme=dark] #editor {
+    background: #1a1a2e;
+    color: #e0e0f0;
+    caret-color: #e0e0f0;
+}
+#editor-pane[data-editor-theme=dark] #editor::selection {
+    background: rgba(124, 106, 247, .25);
+}
+#editor-pane[data-editor-theme=dark] #ln-col,
+#editor-pane[data-editor-theme=dark] #line-numbers {
+    background: #0d0d1a;
+    border-right-color: #3a3a5a;
+}
+#editor-pane[data-editor-theme=dark] .lnc,
+#editor-pane[data-editor-theme=dark] .ln {
+    color: #9090b8;
+}
+#editor-pane[data-editor-theme=dark] #ed-hdr {
+    background: #0d0d1a;
+    border-bottom-color: #3a3a5a;
+}
+#editor-pane[data-editor-theme=dark] #ed-hdr .pane-lbl {
+    color: #9090b8;
+}
+#editor-pane[data-editor-theme=dark] #ed-hdr .tb-sys,
+#editor-pane[data-editor-theme=dark] #ed-hdr button {
+    color: #e0e0f0;
+    border-color: #3a3a5a;
+}
+
 [data-theme=light] #ln-col {
     background: #f0eef8;
     border-right: 1px solid #d8d4f0;
@@ -2215,15 +2616,20 @@ body.trans-mode .preview-page {
     color: #2a1a80
 }
 
-display:flex;
-align-items:center;
-padding:0 12px;
-background:var(--acd);
-color:rgba(255, 255, 255, .85);
-font-size:11px;
-gap:12px;
-font-family:var(--fm);
-overflow:hidden
+#statusbar {
+    grid-area: stat;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: #1a1a24;
+    border-top: 1px solid #2e2e40;
+    color: rgba(255, 255, 255, .85);
+    font-size: 11px;
+    gap: 12px;
+    font-family: var(--fm);
+    overflow: hidden;
+    min-height: 26px;
+    z-index: 50;
 }
 
 .si {
@@ -2238,6 +2644,22 @@ overflow:hidden
 
 .ssp {
     flex: 1
+}
+
+/* 문서 통계(단어/자/페이지): 스테이터스바 오른쪽 끝, 밝은 회색 */
+#doc-stats-bar {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #b8b8b8;
+}
+#doc-stats-bar #sw,
+#doc-stats-bar #sc,
+#doc-stats-bar #sp {
+    color: #b8b8b8;
 }
 
 #autosave-indicator {
@@ -2571,7 +2993,8 @@ textarea.fi {
     font-size: 12px
 }
 
-#lib-list {
+#lib-list,
+#manual-ref-log {
     min-height: 50px;
     max-height: 280px;
     overflow-y: auto;
@@ -3861,9 +4284,16 @@ kbd {
 
 /* ── 하단 통계 바 (단어/자/페이지) ── */
 [data-theme=light] #sb-stats {
-    background: #eeeaf8 !important;
-    border-top: 1px solid #d0c8f0;
+    background: #000000 !important;
+    border-top: 1px solid #eeeaf8;
     color: #1a1a2e !important;
+}
+[data-theme=light] #doc-stats-bar,
+[data-theme=light] #doc-stats-bar #sw,
+[data-theme=light] #doc-stats-bar #sc,
+[data-theme=light] #doc-stats-bar #sp {
+    color: #5a5a6e !important;
+    font-weight: 500;
 }
 [data-theme=light] #sb-stats span,
 [data-theme=light] #sb-stats #sw,

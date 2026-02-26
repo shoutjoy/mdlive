@@ -17,6 +17,20 @@ const US = (() => {
    HELPERS
 ═══════════════════════════════════════════════════════════ */
 function el(id) { return document.getElementById(id) }
+/** 현재 날짜·시간 문자열: "2026-02-27(금) 오전 12:04" */
+function formatDateTime(d) {
+    d = d || new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    const w = weekdays[d.getDay()];
+    const h = d.getHours();
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const ap = h < 12 ? '오전' : '오후';
+    const h12 = h % 12 || 12;
+    return `${y}-${m}-${day}(${w}) ${ap} ${h12}:${min}`;
+}
 function ins(ed, s, e, text) { ed.value = ed.value.substring(0, s) + text + ed.value.substring(e); const p = s + text.length; ed.setSelectionRange(p, p); ed.focus(); App.render(); US.snap() }
 function getCL(ed) { const pos = ed.selectionStart, bef = ed.value.substring(0, pos); const ls = bef.lastIndexOf('\n') + 1, aft = ed.value.substring(pos); const le = pos + (aft.indexOf('\n') === -1 ? aft.length : aft.indexOf('\n')); return { ls, le, text: ed.value.substring(ls, le) } }
 function repCL(ed, t) { const { ls, le } = getCL(ed); ed.value = ed.value.substring(0, ls) + t + ed.value.substring(le); const p = ls + t.length; ed.setSelectionRange(p, p); ed.focus(); App.render(); US.snap() }
@@ -56,9 +70,11 @@ const AppLock = (() => {
   const ENC_PV_KEY = 'mdpro_pv_enc_v1';    // { salt, iv, data } 암호화된 PV cfg
   const RAW_GH_KEY = 'mdpro_gh_cfg';       // 기존 평문 키 (마이그레이션 후 삭제)
   const RAW_PV_KEY = 'pvshare_cfg';
+  const AUTO_LOCK_KEY = 'mdpro_autolock_min'; // 자동 잠금 분 (0=끄기)
 
   let _unlocked = false;
   let _sessionKey = null;  // 잠금 해제 후 메모리에만 보관 (CryptoKey)
+  let _autoLockTimer = null;
 
   /* ── Base64 유틸 ── */
   function b64enc(u8) { return btoa(String.fromCharCode(...u8)); }
@@ -211,6 +227,7 @@ const AppLock = (() => {
   function _hideLockScreen() {
     const ov = document.getElementById('app-lock-overlay');
     if (ov) ov.style.display = 'none';
+    _updateSidebarLockBtn();
   }
 
   /* ── 버튼 핸들러 ── */
@@ -240,6 +257,7 @@ const AppLock = (() => {
         await _restoreConfigs(pw);
         _unlocked = true;
         _hideLockScreen();
+        startAutoLockTimer();
         AppLock._toast('🔒 비밀번호가 설정되었습니다');
       } else {
         // unlock
@@ -253,6 +271,7 @@ const AppLock = (() => {
         await _restoreConfigs(pw);
         _unlocked = true;
         _hideLockScreen();
+        startAutoLockTimer();
         // GH 모듈 재로드
         if (typeof GH !== 'undefined' && GH.reloadCfg) GH.reloadCfg();
       }
@@ -297,13 +316,54 @@ const AppLock = (() => {
     } else {
       _showLockScreen('unlock');
     }
+
+    _updateSidebarLockBtn();
+
+    /* 자동 잠금: 사용자 활동 시 타이머 리셋 */
+    const onActivity = () => resetAutoLockTimer();
+    document.addEventListener('keydown', onActivity);
+    document.addEventListener('mousedown', onActivity);
+    document.addEventListener('click', onActivity);
+    document.addEventListener('touchstart', onActivity);
   }
 
   function showChangePw() { _showLockScreen('change'); }
   function isUnlocked()   { return _unlocked; }
+  function hasLock()     { return !!localStorage.getItem(LOCK_KEY); }
+
+  function _updateSidebarLockBtn() {
+    const btn = document.getElementById('app-lock-btn');
+    if (btn) btn.style.display = hasLock() ? '' : 'none';
+  }
+
+  function getAutoLockMinutes() {
+    const v = parseInt(localStorage.getItem(AUTO_LOCK_KEY), 10);
+    return (v >= 0 && v <= 120) ? v : 0;
+  }
+  function setAutoLockMinutes(min) {
+    const m = Math.max(0, Math.min(120, parseInt(min, 10) || 0));
+    try { localStorage.setItem(AUTO_LOCK_KEY, String(m)); } catch (e) {}
+    if (_unlocked) { clearAutoLockTimer(); if (m > 0) startAutoLockTimer(); }
+    return m;
+  }
+  function clearAutoLockTimer() {
+    if (_autoLockTimer) { clearTimeout(_autoLockTimer); _autoLockTimer = null; }
+  }
+  function startAutoLockTimer() {
+    clearAutoLockTimer();
+    const min = getAutoLockMinutes();
+    if (min <= 0 || !_unlocked) return;
+    _autoLockTimer = setTimeout(() => { _autoLockTimer = null; lockNow(); }, min * 60 * 1000);
+  }
+  function resetAutoLockTimer() {
+    if (!_unlocked) return;
+    const min = getAutoLockMinutes();
+    if (min <= 0) return;
+    startAutoLockTimer();
+  }
 
   function lockNow() {
-    // 현재 비번을 다시 물어서 재잠금 (간편 구현: 잠금 화면만 표시)
+    clearAutoLockTimer();
     _unlocked = false;
     _showLockScreen('unlock');
   }
@@ -389,6 +449,8 @@ const AppLock = (() => {
       /* 4) 잠금 해제 */
       _unlocked = true;
       document.getElementById('app-lock-overlay').style.display = 'none';
+      startAutoLockTimer();
+      _updateSidebarLockBtn();
       if (typeof GH !== 'undefined' && GH.reloadCfg) GH.reloadCfg();
       _toast('✅ 비밀번호가 재설정되었습니다');
 
@@ -399,7 +461,7 @@ const AppLock = (() => {
     }
   }
 
-  return { init, handleLockBtn, showChangePw, isUnlocked, lockNow, _toast, showReset, hideReset, doReset };
+  return { init, handleLockBtn, showChangePw, isUnlocked, hasLock, lockNow, getAutoLockMinutes, setAutoLockMinutes, resetAutoLockTimer, _toast, showReset, hideReset, doReset };
 })();
 
 function mdRender(md, showFootnotes) {
@@ -455,11 +517,35 @@ function mdRender(md, showFootnotes) {
 /* PAGE SPLIT */
 function splitPages(md) { const p = md.replace(/\r\n/g, '\n').split(/\n?<div class="page-break"><\/div>\n?/); return p.length ? p : [md] }
 
+function parseSlideContent(slideMd) {
+    const raw = (slideMd || '').trim();
+    const lines = raw.split('\n');
+    let title = '';
+    const bullets = [];
+    let notes = '';
+    let inNotes = false;
+    for (const line of lines) {
+        if (/^notes:\s*$/i.test(line)) { inNotes = true; continue; }
+        if (inNotes) { notes += (notes ? '\n' : '') + line; continue; }
+        const h1 = line.match(/^#\s+(.+)$/);
+        if (h1) { title = h1[1].trim(); continue; }
+        if (/^-\s+/.test(line)) bullets.push(line.replace(/^-\s+/, '').trim());
+    }
+    return { title, bullets, notes: notes.trim() };
+}
+function parseMarkdownToSlides(md) {
+    const pages = splitPages(md || '');
+    return { slides: pages.map(p => parseSlideContent(p)) };
+}
+
 /* ═══════════════════════════════════════════════════════════
    PREVIEW RENDERER
 ═══════════════════════════════════════════════════════════ */
 const PR = {
     rm: false,
+    slideMode: false,
+    getSlideMode() { try { return localStorage.getItem('mdpro_slide_mode') === '1'; } catch(e) { return false; } },
+    setSlideMode(v) { try { localStorage.setItem('mdpro_slide_mode', v ? '1' : '0'); } catch(e) {} this.slideMode = !!v; },
     /* 단락(p)에만 연속 번호 삽입 — 제목·표·코드·인용 제외 */
     _applyRM(container) {
         /* 기존 번호 제거 */
@@ -479,41 +565,92 @@ const PR = {
     },
     render(md, showFootnotes) {
         if (showFootnotes === undefined) showFootnotes = true;
+        this.slideMode = this.getSlideMode();
         const c = el('preview-container');
-        /* sync OFF일 때 scrollTop 보존 */
+        c.classList.toggle('slide-mode', !!this.slideMode);
         const savedScrollTop = (typeof SS !== 'undefined' && !SS.isEnabled()) ? c.scrollTop : -1;
         const pages = splitPages(md); c.innerHTML = '';
-        pages.forEach((p, i) => {
-            const div = document.createElement('div');
-            div.className = 'preview-page' + (this.rm ? ' rm' : ''); div.dataset.page = i + 1;
-            div.innerHTML = mdRender(p, showFootnotes);
-            div.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer' });
-            c.appendChild(div);
-        });
-        this._applyRM(c);
+        if (this.slideMode) {
+            pages.forEach((p, i) => {
+                const parsed = parseSlideContent(p);
+                const slideDiv = document.createElement('div');
+                slideDiv.className = 'ppt-slide' + (parsed.bullets.length > 6 ? ' slide-bullet-warn' : '');
+                slideDiv.dataset.slideIndex = i + 1;
+                const inner = document.createElement('div');
+                inner.className = 'slide-inner';
+                inner.innerHTML = mdRender(p, showFootnotes);
+                slideDiv.appendChild(inner);
+                const numSpan = document.createElement('span');
+                numSpan.className = 'slide-num';
+                numSpan.textContent = String(i + 1);
+                slideDiv.appendChild(numSpan);
+                if (parsed.bullets.length > 6) {
+                    const warn = document.createElement('span');
+                    warn.className = 'slide-bullet-warn-msg';
+                    warn.textContent = '⚠ bullet 6개 초과';
+                    slideDiv.appendChild(warn);
+                }
+                slideDiv.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+                c.appendChild(slideDiv);
+            });
+            requestAnimationFrame(() => {
+                c.querySelectorAll('.ppt-slide .slide-inner').forEach(el => {
+                    if (el.scrollHeight > el.clientHeight) el.parentElement.classList.add('slide-overflow');
+                });
+            });
+            const pgEl = el('pg-cnt'); if (pgEl) pgEl.textContent = pages.length ? `1 / ${pages.length}` : '0 / 0';
+        } else {
+            pages.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'preview-page' + (this.rm ? ' rm' : ''); div.dataset.page = i + 1;
+                div.innerHTML = mdRender(p, showFootnotes);
+                div.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer' });
+                c.appendChild(div);
+            });
+            this._applyRM(c);
+            const pgEl = el('pg-cnt'); if (pgEl) pgEl.textContent = `1 / ${pages.length}`;
+        }
         if (window.MathJax && typeof MathJax.typesetPromise === 'function') { try { MathJax.typesetPromise([c]).catch(() => {}); } catch(e) {} }
-        el('pg-cnt').textContent = `1 / ${pages.length}`;
         /* 스크롤 시 현재 페이지 번호 실시간 업데이트 */
         const _pcEl = el('preview-container');
         if (_pcEl && !_pcEl._pgScrollBound) {
             _pcEl._pgScrollBound = true;
             _pcEl.addEventListener('scroll', () => {
-                const scrollPages = [...document.querySelectorAll('#preview-container .preview-page')];
+                const sel = _pcEl.classList.contains('slide-mode') ? '.ppt-slide' : '.preview-page';
+                const scrollPages = [..._pcEl.querySelectorAll(sel)];
                 if (!scrollPages.length) return;
                 const mid = _pcEl.scrollTop + _pcEl.clientHeight * 0.3;
                 let cur = 0;
                 for (let i = 0; i < scrollPages.length; i++) {
                     if (scrollPages[i].offsetTop <= mid) cur = i;
                 }
-                el('pg-cnt').textContent = `${cur + 1} / ${scrollPages.length}`;
+                const pgEl = el('pg-cnt'); if (pgEl) pgEl.textContent = `${cur + 1} / ${scrollPages.length}`;
             }, { passive: true });
         }
         if (typeof A4Ruler !== 'undefined') A4Ruler.refresh();
         if (typeof PV !== 'undefined') PV.refresh();
+        const slideBtn = document.getElementById('slide-mode-btn');
+        if (slideBtn) slideBtn.classList.toggle('active', !!this.slideMode);
         /* sync OFF일 때 저장했던 scrollTop 복원 */
         if (savedScrollTop >= 0) {
             requestAnimationFrame(() => { c.scrollTop = savedScrollTop; });
         }
+    }
+};
+
+/* Slide Mode 토글 + ScholarSlide 연동 */
+const SlideMode = {
+    toggle() {
+        const next = !PR.getSlideMode();
+        PR.setSlideMode(next);
+        App.render();
+        const btn = document.getElementById('slide-mode-btn');
+        if (btn) btn.classList.toggle('active', next);
+    },
+    openInScholarSlide() {
+        const md = el('editor').value;
+        const encoded = encodeURIComponent(md);
+        window.open(`scholarslide.html?data=${encoded}`, '_blank', 'noopener');
     }
 };
 
@@ -538,6 +675,24 @@ const PV = (() => {
         pc.style.setProperty('--pv-scale', scale);
         el('pv-zoom-lbl').textContent = Math.round(scale * 100) + '%';
         const fontPx = Math.round(_pvFontPt * (96 / 72));
+        /* 슬라이드 모드: .ppt-slide 영역에 폰트 크기만 적용 (확대/축소는 폰트로) */
+        if (pc.classList.contains('slide-mode')) {
+            pc.style.fontSize = fontPx + 'px';
+            pc.querySelectorAll('.ppt-slide').forEach(slide => {
+                if (scale === 1) {
+                    slide.style.transform = '';
+                    slide.style.transformOrigin = '';
+                    slide.style.marginBottom = '';
+                } else {
+                    slide.style.transformOrigin = 'top center';
+                    slide.style.transform = `scale(${scale})`;
+                    const baseH = slide.offsetHeight;
+                    slide.style.marginBottom = (16 + baseH * (scale - 1)) + 'px';
+                }
+            });
+            _updateFontLbl();
+            return;
+        }
         pc.querySelectorAll('.preview-page').forEach(p => {
             if (scale === 1) {
                 p.style.transform = ''; p.style.transformOrigin = ''; p.style.marginBottom = '';
@@ -565,7 +720,9 @@ const PV = (() => {
             const vw = pane.clientWidth;
             const ratio = vw / Math.round(210 * (96 / 25.4));
             const fontPx = Math.round(_pvFontPt * (96 / 72) * ratio);
-            el('preview-container').querySelectorAll('.preview-page').forEach(p => {
+            const pc = el('preview-container');
+            const sel = pc.classList.contains('slide-mode') ? '.ppt-slide' : '.preview-page';
+            pc.querySelectorAll(sel).forEach(p => {
                 p.style.fontSize = fontPx + 'px'; p.style.lineHeight = '1.8';
             });
         } else { setScale(scale); }
@@ -578,7 +735,9 @@ const PV = (() => {
             const vw = pane.clientWidth;
             const ratio = vw / Math.round(210 * (96 / 25.4));
             const fontPx = Math.round(_pvFontPt * (96 / 72) * ratio);
-            el('preview-container').querySelectorAll('.preview-page').forEach(p => {
+            const pc = el('preview-container');
+            const sel = pc.classList.contains('slide-mode') ? '.ppt-slide' : '.preview-page';
+            pc.querySelectorAll(sel).forEach(p => {
                 p.style.fontSize = fontPx + 'px'; p.style.lineHeight = '1.8';
             });
         } else { setScale(scale); }
@@ -628,7 +787,9 @@ const PV = (() => {
 
     /* PPT 모드 */
     function getPages() {
-        return [...el('preview-container').querySelectorAll('.preview-page')];
+        const pc = el('preview-container');
+        const sel = pc.classList.contains('slide-mode') ? '.ppt-slide' : '.preview-page';
+        return [...pc.querySelectorAll(sel)];
     }
 
     function pptGo(idx) {
@@ -768,9 +929,14 @@ const PV = (() => {
         }
         /* 레이아웃이 바뀌므로 약간의 지연 후 다시 맞춤 */
         setTimeout(() => {
+            const pc = el('preview-container');
             if (pptOn) {
-                /* PPT 모드에서는 refresh가 PPT 레이아웃을 다시 적용 */
                 refresh();
+            } else if (pc.classList.contains('slide-mode')) {
+                /* 슬라이드 모드: 폰트/스케일만 재적용 */
+                pc.style.fontSize = Math.round(_pvFontPt * (96 / 72)) + 'px';
+                _updateFontLbl();
+                if (scale !== 1.0) setScale(scale);
             } else {
                 if (scale !== 1.0) setScale(scale);
                 else fitToPane();
@@ -779,32 +945,43 @@ const PV = (() => {
     }
 
     /* ── Dark 테마 ── */
+    const PV_DARK_KEY = 'mdpro_pv_dark';
     let _darkOn = false;
-    function toggleDark() {
-        _darkOn = !_darkOn;
+
+    function setDark(on) {
+        _darkOn = !!on;
         const pc = el('preview-container');
         const btn = el('pv-dark-btn');
-        pc.classList.toggle('pv-dark', _darkOn);
-        if (_darkOn) {
-            btn.textContent = '☀ Light';
-            btn.style.background = 'rgba(100,160,255,.2)';
-            btn.style.color = '#7ab8ff';
-            btn.style.borderColor = '#5090ff';
-        } else {
-            btn.textContent = '◑ Dark';
-            btn.style.background = '';
-            btn.style.color = '#7ab8ff';
-            btn.style.borderColor = 'rgba(100,160,255,.3)';
+        if (pc) pc.classList.toggle('pv-dark', _darkOn);
+        if (btn) {
+            btn.textContent = _darkOn ? '☀ Light' : '◑ Dark';
+            btn.style.background = _darkOn ? 'rgba(100,160,255,.2)' : '';
+            btn.style.color = _darkOn ? '#7ab8ff' : '';
+            btn.style.borderColor = _darkOn ? '#5090ff' : 'rgba(100,160,255,.3)';
         }
+        try { localStorage.setItem(PV_DARK_KEY, _darkOn ? '1' : '0'); } catch (e) {}
+    }
+
+    function toggleDark() {
+        setDark(!_darkOn);
+    }
+
+    function initTheme() {
+        try { setDark(localStorage.getItem(PV_DARK_KEY) === '1'); } catch (e) {}
     }
 
     /* 렌더 후 scale 유지. 첫 렌더 시에는 창에 맞게 자동 fit */
     let _firstRender = true;
     function refresh() {
+        const pc = el('preview-container');
         if (_firstRender) {
             _firstRender = false;
-            /* 다음 프레임에 측정 (DOM 반영 후) */
-            requestAnimationFrame(() => fitToPane());
+            if (pc.classList.contains('slide-mode')) {
+                pc.style.fontSize = Math.round(_pvFontPt * (96 / 72)) + 'px';
+                _updateFontLbl();
+            } else {
+                requestAnimationFrame(() => fitToPane());
+            }
             return;
         }
         if (pptOn) {
@@ -816,7 +993,8 @@ const PV = (() => {
                 const origPx = Math.round(210 * MM);
                 const ratio = vw / origPx;
                 const fontPx = Math.round(_pvFontPt * (96 / 72) * ratio);
-                getPages().forEach(p => {
+                const sel = pc.classList.contains('slide-mode') ? '.ppt-slide' : '.preview-page';
+                pc.querySelectorAll(sel).forEach(p => {
                     p.style.width = vw + 'px';
                     p.style.padding = Math.round(22 * MM * ratio) + 'px ' + Math.round(18 * MM * ratio) + 'px';
                     p.style.minHeight = Math.round(297 * MM * ratio) + 'px';
@@ -825,14 +1003,19 @@ const PV = (() => {
                     p.style.fontSize = fontPx + 'px';
                     p.style.lineHeight = '1.8';
                 });
-                el('ppt-pg').textContent = `${pptIdx + 1} / ${getPages().length}`;
+                const pages = getPages();
+                el('ppt-pg').textContent = pages.length ? `${pptIdx + 1} / ${pages.length}` : '0 / 0';
             }, 50);
             return;
+        }
+        if (pc.classList.contains('slide-mode')) {
+            pc.style.fontSize = Math.round(_pvFontPt * (96 / 72)) + 'px';
+            _updateFontLbl();
         }
         if (scale !== 1.0) setScale(scale);
     }
 
-    return { zoomIn, zoomOut, fitToPane, fontUp, fontDown, togglePPT, pptPrev, pptNext, refresh, toggleDark, toggleTrans };
+    return { zoomIn, zoomOut, fitToPane, fontUp, fontDown, togglePPT, pptPrev, pptNext, refresh, toggleDark, setDark, initTheme, toggleTrans };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -1242,7 +1425,7 @@ const CP = (() => {
    PREVIEW WINDOW (popup) + scroll sync
 ═══════════════════════════════════════════════════════════ */
 const PW = (() => {
-    let win = null, st = null, rm = false;
+    let win = null, st = null, rm = false, _lastOpenWasSlide = false;
     const CSS = `@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:#6a6e7e;display:flex;flex-direction:column;align-items:center;padding:16px 0 36px;min-height:100vh}
 .preview-page{width:210mm;min-height:297mm;background:white;color:#1a1a2e;padding:22mm 18mm;box-shadow:0 6px 40px rgba(0,0,0,.5);font-family:'Libre Baskerville',serif;font-size:11pt;line-height:1.8;word-break:break-word;position:relative;margin-bottom:16px}
@@ -1266,9 +1449,45 @@ const PW = (() => {
 .rm-ln{position:absolute;left:0;top:0;width:34px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:8pt;line-height:inherit;color:#a0a0c8;user-select:none;pointer-events:none;border-right:1px solid #ddd;padding-right:5px;height:1.8em;overflow:hidden}
 @media print{body{background:none;padding:0}.preview-page{box-shadow:none;margin:0;page-break-after:always;width:100%;min-height:0}.preview-page:last-child{page-break-after:auto}/* page number visible in print */.a4-rl,.a4-rl-label{display:none!important}}`;
 
-    function buildHTML(md, title) {
+    function buildHTML(md, title, opts) {
+        opts = opts || {};
+        const slideMode = !!opts.slideMode;
         const pages = splitPages(md);
-        const html = pages.map((p, i) => `<div class="preview-page${rm ? ' rm' : ''}" data-page="${i + 1}">${mdRender(p)}</div>`).join('');
+        let html;
+        if (slideMode) {
+            html = pages.map((p, i) => {
+                const parsed = parseSlideContent(p);
+                const warnClass = parsed.bullets.length > 6 ? ' slide-bullet-warn' : '';
+                const warnMsg = parsed.bullets.length > 6 ? '<span class="slide-bullet-warn-msg">⚠ bullet 6개 초과</span>' : '';
+                return `<div class="ppt-slide${warnClass}" data-slide-index="${i + 1}"><div class="slide-inner">${mdRender(p)}</div><span class="slide-num">${i + 1}</span>${warnMsg}</div>`;
+            }).join('');
+        } else {
+            html = pages.map((p, i) => `<div class="preview-page${rm ? ' rm' : ''}" data-page="${i + 1}">${mdRender(p)}</div>`).join('');
+        }
+        const PW_SLIDE_CSS = slideMode ? `
+body.pw-slide-mode{background:#2a2e3e}
+body.pw-slide-mode #body-inner{display:flex;flex-direction:column;align-items:center;padding:40px 16px 60px;overflow-y:auto;scroll-snap-type:y mandatory;scroll-behavior:smooth}
+body.pw-slide-mode .ppt-slide{width:960px;max-width:100%;aspect-ratio:16/9;background:#1a1e2e;margin:40px auto;padding:60px;box-shadow:0 20px 60px rgba(0,0,0,.4);border-radius:12px;position:relative;flex-shrink:0;box-sizing:border-box;scroll-snap-align:start}
+body.pw-slide-mode .ppt-slide .slide-inner{width:100%;height:100%;overflow:hidden;position:relative;color:#e0e0ec;font-size:1em}
+body.pw-slide-mode .ppt-slide h1{font-size:2em;margin:0 0 24px;color:#fff;border-bottom:none;padding-bottom:0}
+body.pw-slide-mode .ppt-slide h2{font-size:1.5em;margin:16px 0 12px;color:#e8e8f0}
+body.pw-slide-mode .ppt-slide h3{font-size:1.25em;margin:12px 0 8px;color:#d8d8e8}
+body.pw-slide-mode .ppt-slide ul,body.pw-slide-mode .ppt-slide ol{font-size:1.25em;line-height:1.6;margin:12px 0;padding-left:28px}
+body.pw-slide-mode .ppt-slide p{margin:0 0 12px;font-size:1.125em;line-height:1.5}
+body.pw-slide-mode .ppt-slide .slide-num{position:absolute;bottom:16px;right:24px;font-size:0.75em;color:rgba(255,255,255,.4)}
+body.pw-slide-mode .ppt-slide.slide-bullet-warn{outline:2px solid #f39c12;outline-offset:2px}
+body.pw-slide-mode .ppt-slide .slide-bullet-warn-msg{position:absolute;top:8px;right:8px;font-size:0.625em;color:#f39c12;background:rgba(243,156,18,.2);padding:2px 8px;border-radius:4px}
+/* 슬라이드 모드 + Trans(세로) */
+body.pw-slide-mode.trans-mode .ppt-slide{width:540px;max-width:100%;aspect-ratio:9/16}
+/* 슬라이드 모드 + 다크 테마 */
+body.pw-slide-mode.dark-theme .ppt-slide{background:#1a1a2e;color:#e8e8f0}
+body.pw-slide-mode.dark-theme .ppt-slide h1,body.pw-slide-mode.dark-theme .ppt-slide h2,body.pw-slide-mode.dark-theme .ppt-slide h3{color:#a8b8ff}
+body.pw-slide-mode.dark-theme .ppt-slide a{color:#6acff7}
+body.pw-slide-mode.dark-theme .ppt-slide code{background:#2a2a3e;color:#f7a06a}
+body.pw-slide-mode.dark-theme .ppt-slide blockquote{border-left-color:#7c6af7;color:#d4d0f0;background:rgba(40,35,80,.6)}
+body.pw-slide-mode.dark-theme .ppt-slide .slide-num{color:rgba(255,255,255,.35)}
+` : '';
+        const bodyClass = slideMode ? ' class="pw-slide-mode"' : '';
         const A4_CSS = `
 /* ── PV 툴바 ── */
 #pw-toolbar{position:fixed;top:0;left:0;right:0;height:36px;background:rgba(20,20,32,.93);
@@ -1431,8 +1650,8 @@ body.dark-theme .preview-page table th *{color:#c8d8ff !important}
 
         return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${title || 'Preview'}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"><\/script>
-<style>${CSS}${A4_CSS}<\/style></head>
-<body>
+<style>${CSS}${A4_CSS}${PW_SLIDE_CSS}<\/style></head>
+<body${bodyClass}>
 <div id="pw-toolbar">
   <button onclick="window.print()" title="인쇄 / PDF">🖨 인쇄</button>
   <button onclick="pwDownload()" title="현재 HTML 저장">💾 저장</button>
@@ -1521,6 +1740,7 @@ function pwToggleSync() {
     btn.style.borderColor = _syncEnabled ? 'rgba(106,247,176,.4)' : 'rgba(255,255,255,.2)';
     btn.style.color = _syncEnabled ? '#6af7b0' : '#888';
   }
+  try { if (window.opener) window.opener.postMessage({ type: 'pwSyncState', enabled: _syncEnabled }, '*'); } catch(e) {}
 }
 
 /* ── 에디터 → 새창 스크롤 수신 ─────────────────────────────
@@ -1541,6 +1761,7 @@ window.addEventListener('message', e => {
     if (!bi) return;
     const sy = window.scrollY; /* 현재 스크롤 위치 저장 */
     bi.innerHTML = e.data.html || '';
+    document.body.classList.toggle('pw-slide-mode', !!e.data.slideMode);
     if (e.data.title) document.title = e.data.title;
     /* scale / font 재적용 (기존 값 그대로 유지) */
     if (typeof _applyScale === 'function') _applyScale();
@@ -1565,6 +1786,8 @@ window.addEventListener('message', e => {
     return;
   }
 
+  if (e.data.type === 'pwToggleSync') { pwToggleSync(); return; }
+
   if (!_syncEnabled) return;
   if (e.data.type === 'ss') {
     if (_pptOn) return; /* PPT 모드 중에는 동기화 무시 */
@@ -1586,6 +1809,7 @@ window.addEventListener('message', e => {
     }
   }
 });
+setTimeout(function(){ try { if (window.opener) window.opener.postMessage({ type: 'pwSyncState', enabled: _syncEnabled }, '*'); } catch(e) {} }, 150);
 
 /* 새창 → 에디터 방향 스크롤 알림 (window scroll 기반) */
 let _st;
@@ -1610,7 +1834,26 @@ let _fontPt=11; /* 기본 폰트 크기(pt) */
 const FONT_MIN=6,FONT_MAX=24,FONT_STEP=1;
 
 function _applyScale(){
-  if(_pptOn) return; /* PPT 모드는 _pptApply가 처리 */
+  if(_pptOn) return;
+  if(document.body.classList.contains('pw-slide-mode')){
+    const slides=document.querySelectorAll('.ppt-slide');
+    const baseW=document.body.classList.contains('trans-mode')?540:960;
+    const w=Math.round(baseW*_scale);
+    const fontPx=Math.round(_fontPt*(96/72));
+    slides.forEach(s=>{
+      s.style.width=w+'px';
+      s.style.maxWidth='100%';
+      s.style.fontSize=fontPx+'px';
+      s.style.lineHeight='1.8';
+      const inner=s.querySelector('.slide-inner');
+      if(inner) inner.style.fontSize=fontPx+'px';
+    });
+    const zl=document.getElementById('pw-zoom-lbl');
+    if(zl)zl.textContent=Math.round(_scale*100)+'%';
+    const lbl=document.getElementById('pw-font-lbl');
+    if(lbl)lbl.textContent=_fontPt+'pt';
+    return;
+  }
   const pages=document.querySelectorAll('.preview-page');
   const fontPx=Math.round(_fontPt*(96/72)); /* pt→px */
   pages.forEach(p=>{
@@ -1648,6 +1891,15 @@ function _applyFont(){
     const bi=document.getElementById('body-inner');
     const ratio=window.innerWidth/_A4W_PX;
     if(bi)bi.style.fontSize=Math.round(_fontPt*(96/72)*ratio*10)/10+'px';
+  } else if(document.body.classList.contains('pw-slide-mode')){
+    document.querySelectorAll('.ppt-slide').forEach(s=>{
+      s.style.fontSize=fontPx+'px';
+      s.style.lineHeight='1.8';
+      const inner=s.querySelector('.slide-inner');
+      if(inner) inner.style.fontSize=fontPx+'px';
+    });
+    const zl=document.getElementById('pw-zoom-lbl');
+    if(zl)zl.textContent=Math.round(_scale*100)+'%';
   } else {
     /* 일반 모드: preview-page에 직접 fontSize 적용 */
     document.querySelectorAll('.preview-page').forEach(p=>{
@@ -1715,7 +1967,10 @@ function pwFullscreen(){
    zoom 버튼은 PPT 모드 중 비활성.
 */
 let _pptOn=false;
-function _getPages(){ return [...document.querySelectorAll('.preview-page')]; }
+function _getPages(){
+  if(document.body.classList.contains('pw-slide-mode')) return [...document.querySelectorAll('.ppt-slide')];
+  return [...document.querySelectorAll('.preview-page')];
+}
 
 function _pptApply(){
   const vw=window.innerWidth;
@@ -2126,13 +2381,22 @@ function pwToggleA4(){
 
 window.addEventListener('load',()=>{
   const n=document.querySelectorAll('.preview-page').length;
-  document.getElementById('pw-pg-lbl').textContent='1 / '+n;
-  _fitToWindow();
+  const nSlide=document.querySelectorAll('.ppt-slide').length;
+  const pgLbl=document.getElementById('pw-pg-lbl');
+  if(document.body.classList.contains('pw-slide-mode')&&nSlide>0){
+    if(pgLbl)pgLbl.textContent=(nSlide)+' 슬라이드';
+    const baseW=document.body.classList.contains('trans-mode')?540:960;
+    _scale=Math.max(MIN_S,Math.min(MAX_S,Math.floor((window.innerWidth-60)/baseW*100)/100));
+    _applyScale();
+  } else {
+    if(pgLbl)pgLbl.textContent='1 / '+n;
+    _fitToWindow();
+  }
   /* 일반 모드 스크롤 시 페이지 표시 갱신 */
   const bi=document.getElementById('body-inner');
   bi.addEventListener('scroll',()=>{
     if(_pptOn)return; /* PPT 모드는 _updatePptPg가 처리 */
-    const pages=[...document.querySelectorAll('.preview-page')];
+    const pages=_getPages();
     if(!pages.length)return;
     const mid=bi.scrollTop+window.innerHeight*0.3;
     let cur=0;
@@ -2159,6 +2423,15 @@ window.addEventListener('load',()=>{
                     pc.scrollTop = r * (pc.scrollHeight - pc.clientHeight);
                 }
             }
+            if (e.data && e.data.type === 'pwSyncState') {
+                const btn = el('ed-pv-sync-btn');
+                if (!btn) return;
+                const on = !!e.data.enabled;
+                btn.textContent = on ? '🔗 PV 동기화 ON' : '🔗 PV 동기화 OFF';
+                btn.style.color = on ? '#6af7b0' : '#888';
+                btn.style.background = on ? 'rgba(106,247,176,.12)' : 'rgba(255,255,255,.05)';
+                btn.style.borderColor = on ? 'rgba(106,247,176,.35)' : 'rgba(255,255,255,.15)';
+            }
         });
     }
 
@@ -2171,6 +2444,7 @@ window.addEventListener('load',()=>{
         try {
             win = window.open('', '_blank', `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
             if (!win) throw 0;
+            _lastOpenWasSlide = false;
             win.document.open(); win.document.write(buildHTML(el('editor').value, title)); win.document.close();
             el('pw-btn').classList.add('open');
             win.addEventListener('beforeunload', () => el('pw-btn').classList.remove('open'));
@@ -2185,19 +2459,33 @@ window.addEventListener('load',()=>{
             const title = el('doc-title').value;
             const md    = el('editor').value;
             try {
-                /* ── postMessage로 내용만 업데이트 (JS 상태 보존: scale/dark/syncEnabled 유지) ── */
                 const pages = splitPages(md);
-                const html  = pages.map((p, i) =>
-                    `<div class="preview-page${rm ? ' rm' : ''}" data-page="${i + 1}">${mdRender(p)}</div>`
-                ).join('');
-                win.postMessage({ type: 'pvUpdate', html, title, rm }, '*');
+                const html  = _lastOpenWasSlide
+                    ? pages.map((p, i) => {
+                        const parsed = parseSlideContent(p);
+                        const warnClass = parsed.bullets.length > 6 ? ' slide-bullet-warn' : '';
+                        const warnMsg = parsed.bullets.length > 6 ? '<span class="slide-bullet-warn-msg">⚠ bullet 6개 초과</span>' : '';
+                        return `<div class="ppt-slide${warnClass}" data-slide-index="${i + 1}"><div class="slide-inner">${mdRender(p)}</div><span class="slide-num">${i + 1}</span>${warnMsg}</div>`;
+                    }).join('')
+                    : pages.map((p, i) =>
+                        `<div class="preview-page${rm ? ' rm' : ''}" data-page="${i + 1}">${mdRender(p)}</div>`
+                    ).join('');
+                win.postMessage({ type: 'pvUpdate', html, title, rm, slideMode: _lastOpenWasSlide }, '*');
             } catch (e) { }
         }, 200);
     }
 
     function forceRefresh() { if (win && !win.closed) { const t = el('doc-title').value; try { win.document.open(); win.document.write(buildHTML(el('editor').value, t)); win.document.close() } catch (e) { } } else open() }
-    function checkClosed() { if (win && win.closed) { el('pw-btn').classList.remove('open'); win = null; } }
+    function checkClosed() {
+        if (win && win.closed) {
+            el('pw-btn').classList.remove('open');
+            win = null;
+            const btn = el('ed-pv-sync-btn');
+            if (btn) { btn.textContent = '🔗 PV 동기화 OFF'; btn.style.color = '#888'; btn.style.background = 'rgba(255,255,255,.05)'; btn.style.borderColor = 'rgba(255,255,255,.15)'; }
+        }
+    }
     function setRM(v) { rm = v }
+    function sendToggleSync() { if (win && !win.closed) try { win.postMessage({ type: 'pwToggleSync' }, '*'); } catch (e) { } }
 
     /* PPT 모드로 바로 열기 */
     function openPPT() {
@@ -2225,8 +2513,29 @@ window.addEventListener('load',()=>{
         } catch (e) { alert('팝업이 차단되었습니다.'); }
     }
 
+    /* 슬라이드 모드로 바로 열기 (새창에서 16:9 카드 뷰) */
+    function openSlide() {
+        _initMsgListener();
+        const title = el('doc-title').value;
+        if (win && !win.closed) { win.focus(); sync(); return }
+        const w = 920, h = Math.floor(window.screen.height * .88);
+        const left = window.screenX + window.outerWidth + 10, top = window.screenY;
+        try {
+            win = window.open('', '_blank', `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+            if (!win) throw 0;
+            _lastOpenWasSlide = true;
+            win.document.open(); win.document.write(buildHTML(el('editor').value, title, { slideMode: true })); win.document.close();
+            el('pw-btn').classList.add('open');
+            win.addEventListener('beforeunload', () => el('pw-btn').classList.remove('open'));
+        } catch (e) { alert('팝업이 차단되었습니다.'); }
+    }
+
     function hasWin() { return !!(win && !win.closed); }
-    return { open, sync, forceRefresh, checkClosed, pushScroll, setRM, openPPT, hasWin };
+    function closeWin() {
+        if (win && !win.closed) { try { win.close(); } catch (e) { } win = null; }
+        el('pw-btn').classList.remove('open');
+    }
+    return { open, sync, forceRefresh, checkClosed, pushScroll, setRM, openPPT, openSlide, hasWin, closeWin, sendToggleSync };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -2311,8 +2620,9 @@ const SS = (() => {
 
         const anchor = _getAnchor(ed, useCursor);
 
-        /* ① 내부 PV — _enabled일 때만 */
+        /* ① 내부 PV — _enabled일 때만 (PV scroll 이벤트가 역방향 동기화를 트리거하지 않도록 lock) */
         if (_enabled) {
+            _lock = true;
             if (anchor) {
                 const y0 = _pvY(pc, anchor.id);
                 if (y0 !== null) {
@@ -2327,6 +2637,7 @@ const SS = (() => {
                 const r = ed.scrollTop / Math.max(1, ed.scrollHeight - ed.clientHeight);
                 pc.scrollTop = r * (pc.scrollHeight - pc.clientHeight);
             }
+            setTimeout(() => { _lock = false; }, 120);
         }
 
         /* ② 새창 PW — _enabled 여부와 무관하게 항상 에디터 기반으로 전송
@@ -2372,7 +2683,7 @@ const SS = (() => {
     }
 
     function _updateBtn() {
-        /* pv 창 버튼 + 에디터 툴바 버튼 동시 업데이트 */
+        /* pv 창 버튼 + 에디터 툴바 버튼 동시 업데이트 (에디터 헤더 PV동기화는 새창 PV 전용이라 제외) */
         ['pv-sync-btn', 'ed-sync-btn'].forEach(id => {
             const btn = el(id);
             if (!btn) return;
@@ -3289,6 +3600,9 @@ const GH = (() => {
         const st = el2('gh-conn-status');
         if (st) { st.className = ''; st.textContent = ''; }
         App.showModal('gh-modal');
+        /* 모달 내 자동새로고침 버튼/시간표시 동기화 */
+        _ghArUpdateBtn();
+        _ghArUpdateCountdown();
     }
 
     function hideSettings() { App.hideModal('gh-modal'); }
@@ -3442,6 +3756,96 @@ const GH = (() => {
             _setRepoUI(cfg.repo, 'err');
             _showListMsg(`⚠ ${e.message}`);
         }
+    }
+
+    /* ── GitHub 사이드바 자동 새로고침 ─────────────────────
+       연결 시 N초마다 refresh() 호출. ON/OFF·간격은 localStorage 유지. */
+    const GH_AR_KEY = 'gh_auto_refresh';
+    const GH_AR_INTERVAL_KEY = 'gh_ar_interval';
+    function _getGhArInterval() { return Math.max(10, parseInt(localStorage.getItem(GH_AR_INTERVAL_KEY) || '30', 10) || 30); }
+    let _ghArEnabled = localStorage.getItem(GH_AR_KEY) !== 'off';
+    let _ghArTick = null;
+    let _ghArCountdown = 0;
+
+    function _ghArUpdateBtn() {
+        const ids = ['gh-ar-btn', 'gh-ar-btn-modal'];
+        const onClass = 'on';
+        const offClass = 'off';
+        ids.forEach(id => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (btn.classList.contains('gh-ar-btn-circle')) {
+                btn.classList.remove(onClass, offClass);
+                btn.classList.add(_ghArEnabled ? onClass : offClass);
+            } else {
+                btn.textContent = _ghArEnabled ? '🔄 ON' : '🔄 OFF';
+                btn.style.color = _ghArEnabled ? '#6af7b0' : 'var(--tx3)';
+                btn.style.borderColor = _ghArEnabled ? 'rgba(106,247,176,.35)' : 'var(--bd)';
+                btn.style.background = _ghArEnabled ? 'rgba(106,247,176,.1)' : 'rgba(255,255,255,.04)';
+            }
+        });
+    }
+
+    function _ghArUpdateCountdown() {
+        const ids = ['gh-ar-countdown', 'gh-ar-countdown-modal'];
+        const text = _ghArEnabled && _ghArCountdown > 0 ? _ghArCountdown + 's' : '';
+        const show = _ghArEnabled && _ghArCountdown > 0;
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = text;
+            el.style.display = show ? 'inline' : 'none';
+        });
+    }
+
+    function _ghStartAutoRefresh() {
+        _ghStopAutoRefresh();
+        if (!cfg || !_ghArEnabled) return;
+        const intervalSec = _getGhArInterval();
+        _ghArCountdown = intervalSec;
+        _ghArUpdateCountdown();
+
+        _ghArTick = setInterval(() => {
+            _ghArCountdown--;
+            _ghArUpdateCountdown();
+            if (_ghArCountdown <= 0) {
+                refresh().catch(() => {});
+                _ghArCountdown = _getGhArInterval();
+            }
+        }, 1000);
+    }
+
+    function _ghStopAutoRefresh() {
+        if (_ghArTick) { clearInterval(_ghArTick); _ghArTick = null; }
+        _ghArCountdown = 0;
+        _ghArUpdateCountdown();
+    }
+
+    function toggleAutoRefresh() {
+        _ghArEnabled = !_ghArEnabled;
+        localStorage.setItem(GH_AR_KEY, _ghArEnabled ? 'on' : 'off');
+        _ghArUpdateBtn();
+        if (_ghArEnabled && cfg) {
+            _ghStartAutoRefresh();
+            App._toast('🔄 자동새로고침 ON (' + _getGhArInterval() + '초마다 GitHub 폴더)');
+        } else {
+            _ghStopAutoRefresh();
+            App._toast('🔄 자동새로고침 OFF');
+        }
+    }
+
+    function showArIntervalSetting() {
+        const cur = _getGhArInterval();
+        const v = prompt('자동 새로고침 간격 (초)\nGitHub 폴더 목록을 이 간격마다 갱신합니다.', String(cur));
+        if (v == null) return;
+        const num = parseInt(v, 10);
+        if (!(num >= 10 && num <= 600)) {
+            App._toast('⚠ 10~600 초 사이로 입력하세요');
+            return;
+        }
+        localStorage.setItem(GH_AR_INTERVAL_KEY, String(num));
+        if (_ghArEnabled && cfg) _ghStartAutoRefresh();
+        App._toast('✅ 간격 ' + num + '초로 저장');
     }
 
 
@@ -3618,6 +4022,33 @@ const GH = (() => {
         }
 
         renderNode(root, 0, list);
+        /* 전체 접기 버튼: 렌더 후 기본은 모두 펼침 → ▽ */
+        const foldBtn = document.getElementById('gh-fold-toggle-btn');
+        if (foldBtn) foldBtn.textContent = '▽';
+    }
+
+    /* ── 전체 폴더 접기/펼치기 토글 (GitHub 트리) ───────── */
+    function toggleFoldAll() {
+        const list = document.getElementById('gh-list');
+        if (!list) return;
+        const folders = list.querySelectorAll('.ft-folder');
+        if (!folders.length) return;
+        const anyExpanded = Array.from(folders).some(f => !f.classList.contains('collapsed'));
+        const collapse = anyExpanded;
+        folders.forEach(f => {
+            const hdr = f.querySelector('.ft-folder-hdr');
+            const toggle = hdr && hdr.querySelector('.ft-toggle');
+            const isEmpty = toggle && toggle.textContent === '—';
+            if (collapse) {
+                f.classList.add('collapsed');
+                if (toggle && !isEmpty) toggle.textContent = '▸';
+            } else {
+                f.classList.remove('collapsed');
+                if (toggle && !isEmpty) toggle.textContent = '▾';
+            }
+        });
+        const foldBtn = document.getElementById('gh-fold-toggle-btn');
+        if (foldBtn) foldBtn.textContent = collapse ? '▾' : '▽';
     }
 
     /* ── GitHub 파일 삭제 확인 & 실행 ───────────────────── */
@@ -3829,9 +4260,22 @@ const GH = (() => {
         } else if (linkEl) {
             linkEl.style.display = 'none';
         }
-        /* gh-local-actions 표시/숨김 */
-        const ghActions = document.getElementById('gh-local-actions');
-        if (ghActions) ghActions.style.display = connected ? '' : 'none';
+        /* 새파일/새폴더 버튼: 연결 시에만 표시 (sb-stats 한 줄) */
+        const ghNewfileBtn = document.getElementById('gh-newfile-btn');
+        const ghMkdirBtn = document.getElementById('gh-mkdir-btn');
+        if (ghNewfileBtn) ghNewfileBtn.style.display = connected ? '' : 'none';
+        if (ghMkdirBtn) ghMkdirBtn.style.display = connected ? '' : 'none';
+        if (connected) {
+            _ghArUpdateBtn();
+            if (_ghArEnabled) _ghStartAutoRefresh();
+        } else {
+            _ghStopAutoRefresh();
+        }
+        /* 스테이터스바 자동새로고침 영역: 연결 시에만 표시 */
+        const sbArWrap = document.getElementById('statusbar-ar-wrap');
+        const sbArSep = document.getElementById('statusbar-ar-sep');
+        if (sbArWrap) sbArWrap.style.display = connected ? 'flex' : 'none';
+        if (sbArSep) sbArSep.style.display = connected ? '' : 'none';
         /* 연결된 repo URL 배너 업데이트 */
         let urlBanner = document.getElementById('gh-url-banner');
         if (!urlBanner) {
@@ -4202,9 +4646,23 @@ const GH = (() => {
             linkBtn.href = `https://github.com/${cfg.repo}`;
             linkBtn.style.display = '';
         }
-        /* gh-local-actions 표시/숨김 */
-        const ghActions = document.getElementById('gh-local-actions');
-        if (ghActions) ghActions.style.display = cfg ? '' : 'none';
+        /* 새파일/새폴더 버튼: 연결 시에만 표시 (sb-stats 한 줄) */
+        const ghNewfileBtn = document.getElementById('gh-newfile-btn');
+        const ghMkdirBtn = document.getElementById('gh-mkdir-btn');
+        if (ghNewfileBtn) ghNewfileBtn.style.display = cfg ? '' : 'none';
+        if (ghMkdirBtn) ghMkdirBtn.style.display = cfg ? '' : 'none';
+        if (cfg) {
+            _ghArUpdateBtn();
+            if (_ghArEnabled) _ghStartAutoRefresh();
+        } else {
+            _ghStopAutoRefresh();
+        }
+        const sbArWrap = document.getElementById('statusbar-ar-wrap');
+        const sbArSep = document.getElementById('statusbar-ar-sep');
+        if (sbArWrap) sbArWrap.style.display = cfg ? 'flex' : 'none';
+        if (sbArSep) sbArSep.style.display = cfg ? '' : 'none';
+        const ghCommitBtn = document.getElementById('gh-commit-history-btn');
+        if (ghCommitBtn) ghCommitBtn.style.display = cfg ? '' : 'none';
     }
 
     /* ── 커밋 히스토리 ─────────────────────────────────────
@@ -4965,6 +5423,7 @@ const GH = (() => {
         quickConnect, isConnected, _render,
         createNewFile, createNewFolder, _createFileInFolder,
         confirmDelete, confirmDeleteFolder, moveFile, pushFile,
+        toggleFoldAll, toggleAutoRefresh, showArIntervalSetting,
         get cfg() { return cfg; },
     };
 })();
@@ -5053,18 +5512,32 @@ const FM = (() => {
     let filtered   = [];
     let activeFile = null;
     let folderName = '';     // 폴더 이름 (표시용)
+    let _searchQuery = '';   // 검색어 (search input)
+    const FM_SHOW_HIDDEN_KEY = 'fm_show_hidden';
+    let showHiddenFiles = localStorage.getItem(FM_SHOW_HIDDEN_KEY) === 'on';  /* 디폴트: 숨김 */
+
+    function _isPathHidden(path) {
+        return path.split('/').some(seg => seg.startsWith('.'));
+    }
+    function _applyFilters() {
+        let base = showHiddenFiles ? allFiles : allFiles.filter(f => !_isPathHidden(f.path));
+        filtered = _searchQuery
+            ? base.filter(f => f.name.toLowerCase().includes(_searchQuery.toLowerCase()))
+            : base;
+    }
 
     /* ── 앱 시작: IDB 캐시에서 즉시 복원 ──────────────
        핸들 없이도 캐시된 목록/내용으로 파일 탭 채움     */
     async function restore() {
         try {
+            showHiddenFiles = localStorage.getItem(FM_SHOW_HIDDEN_KEY) === 'on';
             const meta = await _idbGet('meta', 'root');
             if (!meta) return;
             folderName = meta.folderName;
             const cached = await _idbAll('files');
             if (!cached.length) return;
             allFiles   = cached;
-            filtered   = allFiles;
+            _applyFilters();
             /* DOM이 완전히 준비된 후 UI 업데이트 */
             setTimeout(() => {
                 _setFolderUI(folderName, false);
@@ -5098,7 +5571,7 @@ const FM = (() => {
         _emptyFolders = {};  /* 빈 폴더 목록 초기화 */
         await _scanDir(dirHandle, '', 0, fresh);
         allFiles = fresh;
-        filtered = allFiles;
+        _applyFilters();
         /* IDB 캐시 저장 */
         await _idbClearStore('files');
         const db = await _getDB();
@@ -5178,6 +5651,9 @@ const FM = (() => {
         allFiles   = [];
         filtered   = [];
         folderName = '';
+        _searchQuery = '';
+        const searchInput = document.getElementById('files-search-input');
+        if (searchInput) searchInput.value = '';
         await _idbClearStore('files');
         await _idbClearStore('meta');
         _render();
@@ -5216,15 +5692,55 @@ const FM = (() => {
         }
         if (refBtn) refBtn.style.display = (state === true) ? '' : 'none';
         const openBtn = document.getElementById('files-open-btn');
+        const foldBtn = document.getElementById('files-fold-toggle-btn');
+        const hiddenBtn = document.getElementById('files-hidden-toggle-btn');
         if (openBtn) openBtn.style.display = (state === true && name) ? '' : 'none';
+        if (foldBtn) foldBtn.style.display = (state === true && name) ? '' : 'none';
+        if (hiddenBtn) {
+            hiddenBtn.style.display = (state === true && name) ? '' : 'none';
+            hiddenBtn.title = showHiddenFiles ? '숨김 파일 숨기기 (.git 등)' : '숨김 파일 표시 (.git 등)';
+            hiddenBtn.classList.toggle('active', showHiddenFiles);
+        }
     }
 
     /* ── 검색 ─────────────────────────────────────────── */
     function search(q) {
-        filtered = q
-            ? allFiles.filter(f => f.name.toLowerCase().includes(q.toLowerCase()))
-            : allFiles;
+        _searchQuery = (q && q.trim()) ? q.trim() : '';
+        _applyFilters();
         _render();
+    }
+
+    /* ── 숨김 파일 표시 토글 ───────────────────────────── */
+    function toggleShowHidden() {
+        showHiddenFiles = !showHiddenFiles;
+        localStorage.setItem(FM_SHOW_HIDDEN_KEY, showHiddenFiles ? 'on' : 'off');
+        _applyFilters();
+        _setFolderUI(folderName, !!dirHandle);
+        _render();
+    }
+
+    /* ── 전체 폴더 접기/펼치기 토글 ───────────────────── */
+    function toggleFoldAll() {
+        const list = document.getElementById('files-list');
+        if (!list) return;
+        const folders = list.querySelectorAll('.ft-folder');
+        if (!folders.length) return;
+        const anyExpanded = Array.from(folders).some(f => !f.classList.contains('collapsed'));
+        const collapse = anyExpanded;
+        folders.forEach(f => {
+            const hdr = f.querySelector('.ft-folder-hdr');
+            const toggle = hdr && hdr.querySelector('.ft-toggle');
+            const isEmpty = toggle && toggle.textContent === '—';
+            if (collapse) {
+                f.classList.add('collapsed');
+                if (toggle && !isEmpty) toggle.textContent = '▸';
+            } else {
+                f.classList.remove('collapsed');
+                if (toggle && !isEmpty) toggle.textContent = '▾';
+            }
+        });
+        const foldBtn = document.getElementById('files-fold-toggle-btn');
+        if (foldBtn) foldBtn.textContent = collapse ? '▾' : '▽';
     }
 
     /* ── 파일 목록 렌더링 (트리 구조) ─────────────────── */
@@ -5264,8 +5780,11 @@ const FM = (() => {
             node.files.push(f);
         });
 
-        /* 빈 폴더(_emptyFolders)도 트리에 추가 */
-        Object.keys(_emptyFolders).sort().forEach(folderPath => {
+        /* 빈 폴더(_emptyFolders)도 트리에 추가 (숨김 경로 제외) */
+        const emptyFoldersToAdd = showHiddenFiles
+            ? Object.keys(_emptyFolders)
+            : Object.keys(_emptyFolders).filter(p => !_isPathHidden(p));
+        emptyFoldersToAdd.sort().forEach(folderPath => {
             const parts = folderPath.split('/');
             let node = root;
             for (let i = 0; i < parts.length; i++) {
@@ -5362,6 +5881,9 @@ const FM = (() => {
 
         /* 루트 파일 + 폴더 트리 렌더 */
         renderNode(root, 0, list);
+        /* 전체 접기 버튼: 렌더 후 기본은 모두 펼침 → ▽ */
+        const foldBtn = document.getElementById('files-fold-toggle-btn');
+        if (foldBtn) foldBtn.textContent = '▽';
     }
 
     /* ── 파일 열기 (캐시된 내용 사용 → 즉시 열림) ────── */
@@ -6115,7 +6637,7 @@ const FM = (() => {
                     /* IDB 캐시에서도 제거 */
                     await _idbDel('files', f.path);
                     allFiles = allFiles.filter(x => x.path !== f.path);
-                    filtered = filtered.filter(x => x.path !== f.path);
+                    _applyFilters();
 
                     /* 열려 있는 탭이면 닫기 */
                     const tab = TM.getAll().find(t => t.filePath === f.path || t.title === f.name.replace(/\.[^.]+$/, ''));
@@ -6270,7 +6792,7 @@ const FM = (() => {
                 if (tab) TM.closeTab(tab.id);
             }
             allFiles  = allFiles.filter(f => f.folder !== folderPath && !f.path.startsWith(folderPath + '/'));
-            filtered  = [...allFiles];
+            _applyFilters();
             delete _subHandles[folderPath];
             delete _emptyFolders[folderPath];
 
@@ -6433,13 +6955,68 @@ const FM = (() => {
         });
     }
 
-    /* ── 로컬 폴더를 탐색기에서 열기 (FM 스코프) ── */
+    /* ── 로컬 폴더를 탐색기에서 열기 (FM 스코프) ──
+       브라우저 정책으로 직접 열 수 없으면 모달로 주소 표시 + 자동 복사 */
+    const FOPEN_SAVE_KEY = 'fm_custom_folder_path_';
     function openInExplorer() {
         if (!dirHandle) { App._toast('⚠ 폴더를 먼저 선택하세요'); return; }
-        App._toast('📂 ' + folderName + ' — 탐색기에서 해당 폴더를 찾아 여세요');
+        const defaultPath = folderName;
+        const savedPath = localStorage.getItem(FOPEN_SAVE_KEY + defaultPath);
+        const initialValue = (savedPath && savedPath.trim()) ? savedPath : defaultPath;
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center';
+        ov.innerHTML = `
+            <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:20px 22px;min-width:320px;max-width:440px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                    <span style="font-size:14px;font-weight:700;color:var(--txh)">📂 폴더 열기 안내</span>
+                    <button id="fopen-close" style="background:none;border:none;cursor:pointer;color:var(--tx3);font-size:18px;line-height:1;padding:0 4px">✕</button>
+                </div>
+                <div style="font-size:11px;color:var(--tx3);margin-bottom:12px;line-height:1.6">
+                    브라우저 보안 정책으로 해당 폴더를 직접 열 수 없습니다.<br>
+                    아래 폴더 주소를 수정·저장하거나 복사하여 탐색기 주소창에 붙여넣으세요.
+                </div>
+                <input type="text" id="fopen-path" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:12px;font-family:monospace;color:var(--tx2);margin-bottom:14px;outline:none">
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                    <button id="fopen-save" style="padding:6px 14px;border-radius:6px;border:1px solid rgba(88,200,248,.4);background:rgba(88,200,248,.15);color:#58c8f8;font-size:12px;cursor:pointer">💾 저장</button>
+                    <button id="fopen-copy" style="padding:6px 14px;border-radius:6px;border:1px solid rgba(106,247,176,.4);background:rgba(106,247,176,.15);color:#6af7b0;font-size:12px;cursor:pointer">📋 복사</button>
+                    <button id="fopen-ok" style="padding:6px 14px;border-radius:6px;border:1px solid var(--bd);background:var(--bg3);color:var(--tx2);font-size:12px;cursor:pointer">닫기</button>
+                </div>
+            </div>`;
+        document.body.appendChild(ov);
+        const pathInput = document.getElementById('fopen-path');
+        if (pathInput) pathInput.value = initialValue;
+        const getValue = () => (pathInput && pathInput.value) ? pathInput.value.trim() : defaultPath;
+        const doCopy = () => {
+            const val = getValue();
+            navigator.clipboard.writeText(val).then(() => {
+                App._toast('📋 폴더 주소가 복사되었습니다');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = val;
+                ta.style.cssText = 'position:fixed;left:-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                App._toast('📋 폴더 주소가 복사되었습니다');
+            });
+        };
+        const doSave = () => {
+            const val = getValue();
+            if (val) {
+                localStorage.setItem(FOPEN_SAVE_KEY + defaultPath, val);
+                App._toast('💾 저장되었습니다');
+            }
+        };
+        doCopy();  /* 창 열림과 동시에 자동 복사 */
+        document.getElementById('fopen-close').onclick = () => ov.remove();
+        document.getElementById('fopen-ok').onclick = () => ov.remove();
+        document.getElementById('fopen-save').onclick = () => doSave();
+        document.getElementById('fopen-copy').onclick = () => doCopy();
+        ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
     }
 
-    return { restore, selectFolder, changeFolder, refresh, search, openInExplorer,
+    return { restore, selectFolder, changeFolder, refresh, search, openInExplorer, toggleFoldAll, toggleShowHidden,
              syncToGitHub, pullFromGitHub, cloneFromGitHub, createFolder, createLocalFile, createFileInFolder,
              confirmDelete, confirmDeleteFolder, moveFile, pushToGH, pushToViewer,
              getFiles: () => allFiles,
@@ -6450,9 +7027,12 @@ const FM = (() => {
 
 const CM = (() => {
     const KEY = 'mdpro_refs'; let refs = []; let sep = 'blank';// blank|line
+    const MANUAL_REF_LOG_KEY = 'mdpro_manual_ref_log';
 
     function load() { try { refs = JSON.parse(localStorage.getItem(KEY) || '[]') } catch (e) { refs = [] } }
     function save() { try { localStorage.setItem(KEY, JSON.stringify(refs)) } catch (e) { } }
+    function loadManual() { try { return JSON.parse(localStorage.getItem(MANUAL_REF_LOG_KEY) || '[]') } catch (e) { return [] } }
+    function saveManual(arr) { try { localStorage.setItem(MANUAL_REF_LOG_KEY, JSON.stringify(arr)) } catch (e) { } }
 
     function setSep(s) {
         sep = s;
@@ -6558,18 +7138,43 @@ const CM = (() => {
     function filter() { renderList(el('cite-search').value) }
     function toggle(id) { const cb = el(id); if (cb) { cb.checked = !cb.checked; upd() } }
     function getSel() { return Array.from(document.querySelectorAll('#cite-list-area input:checked')).map(cb => refs.find(r => String(r.id) === cb.dataset.id)).filter(Boolean) }
-    function upd() { const n = getSel().length; el('cite-sc').textContent = `${n}개 선택됨`; el('cite-ins-btn').style.display = n > 0 ? '' : 'none' }
+    function upd() {
+        const n = getSel().length;
+        el('cite-sc').textContent = `${n}개 선택됨`;
+        el('cite-ins-btn').style.display = n > 0 ? '' : 'none';
+    }
     function selAll() { document.querySelectorAll('#cite-list-area input[type=checkbox]').forEach(cb => cb.checked = true); upd() }
     function clrSel() { document.querySelectorAll('#cite-list-area input[type=checkbox]').forEach(cb => cb.checked = false); upd() }
 
+    function _addToManualList(entries) {
+        const manual = loadManual();
+        const seen = new Set(manual.map(r => r.full));
+        entries.forEach(r => {
+            if (!seen.has(r.full)) {
+                seen.add(r.full);
+                manual.push({ ...r, id: r.id || Date.now() + Math.random() });
+            }
+        });
+        saveManual(manual);
+    }
     function insert() {
         const sel = getSel(); if (!sel.length) return;
-        const style = el('cite-style').value; const ed = el('editor'); const pos = ed.selectionStart; let text = '';
+        const style = el('cite-style').value; const ed = el('editor'); const pos = ed.selectionStart;
+        let text = '';
         if (style === 'inline') text = '(' + sel.map(r => r.key).join('; ') + ')';
         else if (style === 'narrative') text = sel.map(r => `${r.author}(${r.year})`).join('; ');
-        else if (style === 'multi') text = '(' + sel.map(r => r.key).join('; ') + ')';
-        else if (style === 'footnote') { let it = '', dt = '\n'; sel.forEach((r, i) => { const n = Math.floor((ed.value.match(/\[\^\d+\]/g) || []).length / 2) + i + 1; it += `[^${n}]`; dt += `[^${n}]: ${r.full}\n` }); ed.value = ed.value.substring(0, pos) + it + ed.value.substring(pos) + dt; App.render(); US.snap(); App.hideModal('cite-modal'); return }
-        ed.value = ed.value.substring(0, pos) + text + ed.value.substring(pos); ed.setSelectionRange(pos + text.length, pos + text.length); App.render(); US.snap(); App.hideModal('cite-modal');
+        else if (style === 'multi') text = '(' + sel.map(r => `${r.author}, ${r.year}`).join('; ') + ')';
+        else if (style === 'footnote') {
+            let it = '', dt = '\n';
+            sel.forEach((r, i) => { const n = Math.floor((ed.value.match(/\[\^\d+\]/g) || []).length / 2) + i + 1; it += `[^${n}]`; dt += `[^${n}]: ${r.full}\n` });
+            ed.value = ed.value.substring(0, pos) + it + ed.value.substring(pos) + dt;
+            _addToManualList(sel);
+            App.render(); US.snap(); App.hideModal('cite-modal'); return;
+        }
+        ed.value = ed.value.substring(0, pos) + text + ed.value.substring(pos);
+        ed.setSelectionRange(pos + text.length, pos + text.length);
+        _addToManualList(sel);
+        App.render(); US.snap(); App.hideModal('cite-modal');
     }
 
     function renderLib() {
@@ -6596,12 +7201,39 @@ const CM = (() => {
         dlBlob(content, 'references.txt', 'text/plain;charset=utf-8');
     }
 
+    function renderManualList() {
+        const manual = loadManual();
+        const cntEl = document.getElementById('manual-cnt');
+        const listEl = document.getElementById('manual-ref-log');
+        if (!listEl) return;
+        if (cntEl) cntEl.textContent = manual.length;
+        if (!manual.length) { listEl.innerHTML = '<div class="cite-empty">인용 삽입 시 선택된 항목이 여기에 추가됩니다.</div>'; return; }
+        listEl.innerHTML = manual.map((r, i) => `<div class="lib-item"><span class="lib-key">${r.key}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px" title="${r.full}">${r.full}</span><span style="font-size:10px;color:var(--tx3);flex-shrink:0;margin:0 4px">${r.mla ? 'MLA✓' : ''}</span><button class="btn-ic" style="color:var(--er);font-size:12px;flex-shrink:0" onclick="CM.delManual(${i})">✕</button></div>`).join('');
+    }
+    function delManual(i) { const m = loadManual(); m.splice(i, 1); saveManual(m); renderManualList(); }
+    function clearManual() { if (!confirm('수동참고문헌 목록을 모두 삭제하시겠습니까?')) return; saveManual([]); renderManualList(); }
+    function insertRefSectionFromManual() {
+        const manual = loadManual(); if (!manual.length) { App._toast('수동참고문헌이 없습니다.'); return; }
+        const ed = el('editor'); const pos = ed.selectionEnd;
+        const list = manual.map((r, i) => `${i + 1}. ${r.full}`).join('\n');
+        const block = `\n\n<div class="ref-block">\n\n**참고문헌**\n\n${list}\n\n</div>\n`;
+        ed.value = ed.value.substring(0, pos) + block + ed.value.substring(pos); App.render(); US.snap(); App.hideModal('cite-modal');
+    }
+    function downloadManual() {
+        const manual = loadManual(); if (!manual.length) { App._toast('수동참고문헌이 없습니다.'); return; }
+        let content = `# 수동참고문헌 목록 (${new Date().toLocaleDateString()})\n\n`;
+        content += `## APA 7\n\n`; manual.forEach((r, i) => { content += `${i + 1}. ${r.full}\n` });
+        content += `\n## MLA 9\n\n`; manual.forEach((r, i) => { content += `${i + 1}. ${r.mla || toMLA(r)}\n` });
+        content += `\n## Chicago (Author-Date)\n\n`; manual.forEach((r, i) => { content += `${i + 1}. ${r.chicago || toChicago(r)}\n` });
+        dlBlob(content, 'manual-references.txt', 'text/plain;charset=utf-8');
+    }
     function tab(name) {
-        const names = ['add', 'cite', 'convert', 'lib', 'search'];
+        const names = ['add', 'cite', 'convert', 'lib', 'manual', 'search'];
         document.querySelectorAll('#cite-modal .tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
-        names.forEach(n => el(`cp-${n}`)?.classList.toggle('active', n === name));
-        if (name === 'cite') { renderList(el('cite-search')?.value || ''); el('cite-ins-btn').style.display = 'none' }
+        names.forEach(n => { const p = el(`cp-${n}`); if (p) p.classList.toggle('active', n === name); });
+        if (name === 'cite') { renderList(el('cite-search')?.value || ''); el('cite-ins-btn').style.display = 'none'; }
         if (name === 'lib') renderLib();
+        if (name === 'manual') renderManualList();
         if (name === 'search') setTimeout(() => el('ref-q')?.focus(), 80);
     }
 
@@ -6614,7 +7246,7 @@ const CM = (() => {
 
     function open() { load(); renderList(''); renderLib(); el('cite-ins-btn').style.display = 'none' }
 
-    return { load, setSep, parse, loadFile, filter, toggle, getSel, upd, selAll, clrSel, insert, del, clearAll, insertRefSection, downloadLib, convertStyle, copyConverted, insertConverted, tab, open, addRaw };
+    return { load, setSep, parse, loadFile, filter, toggle, getSel, upd, selAll, clrSel, insert, del, clearAll, insertRefSection, downloadLib, renderManualList, delManual, clearManual, insertRefSectionFromManual, downloadManual, convertStyle, copyConverted, insertConverted, tab, open, addRaw };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -7091,40 +7723,145 @@ Keywords:
 ];
 
 /* ═══════════════════════════════════════════════════════════
-   GOOGLE SCHOLAR SEARCH
+   ACADEMIC SEARCH (Google Scholar, RISS, KCI, DBpia, IEEE 등)
 ═══════════════════════════════════════════════════════════ */
 const Scholar = (() => {
     const RK = 'mdpro_scholar_recent';
     let recent = [];
+    let currentTab = 'google';
 
     function load() { try { recent = JSON.parse(localStorage.getItem(RK) || '[]') } catch (e) { recent = [] } }
 
+    function tab(name) {
+        currentTab = name;
+        document.querySelectorAll('#scholar-modal .tab-row .tab').forEach(t => t.classList.remove('active'));
+        const tabEl = document.querySelector(`#scholar-modal .tab-row .tab:nth-child(${['google','yonsei','sciencedirect','riss','kci','dbpia','ieee'].indexOf(name)+1})`);
+        if (tabEl) tabEl.classList.add('active');
+        document.querySelectorAll('#scholar-modal .tp').forEach(p => p.classList.remove('active'));
+        const panel = document.getElementById('scholar-panel-' + name);
+        if (panel) panel.classList.add('active');
+        setTimeout(() => {
+            const inp = document.querySelector('#scholar-panel-' + name + ' input[type=text]');
+            if (inp) inp.focus();
+        }, 50);
+    }
+
     function show() {
         load(); renderRecent(); el('scholar-modal').classList.add('vis');
-        setTimeout(() => el('scholar-q').focus(), 80);
+        tab(currentTab);
+        setTimeout(() => {
+            const inp = document.querySelector('#scholar-panel-' + currentTab + ' input[type=text]');
+            if (inp) inp.focus();
+        }, 80);
+    }
+
+    function getQ() {
+        switch (currentTab) {
+            case 'google': return el('scholar-q')?.value?.trim() || '';
+            case 'yonsei': return el('scholar-yonsei-q')?.value?.trim() || '';
+            case 'riss': return el('scholar-riss-q')?.value?.trim() || '';
+            case 'dbpia': return el('scholar-dbpia-q')?.value?.trim() || '';
+            case 'ieee': return el('scholar-ieee-q')?.value?.trim() || '';
+            case 'sciencedirect': return el('scholar-sd-qs')?.value?.trim() || el('scholar-sd-authors')?.value?.trim() || el('scholar-sd-pub')?.value?.trim() || '';
+            case 'kci': return el('scholar-kci-main')?.value?.trim() || el('scholar-kci-author')?.value?.trim() || el('scholar-kci-journal')?.value?.trim() || el('scholar-kci-publisher')?.value?.trim() || '';
+            default: return '';
+        }
+    }
+
+    function buildUrl() {
+        const enc = (s) => encodeURIComponent((s || '').trim());
+        switch (currentTab) {
+            case 'google': {
+                const q = el('scholar-q').value.trim();
+                if (!q) return null;
+                const params = new URLSearchParams();
+                params.set('q', q);
+                params.set('hl', (el('scholar-lang')?.value || 'ko') === 'ko' ? 'ko' : 'en');
+                const year = el('scholar-year')?.value;
+                if (year) params.set('as_ylo', year);
+                if (el('scholar-review')?.checked) params.set('as_rr', '1');
+                return `https://scholar.google.com/scholar?${params.toString()}`;
+            }
+            case 'yonsei': {
+                const q = el('scholar-yonsei-q').value.trim();
+                if (!q) return null;
+                return `https://library.yonsei.ac.kr/searchTotal?q=${enc(q)}`;
+            }
+            case 'sciencedirect': {
+                const qs = el('scholar-sd-qs').value.trim();
+                const authors = el('scholar-sd-authors').value.trim();
+                const pub = el('scholar-sd-pub').value.trim();
+                if (!qs && !authors && !pub) return null;
+                const params = new URLSearchParams();
+                if (qs) params.set('qs', qs);
+                if (authors) params.set('authors', authors);
+                if (pub) params.set('pub', pub);
+                return `https://www.sciencedirect.com/search?${params.toString()}`;
+            }
+            case 'riss': {
+                const q = el('scholar-riss-q').value.trim();
+                if (!q) return null;
+                return `https://www.riss.kr/search/Search.do?query=${enc(q)}`;
+            }
+            case 'kci': {
+                const main = el('scholar-kci-main').value.trim();
+                const author = el('scholar-kci-author').value.trim();
+                const journal = el('scholar-kci-journal').value.trim();
+                const publisher = el('scholar-kci-publisher').value.trim();
+                if (!main && !author && !journal && !publisher) return null;
+                // KCI input: #mainSearchKeyword, #search_top ul li:nth-child(2)=저자, (3)=간행지, (4)=발행기관
+                // 폼 자동제출로 main.kci에 전달 (mainSearchKeyword 등 파라미터명 시도)
+                const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KCI 검색</title></head><body>
+<form id="kciForm" action="https://www.kci.go.kr/kciportal/main.kci" method="GET">
+<input type="hidden" name="mainSearchKeyword" value="${esc(main)}">
+<input type="hidden" name="searchAuthor" value="${esc(author)}">
+<input type="hidden" name="searchJournal" value="${esc(journal)}">
+<input type="hidden" name="searchPublisher" value="${esc(publisher)}">
+</form>
+<script>document.getElementById('kciForm').submit();</script>
+<p style="font-family:sans-serif;padding:20px">KCI 검색 페이지로 이동 중...</p>
+</body></html>`;
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                return URL.createObjectURL(blob);
+            }
+            case 'dbpia': {
+                const q = el('scholar-dbpia-q').value.trim();
+                if (!q) return null;
+                return `https://www.dbpia.co.kr/search/topSearch?query=${enc(q)}`;
+            }
+            case 'ieee': {
+                const q = el('scholar-ieee-q').value.trim();
+                if (!q) return null;
+                return `https://ieeexplore.ieee.org/search/searchresult.jsp?queryText=${enc(q)}`;
+            }
+            default: return null;
+        }
     }
 
     function search() {
-        const q = el('scholar-q').value.trim();
-        if (!q) { el('scholar-q').focus(); return; }
-        const lang = el('scholar-lang').value;
-        const year = el('scholar-year').value;
-        const review = el('scholar-review').checked;
+        const url = buildUrl();
+        if (!url) {
+            const inp = document.querySelector('#scholar-panel-' + currentTab + ' input[type=text]');
+            if (inp) inp.focus();
+            App._toast?.('검색어를 입력하세요.');
+            return;
+        }
+        if (currentTab === 'kci') {
+            const main = el('scholar-kci-main')?.value?.trim() || '';
+            if (main) navigator.clipboard.writeText(main).catch(() => {});
+            window.open(url, 'scholar_search_' + currentTab, 'width=1100,height=800,left=100,top=80,resizable=yes,scrollbars=yes');
+            if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), 5000);
+        } else {
+            window.open(url, 'scholar_search_' + currentTab, 'width=1100,height=800,left=100,top=80,resizable=yes,scrollbars=yes');
+        }
 
-        // URL 파라미터 구성
-        const params = new URLSearchParams();
-        params.set('q', q);
-        params.set('hl', lang === 'ko' ? 'ko' : 'en');
-        if (year) params.set('as_ylo', year);
-        if (review) params.set('as_rr', '1');// 리뷰 논문 필터
-
-        const url = `https://scholar.google.com/scholar?${params.toString()}`;
-        window.open(url, 'scholar_search', 'width=1100,height=800,left=100,top=80,resizable=yes,scrollbars=yes');
-
-        // 최근 검색어 저장 (중복 제거, 최대 8개)
-        recent = recent.filter(r => r !== q); recent.unshift(q); recent = recent.slice(0, 8);
-        try { localStorage.setItem(RK, JSON.stringify(recent)) } catch (e) { }
-        renderRecent();
+        const q = getQ();
+        if (q && currentTab === 'google') {
+            recent = recent.filter(r => r !== q); recent.unshift(q); recent = recent.slice(0, 8);
+            try { localStorage.setItem(RK, JSON.stringify(recent)) } catch (e) { }
+            renderRecent();
+        }
     }
 
     function renderRecent() {
@@ -7132,19 +7869,41 @@ const Scholar = (() => {
         const div = el('scholar-recent');
         if (!recent.length) { wrap.style.display = 'none'; return }
         wrap.style.display = 'block';
-        div.innerHTML = recent.map(r => `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg5);border:1px solid var(--bd);border-radius:var(--r);padding:2px 8px;font-size:11px;cursor:pointer;color:var(--tx2)" onclick="Scholar.useRecent('${r.replace(/'/g, "\\'")}')">🕐 ${r}</span>`).join('');
+        div.innerHTML = recent.map(r => `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg5);border:1px solid var(--bd);border-radius:var(--r);padding:2px 8px;font-size:11px;cursor:pointer;color:var(--tx2)" onclick="Scholar.useRecent('${String(r).replace(/'/g, "\\'")}')">🕐 ${r}</span>`).join('');
     }
 
-    function useRecent(q) { el('scholar-q').value = q; search() }
+    function useRecent(q) {
+        el('scholar-q').value = q;
+        el('scholar-yonsei-q').value = q;
+        el('scholar-riss-q').value = q;
+        el('scholar-dbpia-q').value = q;
+        el('scholar-ieee-q').value = q;
+        el('scholar-sd-qs').value = q;
+        el('scholar-kci-main').value = q;
+        search();
+    }
 
     function clear() {
-        el('scholar-q').value = ''; recent = [];
+        el('scholar-q').value = '';
+        el('scholar-yonsei-q').value = '';
+        el('scholar-riss-q').value = '';
+        el('scholar-dbpia-q').value = '';
+        el('scholar-ieee-q').value = '';
+        el('scholar-sd-qs').value = '';
+        el('scholar-sd-authors').value = '';
+        el('scholar-sd-pub').value = '';
+        el('scholar-kci-main').value = '';
+        el('scholar-kci-author').value = '';
+        el('scholar-kci-journal').value = '';
+        el('scholar-kci-publisher').value = '';
+        recent = [];
         try { localStorage.removeItem(RK) } catch (e) { }
         renderRecent();
-        el('scholar-q').focus();
+        const inp = document.querySelector('#scholar-panel-' + currentTab + ' input[type=text]');
+        if (inp) inp.focus();
     }
 
-    return { show, search, useRecent, clear };
+    return { show, search, useRecent, clear, tab };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -7597,17 +8356,41 @@ const ED = {
                 ed.setRangeText('- ', ls, ls, 'start');
             }
         } else {
-            /* 선택 있음 → 각 줄에 "- " 토글 */
-            const lsFirst = val.lastIndexOf('\n', ss - 1) + 1;
-            const tmpNl = val.indexOf('\n', se - 1);
-            const leLast = tmpNl === -1 ? val.length : (val[se-1] === '\n' ? se - 1 : tmpNl);
-            const block = val.slice(lsFirst, leLast);
+            /* 선택 있음 → 선택한 텍스트 전체를 줄 단위로 나누어 각 줄에 "- " 토글 */
+            const block = val.substring(ss, se);
             const lines = block.split('\n');
             const allList = lines.every(l => l.match(/^[-*+]\s/) || l.match(/^\d+\.\s/) || l.trim() === '');
             const newBlock = allList
                 ? lines.map(l => l.replace(/^([-*+]\s|\d+\.\s)/, '')).join('\n')
                 : lines.map(l => l.trim() === '' ? l : (l.match(/^[-*+]\s/) || l.match(/^\d+\.\s/) ? l : '- ' + l)).join('\n');
-            ed.setRangeText(newBlock, lsFirst, leLast, 'select');
+            ed.setRangeText(newBlock, ss, se, 'select');
+        }
+        US.snap(); TM.markDirty(); App.render();
+    },
+    textToNumberedList() {
+        const ed = this.ed();
+        if (!ed) return;
+        const val = ed.value;
+        const ss = ed.selectionStart;
+        const se = ed.selectionEnd;
+        if (ss === se) {
+            const ls = val.lastIndexOf('\n', ss - 1) + 1;
+            const nlPos = val.indexOf('\n', ls);
+            const lineEnd = nlPos === -1 ? val.length : nlPos;
+            const line = val.slice(ls, lineEnd);
+            if (line.match(/^\d+\.\s/)) {
+                ed.setRangeText(line.replace(/^\d+\.\s/, ''), ls, lineEnd, 'start');
+            } else {
+                ed.setRangeText('1. ', ls, ls, 'start');
+            }
+        } else {
+            const block = val.substring(ss, se);
+            const lines = block.split('\n');
+            const allNumbered = lines.every(l => l.match(/^\d+\.\s/) || l.trim() === '');
+            const newBlock = allNumbered
+                ? lines.map(l => l.replace(/^\d+\.\s/, '')).join('\n')
+                : lines.map((l, i) => l.trim() === '' ? l : (l.match(/^\d+\.\s/) ? l : (i + 1) + '. ' + l)).join('\n');
+            ed.setRangeText(newBlock, ss, se, 'select');
         }
         US.snap(); TM.markDirty(); App.render();
     },
@@ -8169,6 +8952,7 @@ const EZ = (() => {
         if (lnc) lnc.style.lineHeight = lh + 'px';
         /* 저장 */
         try { localStorage.setItem('mdpro_ez_idx', idx); } catch(e) {}
+        if (typeof EditorLineHighlight !== 'undefined' && EditorLineHighlight.isEnabled()) EditorLineHighlight.updateHighlight();
     }
 
     function inc() { if (idx < SIZES.length - 1) { idx++; _apply(); } }
@@ -8183,6 +8967,69 @@ const EZ = (() => {
     }
 
     return { inc, dec, init };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   EDITOR CURRENT LINE HIGHLIGHT (아주 투명한 현재 줄 표시)
+═══════════════════════════════════════════════════════════ */
+const EditorLineHighlight = (() => {
+    const STORAGE_KEY = 'mdpro_editor_line_highlight';
+    let enabled = true;
+
+    function isEnabled() {
+        try { return localStorage.getItem(STORAGE_KEY) !== 'off'; } catch (e) { return true; }
+    }
+
+    function updateUI() {
+        enabled = isEnabled();
+        const hl = document.getElementById('editor-line-highlight');
+        const btn = document.getElementById('hk-line-highlight-btn');
+        if (hl) hl.classList.toggle('vis', enabled);
+        if (btn) btn.textContent = enabled ? 'ON' : 'OFF';
+    }
+
+    function updateHighlight() {
+        const hl = document.getElementById('editor-line-highlight');
+        const ed = document.getElementById('editor');
+        if (!hl || !ed || !enabled) return;
+        const text = ed.value.substring(0, ed.selectionStart);
+        const lineIndex = (text.match(/\n/g) || []).length;
+        const style = window.getComputedStyle(ed);
+        const lineHeight = parseFloat(style.lineHeight) || 21;
+        const paddingTop = parseFloat(style.paddingTop) || 12;
+        const paddingLeft = parseFloat(style.paddingLeft) || 14;
+        const paddingRight = parseFloat(style.paddingRight) || 14;
+        const top = paddingTop + lineIndex * lineHeight - ed.scrollTop;
+        hl.style.height = lineHeight + 'px';
+        hl.style.top = top + 'px';
+        hl.style.left = paddingLeft + 'px';
+        hl.style.right = paddingRight + 'px';
+    }
+
+    function toggle() {
+        try {
+            enabled = isEnabled();
+            enabled = !enabled;
+            localStorage.setItem(STORAGE_KEY, enabled ? 'on' : 'off');
+        } catch (e) {}
+        updateUI();
+        if (enabled) updateHighlight();
+    }
+
+    function init() {
+        updateUI();
+        const ed = document.getElementById('editor');
+        if (!ed) return;
+        const run = () => { if (enabled) updateHighlight(); };
+        ed.addEventListener('scroll', run, { passive: true });
+        ed.addEventListener('click', run);
+        ed.addEventListener('keyup', run);
+        ed.addEventListener('input', run);
+        document.addEventListener('selectionchange', () => { if (document.activeElement === ed) run(); });
+        if (enabled) updateHighlight();
+    }
+
+    return { toggle, init, updateHighlight, isEnabled };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -8603,7 +9450,7 @@ const HK = (() => {
         'app.fmtPanel':     () => FP.show(),
         'app.lineNum':      () => LN.toggle(),
         'app.previewWin':   () => PW.open(),
-        'app.previewPPT':   () => PW.openPPT(),
+        'app.previewPPT':   () => PW.openSlide(),
         'app.researchMode': () => App.toggleRM(),
         'app.cite':         () => App.showCite(),
         'app.scholar':      () => Scholar.show(),
@@ -8611,6 +9458,7 @@ const HK = (() => {
         'app.save':         () => App.smartSave(),
         'app.find':         () => App.toggleFind(),
         'app.hotkeys':      () => App.showHK(),
+        'app.lock':         () => { if (typeof AppLock !== 'undefined') AppLock.lockNow(); },
         'app.nbsp':         () => { const ed = el('editor'), s = ed.selectionStart; ins(ed, s, ed.selectionEnd, '&nbsp;'); US.snap(); },
         'tab.new':          () => TM.newTab(),
         'tab.open':         () => TM.openFile(),
@@ -8627,6 +9475,7 @@ const HK = (() => {
         'ed.ul':            () => { const ed=el('editor'); if(ed){ const p=ed.selectionStart; const s=ed.value.lastIndexOf('\n',p-1)+1; ed.setRangeText('- ',s,s,'start'); US.snap(); TM.markDirty(); App.render(); } },
         'ed.ol':            () => { const ed=el('editor'); if(ed){ const p=ed.selectionStart; const s=ed.value.lastIndexOf('\n',p-1)+1; ed.setRangeText('1. ',s,s,'start'); US.snap(); TM.markDirty(); App.render(); } },
         'ed.textToList':    () => { ED.textToList(); },
+        'ed.textToNumberedList': () => { ED.textToNumberedList(); },
         'ed.task':          () => { const ed=el('editor'); if(ed){ const p=ed.selectionStart; const s=ed.value.lastIndexOf('\n',p-1)+1; ed.setRangeText('- [ ] ',s,s,'start'); US.snap(); TM.markDirty(); App.render(); } },
         'ed.link':          () => { const ed=el('editor'); if(ed){ const s=ed.selectionStart,e2=ed.selectionEnd; const sel=ed.value.slice(s,e2)||'링크텍스트'; ed.setRangeText(`[${sel}](url)`,s,e2,'end'); US.snap(); TM.markDirty(); } },
         'ed.image':         () => { const ed=el('editor'); if(ed){ const p=ed.selectionStart; ed.setRangeText('![설명](이미지URL)',p,p,'end'); US.snap(); TM.markDirty(); App.render(); } },
@@ -8681,7 +9530,7 @@ const HK = (() => {
         },
         {
             section: '레이아웃 / 정렬', items: [
-                { desc: '왼쪽 정렬', keys: 'Shift + Alt + L', action: 'ed.alignLeft' },
+                { desc: '왼쪽 정렬', keys: 'Ctrl + Shift + L', action: 'ed.alignLeft' },
                 { desc: '가운데 정렬', keys: 'Shift + Alt + C', action: 'ed.alignCenter' },
                 { desc: '오른쪽 정렬', keys: 'Shift + Alt + R', action: 'ed.alignRight' },
                 { desc: 'Split 보기', keys: 'Alt + 1', action: 'view.split' },
@@ -8710,13 +9559,14 @@ const HK = (() => {
                 { desc: '서식 패널 (크기·색·형광펜)', keys: 'Alt + L', action: 'app.fmtPanel' },
                 { desc: '줄번호 ON/OFF', keys: 'Ctrl + Alt + I', action: 'app.lineNum' },
                 { desc: '새창 미리보기', keys: 'Ctrl + Shift + P', action: 'app.previewWin' },
-                { desc: 'PPT 미리보기', keys: 'Ctrl + Shift + T', action: 'app.previewPPT' },
+                { desc: '슬라이드 모드로 새창 열기', keys: 'Ctrl + Shift + T', action: 'app.previewPPT' },
                 { desc: '저장 다이얼로그', keys: 'Ctrl + S', action: 'app.save' },
                 { desc: '찾기 / 바꾸기', keys: 'Ctrl + F', action: 'app.find' },
                 { desc: 'Research Mode', keys: 'Ctrl + Shift + R', action: 'app.researchMode' },
                 { desc: 'Scholar 검색', keys: 'Ctrl + Shift + G', action: 'app.scholar' },
                 { desc: 'AI PPT (ScholarSlide)', keys: 'Ctrl + Shift + L', action: 'app.aiPPT' },
-                { desc: '단축키 목록', keys: 'Alt + ?', action: 'app.hotkeys' },
+                { desc: '단축키 목록 & 설정', keys: 'Alt + ?', action: 'app.hotkeys' },
+                { desc: '앱 잠금', keys: 'Ctrl + G', action: 'app.lock' },
                 { desc: '새 탭', keys: 'Ctrl + N', action: 'tab.new' },
                 { desc: '파일 열기', keys: 'Ctrl + O', action: 'tab.open' },
                 { desc: '탭 닫기', keys: 'Ctrl + W', action: 'tab.close' },
@@ -8734,7 +9584,8 @@ const HK = (() => {
                 { desc: '형광펜 (==)', keys: '', action: 'ed.highlight' },
                 { desc: '수평선', keys: '', action: 'ed.hr' },
                 { desc: '순서없는 목록', keys: '', action: 'ed.ul' },
-                { desc: '텍스트→목록 항목', keys: 'Shift + Alt + L', action: 'ed.textToList' },
+                { desc: '텍스트→목록 항목 (•)', keys: 'Alt + 5', action: 'ed.textToList' },
+                { desc: '텍스트→숫자 목록 (1. 2. 3.)', keys: 'Alt + 6', action: 'ed.textToNumberedList' },
                 { desc: '체크리스트', keys: '', action: 'ed.task' },
                 { desc: '링크 삽입', keys: '', action: 'ed.link' },
                 { desc: '이미지 삽입', keys: '', action: 'ed.image' },
@@ -8979,13 +9830,39 @@ const HK = (() => {
 
     return {
         open() {
-            load(); rebuild(); editMode = false;
-            el('hk-edit-btn').textContent = '✎ 편집';
-            el('hk-edit-btn').classList.remove('btn-p');
-            el('hk-edit-hint').style.display = 'none';
-            el('hk-edit-actions').style.display = 'none';
-            render();
-            el('hk-overlay').classList.add('vis');
+            try {
+                load(); rebuild(); editMode = false;
+                const editBtn = el('hk-edit-btn');
+                if (editBtn) { editBtn.textContent = '✎ 편집'; editBtn.classList.remove('btn-p'); editBtn.classList.add('btn-g'); }
+                const editHint = el('hk-edit-hint');
+                if (editHint) editHint.style.display = 'none';
+                const editActions = el('hk-edit-actions');
+                if (editActions) editActions.style.display = 'none';
+                /* 로그인 후에만 설정(비밀번호 변경 / 앱 잠금) 표시 */
+                const settingsRow = document.getElementById('hk-settings-row');
+                const btnChangePw = document.getElementById('hk-btn-change-pw');
+                const btnLock = document.getElementById('hk-btn-lock');
+                if (settingsRow && typeof AppLock !== 'undefined') {
+                    const unlocked = AppLock.isUnlocked();
+                    const hasLock = AppLock.hasLock();
+                    if (unlocked && hasLock) {
+                        settingsRow.style.display = 'flex';
+                        if (btnChangePw) btnChangePw.style.display = '';
+                        if (btnLock) btnLock.style.display = '';
+                        const autolockInp = document.getElementById('hk-autolock-input');
+                        if (autolockInp) autolockInp.value = AppLock.getAutoLockMinutes();
+                    } else {
+                        settingsRow.style.display = 'none';
+                    }
+                }
+                render();
+                el('hk-overlay').classList.add('vis');
+                try { if (typeof EditorLineHighlight !== 'undefined') EditorLineHighlight.updateUI(); } catch (e) { console.warn('EditorLineHighlight.updateUI:', e); }
+            } catch (err) {
+                console.error('HK.open:', err);
+                const ov = el('hk-overlay');
+                if (ov) ov.classList.add('vis');
+            }
         },
         close() {
             el('hk-overlay').classList.remove('vis');
@@ -9049,7 +9926,11 @@ function hkKey(e) {
     if (ctrl) parts.push('C');
     if (e.shiftKey) parts.push('S');
     if (e.altKey) parts.push('A');
-    parts.push(e.key.length === 1 ? e.key.toUpperCase() : e.key);
+    /* Alt+숫자 시 e.key가 %^ 등으로 오므로, Digit 키는 e.code로 숫자 사용 */
+    let mainKey = e.key;
+    if (e.altKey && e.code && /^Digit\d$/.test(e.code)) mainKey = e.code.replace('Digit', '');
+    else if (e.key && e.key.length === 1) mainKey = e.key.toUpperCase();
+    parts.push(mainKey);
     return parts.join('+');
 }
 
@@ -9057,6 +9938,16 @@ function handleKey(e) {
     const edi = el('editor');
     const inEd = document.activeElement === edi;
     const k = hkKey(e);
+
+    /* ── Ctrl+G: 앱 잠금 (브라우저 Find 다음 찾기보다 우선) ── */
+    if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 'g') {
+        if (typeof AppLock !== 'undefined' && AppLock.hasLock()) {
+            e.preventDefault();
+            e.stopPropagation();
+            AppLock.lockNow();
+            return;
+        }
+    }
 
     /* ── Ctrl+9: 에디터 축소, Ctrl+0: 에디터 확대 ── */
     if ((e.ctrlKey || e.metaKey) && e.key === '9') { e.preventDefault(); EZ.dec(); return; }
@@ -9141,6 +10032,16 @@ function handleKey(e) {
         return;
     }
 
+    /* ── Alt+5 / Alt+6: 목록 변환 (Windows 등에서 e.key가 %^ 로 오므로 e.code로만 판별) ── */
+    if (inEd && e.altKey && !e.ctrlKey && !e.metaKey &&
+        (e.code === 'Digit5' || e.code === 'Digit6')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.code === 'Digit5') ED.textToList();
+        else ED.textToNumberedList();
+        return;
+    }
+
     const dispatch = HK.getDispatch();
     const fn = dispatch[k];
     if (!fn) return;
@@ -9177,7 +10078,20 @@ function initTooltip() {
 ═══════════════════════════════════════════════════════════ */
 function detectErrors(md) {
     const errs = []; const lines = md.split('\n');
-    lines.forEach((l, i) => { if (l.startsWith('|')) { const cols = l.split('|').filter(c => c.trim() !== '').length; if (i > 0 && lines[i - 1].startsWith('|')) { const p = lines[i - 1].split('|').filter(c => c.trim() !== '').length; if (p !== cols && !l.includes('---') && !lines[i - 1].includes('---')) errs.push(`줄 ${i + 1}: 표 열 불일치 (이전 ${p}, 현재 ${cols})`) } } });
+    function colCount(line) {
+        const parts = line.split('|').map(c => c.trim());
+        if (parts[0] === '' && parts[parts.length - 1] === '') return parts.length - 2;
+        return parts.length;
+    }
+    lines.forEach((l, i) => {
+        if (!l.startsWith('|')) return;
+        const cols = colCount(l);
+        if (i > 0 && lines[i - 1].startsWith('|')) {
+            const prev = colCount(lines[i - 1]);
+            if (prev !== cols && !l.includes('---') && !lines[i - 1].includes('---'))
+                errs.push(`줄 ${i + 1}: 표 열 불일치 (이전 ${prev}, 현재 ${cols})`);
+        }
+    });
     if ((md.match(/^```/gm) || []).length % 2 !== 0) errs.push('코드 블록 미닫힘 (``` 누락)');
     return errs;
 }
@@ -9190,7 +10104,18 @@ const App = {
 
     init() {
         TM.init(); CM.load(); initTooltip(); SS.init(); FS.update(); LN.init(); EZ.init();
+        if (typeof EditorLineHighlight !== 'undefined') EditorLineHighlight.init();
         SB.init();  /* 저장된 소스 탭(로컬/GitHub) 복원 */
+        /* 테마 복원: 전체 / 에디터 / PV 각각 */
+        try {
+            const globalTheme = localStorage.getItem('mdpro_theme');
+            if (globalTheme === 'light') document.documentElement.dataset.theme = 'light';
+            const edTheme = localStorage.getItem('mdpro_editor_theme');
+            const ep = document.getElementById('editor-pane');
+            if (ep && edTheme) ep.dataset.editorTheme = edTheme;
+            if (typeof PV !== 'undefined' && PV.initTheme) PV.initTheme();
+        } catch (e) {}
+        App._updateEditorThemeBtn();
         /* FM.restore는 DOMContentLoaded에서 별도 호출 */
         /* HK 초기화: 앱 시작 시 load + rebuild 해야 핫키가 작동함 */
         try { HK._initDispatch(); } catch(e) {}
@@ -9199,6 +10124,13 @@ const App = {
         const edi = el('editor');
         edi.addEventListener('input', () => { US.snap(); TM.markDirty(); this.render(); });
         edi.addEventListener('keydown', handleKey);
+        /* Alt+5 / Alt+6: 캡처 단계에서 처리해 브라우저 메뉴 등에 빼앗기지 않도록 */
+        document.addEventListener('keydown', e => {
+            if (document.activeElement !== edi) return;
+            if (!e.altKey || e.ctrlKey || e.metaKey) return;
+            if (e.code === 'Digit5') { e.preventDefault(); e.stopPropagation(); ED.textToList(); }
+            else if (e.code === 'Digit6') { e.preventDefault(); e.stopPropagation(); ED.textToNumberedList(); }
+        }, true);
         edi.addEventListener('keyup', () => { this.updCursor(); SS.onCursor(); });
         edi.addEventListener('click', () => { this.updCursor(); SS.onCursor(); });
         edi.addEventListener('scroll', () => { LN.update(); ScrollSync.onEditor(); }, { passive: true });
@@ -9329,7 +10261,7 @@ const App = {
             el('sc').textContent = md.length.toLocaleString() + ' 자';
             el('sp').textContent = '약 ' + Math.ceil(words / 250) + ' 페이지';
             LN.update();
-            el('render-ts').textContent = new Date().toLocaleTimeString();
+            const dtEl = el('app-datetime'); if (dtEl) dtEl.textContent = formatDateTime();
             /* 탭 제목 동기화 + 자동저장 (dirty 마킹은 editor input에서 직접 처리) */
             TM.syncTitle(title);
             AS.save(md, title);
@@ -9349,7 +10281,36 @@ const App = {
         this.setView(m);
         ['split', 'editor', 'preview'].forEach(v => { const b = el('vm-' + v); if (b) b.classList.toggle('active', v === m) });
     },
-    toggleTheme() { document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'light' ? '' : 'light' },
+    toggleTheme() {
+        const isLight = document.documentElement.dataset.theme === 'light';
+        const nextLight = !isLight;
+        document.documentElement.dataset.theme = nextLight ? 'light' : '';
+        const ep = document.getElementById('editor-pane');
+        if (ep) ep.dataset.editorTheme = nextLight ? 'light' : 'dark';
+        if (typeof PV !== 'undefined' && PV.setDark) PV.setDark(!nextLight);
+        try {
+            localStorage.setItem('mdpro_theme', nextLight ? 'light' : 'dark');
+            localStorage.setItem('mdpro_editor_theme', nextLight ? 'light' : 'dark');
+        } catch (e) {}
+        App._updateEditorThemeBtn();
+    },
+    toggleEditorTheme() {
+        const ep = document.getElementById('editor-pane');
+        if (!ep) return;
+        const cur = ep.dataset.editorTheme || (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+        const next = cur === 'light' ? 'dark' : 'light';
+        ep.dataset.editorTheme = next;
+        try { localStorage.setItem('mdpro_editor_theme', next); } catch (e) {}
+        App._updateEditorThemeBtn();
+    },
+    _updateEditorThemeBtn() {
+        const ep = document.getElementById('editor-pane');
+        const btn = document.getElementById('ed-theme-btn');
+        if (!btn) return;
+        const isLight = ep ? (ep.dataset.editorTheme === 'light') : (document.documentElement.dataset.theme === 'light');
+        btn.textContent = isLight ? '◐' : '◑';
+        btn.title = isLight ? '에디터 라이트 (클릭 시 다크)' : '에디터 다크 (클릭 시 라이트)';
+    },
     toggleRM() { this.rm = !this.rm; el('rm-badge').classList.toggle('vis', this.rm); el('mode-ind').textContent = this.rm ? 'RESEARCH' : 'NORMAL'; PR.rm = this.rm; PW.setRM(this.rm); this.render() },
     showHK() { HK.open() }, hideHK() { HK.close() },
     showCode() { el('code-modal').classList.add('vis') },
@@ -9592,11 +10553,7 @@ const App = {
     insertDate() {
         const ed  = el('editor');
         if (!ed) return;
-        const now = new Date();
-        const y   = now.getFullYear();
-        const m   = String(now.getMonth() + 1).padStart(2, '0');
-        const d   = String(now.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${d}`;
+        const dateStr = formatDateTime(new Date());
         const pos = ed.selectionStart;
         const end = ed.selectionEnd;
         ed.setRangeText(dateStr, pos, end, 'end');
@@ -9623,6 +10580,22 @@ const App = {
         const t = TMPLS[i];
         if (!confirm(`"${t.name}" 양식을 현재 문서에 추가하시겠습니까?`)) return;
         const edi = el('editor'); edi.value = (edi.value.trim() ? edi.value + '\n\n---\n\n' : '') + t.content;
+        this.render(); US.snap(); App.hideModal('tmpl-modal');
+    },
+    insertSlideTmpl() {
+        const style = parseInt(el('slide-tmpl-style').value, 10) || 1;
+        const count = Math.max(1, Math.min(50, parseInt(el('slide-tmpl-count').value, 10) || 5));
+        const parts = [];
+        for (let i = 1; i <= count; i++) {
+            const block = `# 제목${i}\n\n---\n\n- 내용`;
+            parts.push(i < count ? block + '\n\n<div class="page-break"></div>' : block);
+        }
+        const content = parts.join('\n\n');
+        const edi = el('editor');
+        edi.value = (edi.value.trim() ? edi.value + '\n\n' : '') + content;
+        PR.setSlideMode(true);
+        const btn = document.getElementById('slide-mode-btn');
+        if (btn) btn.classList.add('active');
         this.render(); US.snap(); App.hideModal('tmpl-modal');
     },
 
@@ -9783,6 +10756,16 @@ $$
 
 window.addEventListener('DOMContentLoaded', () => {
     App.init();
+    /* 전역 날짜·시간 라이브 갱신 (잠금 버튼 앞 표시) */
+    const dtEl = el('app-datetime');
+    if (dtEl) {
+        dtEl.textContent = formatDateTime();
+        setInterval(() => { if (dtEl) dtEl.textContent = formatDateTime(); }, 1000);
+    }
+    /* 앱 종료 시 외부 PV 창도 함께 닫기 (보안) */
+    function closePvOnExit() { if (typeof PW !== 'undefined' && PW.closeWin) PW.closeWin(); }
+    window.addEventListener('beforeunload', closePvOnExit);
+    window.addEventListener('pagehide', closePvOnExit);
     FM.restore().catch(e => console.warn('FM restore failed:', e));
     GH.restore().then(() => {
         /* 앱 열 때: 새 커밋 알람 + 기기 활동 확인 */
@@ -9794,7 +10777,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'q') { e.preventDefault(); CharMap.show(); }
         if (e.shiftKey && e.altKey && (e.key === 'g' || e.key === 'G')) { e.preventDefault(); Translator.show(); }
         if (e.shiftKey && e.altKey && (e.key === 'm' || e.key === 'M')) { e.preventDefault(); SS.toggle(); }
-        if (e.shiftKey && e.altKey && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); ED.textToList(); }
     });
 
     /* ── gh-save-modal 리사이즈 드래그 ─────────────────── */
@@ -10776,17 +11758,7 @@ const PVShare = (() => {
                 style="background:rgba(106,247,176,.1);border:1px solid rgba(106,247,176,.28);
                     border-radius:5px;color:#6af7b0;font-size:11px;
                     padding:4px 10px;cursor:pointer">⎘ Clone</button>
-            <div style="flex:1"></div>
-            <!-- 자동새로고침 토글 버튼 -->
-            <button id="pvs-ar-btn" onclick="PVShare._toggleAutoRefresh()"
-                title="30초마다 GitHub 파일 목록 자동 새로고침 ON/OFF"
-                style="border-radius:5px;font-size:11px;padding:4px 10px;cursor:pointer;
-                    font-weight:600;transition:all .2s;
-                    color:#6af7b0;border:1px solid rgba(106,247,176,.35);
-                    background:rgba(106,247,176,.1)">🔄 자동새로고침 ON</button>
-            <span id="pvs-ar-countdown"
-                style="font-size:10px;color:var(--tx3);min-width:22px;text-align:right;display:none"></span>
-            <span id="pvs-status" style="font-size:10px;color:var(--tx3)"></span>
+            <span id="pvs-status" style="font-size:10px;color:var(--tx3);margin-left:6px"></span>
           </div>
 
           <!-- 로컬 / GitHub 탭 -->
@@ -10821,19 +11793,31 @@ const PVShare = (() => {
             </div>
           </div>
 
-          <!-- 하단 액션 -->
-          <div style="display:flex;gap:8px;padding:10px 14px;
-              border-top:1px solid var(--bd);background:var(--bg3);flex-shrink:0">
+          <!-- 하단 액션: [새파일] [새폴더] [자동새로고침] [25s] {설정} -->
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;
+              border-top:1px solid var(--bd);background:var(--bg3);flex-shrink:0;flex-wrap:wrap">
             <button id="pvs-btn-newfile" onclick="PVShare._dispatchNewFile()" title="새 파일 만들기"
-                style="flex:1;padding:7px;border-radius:6px;
+                style="flex:1;min-width:90px;padding:7px;border-radius:6px;
                     background:rgba(255,255,255,.06);border:1px solid var(--bd);
                     color:var(--tx2);font-size:12px;cursor:pointer">
-                💻 새 파일 (로컬)</button>
+                새 파일</button>
             <button id="pvs-btn-newfolder" onclick="PVShare._dispatchNewFolder()" title="새 폴더 만들기"
-                style="flex:1;padding:7px;border-radius:6px;
+                style="flex:1;min-width:90px;padding:7px;border-radius:6px;
                     background:rgba(255,255,255,.06);border:1px solid var(--bd);
                     color:var(--tx2);font-size:12px;cursor:pointer">
-                💻 새 폴더 (로컬)</button>
+                새 폴더</button>
+            <button id="pvs-ar-btn" onclick="PVShare._toggleAutoRefresh()"
+                title="GitHub 폴더 목록 자동 새로고침 ON/OFF"
+                style="border-radius:5px;font-size:11px;padding:4px 10px;cursor:pointer;
+                    font-weight:600;transition:all .2s;
+                    color:#6af7b0;border:1px solid rgba(106,247,176,.35);
+                    background:rgba(106,247,176,.1)">🔄 자동새로고침 ON</button>
+            <span id="pvs-ar-countdown"
+                style="font-size:11px;color:var(--tx3);min-width:28px;text-align:center;display:none"></span>
+            <button onclick="PVShare._showArIntervalSetting()" title="자동 새로고침 간격(초) 설정"
+                style="padding:6px 12px;border-radius:5px;border:1px solid var(--bd);
+                    background:rgba(255,255,255,.06);color:var(--tx2);font-size:11px;cursor:pointer">
+                ⚙ 설정</button>
           </div>
         </div>`;
 
@@ -10858,10 +11842,12 @@ const PVShare = (() => {
     /* ── 파일 목록 렌더 ── */
     let _allFiles = [];
     let _searchQ  = '';
+    let _currentGitHubPath = '';  /* GitHub 탭에서 현재 보고 있는 경로 (자동새로고침용) */
 
     async function _loadList(path = '') {
         const listEl = document.getElementById('pvs-list');
         if (!listEl) return;
+        _currentGitHubPath = path;  /* 자동새로고침 시 같은 경로로 재요청 */
         _setStatus('불러오는 중…');
 
         const vcfg = _loadCfg();
@@ -11040,7 +12026,8 @@ const PVShare = (() => {
 
     /* ── 자동 새로고침 ─────────────────────────────────────── */
     const AR_KEY      = 'pvs_auto_refresh';   // localStorage 키
-    const AR_INTERVAL = 30;                   // 초
+    const AR_INTERVAL_KEY = 'pvs_ar_interval'; // 간격(초) 저장 키
+    function _getArInterval() { return Math.max(10, parseInt(localStorage.getItem(AR_INTERVAL_KEY) || '30', 10) || 30); }
     let _arEnabled    = localStorage.getItem(AR_KEY) !== 'off'; // 기본 ON
     let _arTimer      = null;   // setInterval ID
     let _arCountdown  = 0;      // 남은 초
@@ -11080,7 +12067,8 @@ const PVShare = (() => {
     function _startAutoRefresh() {
         _stopAutoRefresh();
         if (!_arEnabled) return;
-        _arCountdown = AR_INTERVAL;
+        const intervalSec = _getArInterval();
+        _arCountdown = intervalSec;
         _arUpdateCountdown();
 
         // 카운트다운 ticker (1초마다)
@@ -11088,14 +12076,11 @@ const PVShare = (() => {
             _arCountdown--;
             _arUpdateCountdown();
             if (_arCountdown <= 0) {
-                // GitHub 탭 활성 상태일 때만 새로고침
+                // GitHub 탭 활성 상태일 때만 GitHub 폴더 목록 새로고침 (현재 경로 유지)
                 if (_activeTab === 'github') {
-                    _loadList().catch(() => {});
-                    _arCountdown = AR_INTERVAL;
-                } else {
-                    // 로컬 탭이면 카운트다운만 리셋 (새로고침 스킵)
-                    _arCountdown = AR_INTERVAL;
+                    _loadList(_currentGitHubPath).catch(() => {});
                 }
+                _arCountdown = _getArInterval();
             }
         }, 1000);
     }
@@ -11113,11 +12098,26 @@ const PVShare = (() => {
         _arUpdateBtn();
         if (_arEnabled) {
             _startAutoRefresh();
-            App._toast('🔄 자동새로고침 ON (30초마다)');
+            App._toast('🔄 자동새로고침 ON (' + _getArInterval() + '초마다 GitHub 폴더)');
         } else {
             _stopAutoRefresh();
             App._toast('🔄 자동새로고침 OFF');
         }
+    }
+
+    /* 자동새로고침 간격(초) 설정 */
+    function _showArIntervalSetting() {
+        const cur = _getArInterval();
+        const v = prompt('자동 새로고침 간격 (초)\nGitHub 탭에서 이 간격마다 폴더 목록을 갱신합니다.', String(cur));
+        if (v == null) return;
+        const num = parseInt(v, 10);
+        if (!(num >= 10 && num <= 600)) {
+            App._toast('⚠ 10~600 초 사이로 입력하세요');
+            return;
+        }
+        localStorage.setItem(AR_INTERVAL_KEY, String(num));
+        if (_arEnabled) _startAutoRefresh();
+        App._toast('✅ 간격 ' + num + '초로 저장');
     }
 
     function _switchTab(tab) {
@@ -11153,13 +12153,13 @@ const PVShare = (() => {
         const btnFolder = document.getElementById('pvs-btn-newfolder');
         if (!btnFile || !btnFolder) return;
         if (tab === 'local') {
-            btnFile.textContent   = '💻 새 파일 (로컬)';
-            btnFolder.textContent = '💻 새 폴더 (로컬)';
+            btnFile.textContent   = '새 파일';
+            btnFolder.textContent = '새 폴더';
             btnFile.title   = '로컬 공개노트 폴더에 새 파일 생성';
             btnFolder.title = '로컬 공개노트 폴더에 새 폴더 생성';
         } else {
-            btnFile.textContent   = '🐙 새 파일 (GitHub)';
-            btnFolder.textContent = '🐙 새 폴더 (GitHub)';
+            btnFile.textContent   = '새 파일';
+            btnFolder.textContent = '새 폴더';
             btnFile.title   = 'md-viewer GitHub 저장소에 새 파일 생성';
             btnFolder.title = 'md-viewer GitHub 저장소에 새 폴더 생성';
         }
@@ -12520,5 +13520,6 @@ const PVShare = (() => {
         _pvDeleteFile,
         _loadList,
         _toggleAutoRefresh,
+        _showArIntervalSetting,
     };
 })();

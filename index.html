@@ -64,6 +64,8 @@
       </div>
       <div id="tba">
         <span id="rm-badge">RESEARCH</span>
+        <span id="app-datetime" class="app-datetime" title="현재 날짜·시간" style="font-size:11px;font-family:var(--fm);color:var(--tx2);margin-right:8px;white-space:nowrap"></span>
+        <button class="btn btn-sm" id="app-lock-btn" onclick="if(typeof AppLock!=='undefined'&&AppLock.hasLock())AppLock.lockNow()" data-tooltip="앱 잠금 (Ctrl+G)" title="앱 잠금 (Ctrl+G)" style="display:none;background:rgba(124,106,247,.15);border:1px solid rgba(124,106,247,.35);color:#9d8cf7">🔒 잠금</button>
         <button class="btn btn-sm btn-tmpl" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
         <button class="btn btn-sm btn-research" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)"
           data-key="Ctrl+Shift+R">🔬 Research</button>
@@ -173,7 +175,8 @@
       <!-- 🟢 목록·인용 — 형광 초록 계열 -->
       <div class="tg">
         <button class="tb tb-layout" onclick="ED.list('ul')" data-tooltip="목록">• List</button>
-        <button class="tb tb-layout" id="txt2list-btn" onclick="ED.textToList()" data-tooltip="선택한 텍스트 → 목록 항목 (줄마다 • 추가)" data-key="Shift+Alt+L">≡ List</button>
+        <button class="tb tb-layout" id="txt2list-btn" onclick="ED.textToList()" data-tooltip="선택한 텍스트 → 목록 항목 (줄마다 • 추가)" data-key="Alt+5">≡ List</button>
+        <button class="tb tb-layout" onclick="ED.textToNumberedList()" data-tooltip="선택한 텍스트 → 숫자 목록 (줄마다 1. 2. 3. 추가)" data-key="Alt+6">1. List</button>
         <button class="tb tb-layout" onclick="ED.bquote()" data-tooltip="인용구" data-key="Ctrl+.">❝</button>
       </div>
       <div class="ts"></div>
@@ -218,7 +221,7 @@
         <button class="tb tb-insert" onclick="App.showCite()" data-tooltip="인용 삽입" data-key="Ctrl+Shift+C">📖</button>
         <button class="tb tb-insert" onclick="STATS.show()" data-tooltip="APA 통계 삽입"
           data-key="Shift+Alt+9">𝑓(x)</button>
-        <button class="tb tb-insert" onclick="App.insertDate()" data-tooltip="오늘 날짜 삽입 (YYYY-MM-DD)"
+        <button class="tb tb-insert" onclick="App.insertDate()" data-tooltip="오늘 날짜·시간 삽입 (2026-02-27(금) 오전 12:04 형식)"
           data-key="Ctrl+Shift+D">📅</button>
         <button class="tb tb-insert" onclick="CharMap.show()" data-tooltip="문자표 — 특수문자 삽입 (Ctrl+Q)"
           data-key="Ctrl+Q">Ω</button>
@@ -245,15 +248,15 @@
       <div class="tg">
         <button class="tb tb-pv" id="pw-btn" onclick="PW.open()" data-tooltip="새창 미리보기" data-key="Ctrl+Shift+P">🗗
           PV</button>
-        <button class="tb tb-pv" onclick="PW.openPPT()" data-tooltip="PPT 모드로 바로 열기" data-key="Ctrl+Shift+T">🎬
-          PPT</button>
+        <button class="tb tb-pv" onclick="PW.openSlide()" data-tooltip="슬라이드 모드로 바로 열기 (새창)" data-key="Ctrl+Shift+T">📽
+          Slide</button>
         <button class="tb tb-pv" onclick="PW.forceRefresh()" data-tooltip="새창 강제 새로고침">↻</button>
       </div>
       <div class="ts"></div>
       <div class="tg">
-        <button class="tb tb-sys" onclick="App.toggleTheme()" data-tooltip="테마 전환">◑</button>
+        <button class="tb tb-sys" onclick="App.toggleTheme()" data-tooltip="전체 다크/라이트 (에디터+PV 함께 전환)">◑</button>
         <button class="tb tb-sys active" id="ln-btn" onclick="LN.toggle()" data-tooltip="줄 번호">ln</button>
-        <button class="tb tb-sys" onclick="App.showHK()" data-tooltip="단축키 목록" data-key="Alt+?">?</button>
+        <button class="tb tb-sys" onclick="App.showHK()" data-tooltip="단축키 목록 &amp; 설정" data-key="Alt+?">?</button>
       </div>
     </div>
 
@@ -295,10 +298,14 @@
             <button class="btn btn-g btn-sm" id="files-folder-btn" onclick="FM.selectFolder()"
               title="폴더 선택">📁 선택</button>
             <span id="files-folder-name" title="선택된 폴더">미선택</span>
+            <button class="btn-ic" id="files-hidden-toggle-btn" onclick="FM.toggleShowHidden()"
+              title="숨김 파일 표시 (.git 등)" style="display:none">👁</button>
             <button class="btn-ic" id="files-refresh-btn" onclick="FM.refresh()"
               title="실제 파일 동기화" style="display:none">↻</button>
             <button class="btn btn-g btn-sm" id="files-open-btn" onclick="FM.openInExplorer()"
-              title="선택된 로컬 폴더를 파일 탐색기에서 열기" style="display:none">📂 폴더 열기</button>
+              title="선택된 로컬 폴더를 파일 탐색기에서 열기" style="display:none">📂</button>
+            <button class="btn-ic" id="files-fold-toggle-btn" onclick="FM.toggleFoldAll()"
+              title="전체 폴더 접기/펼치기" style="display:none">▽</button>
           </div>
           <div id="files-search">
             <input type="text" id="files-search-input" placeholder="파일 검색..." oninput="FM.search(this.value)">
@@ -339,58 +346,53 @@
           <div id="gh-hdr">
             <button class="btn btn-g btn-sm" id="gh-settings-btn" onclick="GH.showSettings()"
               title="GitHub 설정">⚙ 설정</button>
-            <button class="btn btn-ac btn-sm" id="gh-quick-connect-btn"
-              onclick="GH.quickConnect()" title="GitHub 연결 테스트 & 저장"
-              style="font-size:9.5px;padding:3px 7px">연결 테스트 &amp; 저장</button>
             <a id="gh-repo-link" href="#" target="_blank" title="GitHub 저장소 열기"
               style="display:none" class="btn-ic">↗</a>
             <span id="gh-repo-name" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">미연결</span>
             <button class="btn-ic" id="gh-refresh-btn" onclick="GH.refresh()"
               title="새로고침" style="display:none">↻</button>
           </div>
-          <!-- 새 커밋 알람 배너 -->
-          <div id="gh-new-commits-banner" style="display:none">
-            <span id="gh-new-commits-msg"></span>
-            <button onclick="GH.dismissCommitBanner()">✕</button>
-          </div>
-          <!-- 기기 활동 표시 -->
-          <div id="gh-device-bar" style="display:none">
-            <span id="gh-device-info"></span>
-          </div>
           <div id="gh-search">
             <div style="display:flex;gap:4px;align-items:center">
               <input type="text" id="gh-search-input" placeholder="파일 검색..."
                 oninput="GH.search(this.value)" style="flex:1">
-              <button class="btn-ic" onclick="App.showCommitHistory()"
-                title="커밋 히스토리" style="font-size:11px;padding:2px 5px;flex-shrink:0">📜</button>
+              <button class="btn-ic" id="gh-fold-toggle-btn" onclick="GH.toggleFoldAll()"
+                title="전체 폴더 접기/펼치기" style="font-size:11px;padding:2px 5px;flex-shrink:0">▽</button>
             </div>
           </div>
           <div id="gh-list">
             <div class="files-empty">GitHub 저장소를 연결하세요</div>
           </div>
-          <!-- GitHub 액션 바: 새 파일 / 새 폴더 -->
-          <div id="gh-local-actions" style="display:none">
-            <button id="gh-newfile-btn" onclick="GH.createNewFile()" title="현재 GitHub 저장소에 새 파일 만들기">
-              <span class="fm-act-icon">📄</span>
-              <span class="fm-act-label">새 파일</span>
-            </button>
-            <button id="gh-mkdir-btn" onclick="GH.createNewFolder()" title="현재 GitHub 저장소에 새 폴더 만들기">
-              <span class="fm-act-icon">📁</span>
-              <span class="fm-act-label">새 폴더</span>
-            </button>
-          </div>
-        </div>
 
-      </div>
-
-      <div id="sb-stats">
-        <span id="sw">0 단어</span><span id="sc">0 자</span><span id="sp">약 0 페이지</span>
+      <div id="sb-stats" class="sb-stats-one-row">
         <button onclick="PVShare.openModal()" title="md-viewer 공유 관리"
-          style="margin-left:6px;background:rgba(88,200,248,.15);
+          style="flex-shrink:0;background:rgba(88,200,248,.15);
             border:1px solid rgba(88,200,248,.35);border-radius:5px;
             color:#58c8f8;font-size:10px;padding:2px 8px;cursor:pointer;
             font-family:var(--fm);font-weight:600;white-space:nowrap">
-          📤 공개된노트 설정</button>
+          📤 공개설정</button>
+        <button id="gh-newfile-btn" onclick="GH.createNewFile()" title="현재 GitHub 저장소에 새 파일 만들기" style="display:none" class="sb-gh-btn">
+          <span class="fm-act-icon">📄</span>
+          <span class="fm-act-label">새 파일</span>
+        </button>
+        <button id="gh-mkdir-btn" onclick="GH.createNewFolder()" title="현재 GitHub 저장소에 새 폴더 만들기" style="display:none" class="sb-gh-btn">
+          <span class="fm-act-icon">📁</span>
+          <span class="fm-act-label">새 폴더</span>
+        </button>
+      </div>
+      <!-- sb-stats 바로 아래: 새 커밋 / 기기 메시지 + 커밋 히스토리 (글씨 작게) -->
+      <div id="sb-gh-messages">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <div id="gh-new-commits-banner" style="display:none">
+            <span id="gh-new-commits-msg"></span>
+            <button onclick="GH.dismissCommitBanner()">✕</button>
+          </div>
+          <button class="btn-ic" id="gh-commit-history-btn" onclick="App.showCommitHistory()"
+            title="커밋 히스토리" style="font-size:11px;padding:2px 5px;flex-shrink:0">📜</button>
+        </div>
+        <div id="gh-device-bar" style="display:none">
+          <span id="gh-device-info"></span>
+        </div>
       </div>
     </nav>
 
@@ -413,9 +415,12 @@
       <div id="editor-wrap">
         <div id="editor-pane">
           <div id="ed-hdr">
-            <span class="pane-lbl"><span></span>MARKDOWN</span>
+            <span class="pane-lbl"><span></span>Editor</span>
             <span class="spacer"></span>
             <div style="display:flex;align-items:center;gap:3px;margin-right:6px">
+              <button class="tb" id="ed-pv-sync-btn" onclick="if(typeof PW!=='undefined'&&PW.hasWin())PW.sendToggleSync()" data-tooltip="새창 PV 스크롤 동기화 ON/OFF (새창 미리보기 열림 시)"
+                style="font-size:10px;padding:0 7px;height:22px;color:#888;border:1px solid rgba(255,255,255,.15);border-radius:4px;font-weight:600;background:rgba(255,255,255,.05)">🔗 PV 동기화 OFF</button>
+              <button class="tb tb-sys" id="ed-theme-btn" onclick="App.toggleEditorTheme()" data-tooltip="에디터 다크/라이트 (클릭 시 전환)" style="font-size:14px" title="에디터 테마">◑</button>
               <button class="tb tb-sys" onclick="EZ.dec()" data-tooltip="에디터 축소 (Ctrl+9)" style="font-size:13px;font-weight:700;height:20px;padding:0 5px">−</button>
               <span id="ez-lbl" style="font-size:9.5px;font-family:var(--fm);color:#6acff7;min-width:30px;text-align:center">축소</span>
               <button class="tb tb-sys" onclick="EZ.inc()" data-tooltip="에디터 확대 (Ctrl+0)" style="font-size:13px;font-weight:700;height:20px;padding:0 5px">＋</button>
@@ -425,6 +430,7 @@
             <div id="line-numbers" class="vis">
               <div class="lnc" id="lnc"></div>
             </div>
+            <div id="editor-line-highlight" aria-hidden="true"></div>
             <textarea id="editor" class="wln" placeholder="# 제목을 입력하세요&#10;&#10;여기에 Markdown을 작성하세요.&#10;Alt+? → 단축키 목록"
               spellcheck="false"></textarea>
           </div>
@@ -434,8 +440,6 @@
         <div id="preview-pane">
           <div id="pv-hdr">
             <span class="pane-lbl"><span style="background:var(--ac2)"></span>PV</span>
-            <span id="pg-cnt" style="font-size:9px;color:var(--ac);font-family:var(--fm);margin-left:4px"></span>
-            <span id="render-ts" style="font-size:9px;color:#6af7c0;font-family:var(--fm);margin-left:4px;font-weight:600"></span>
             <span class="spacer"></span>
             <div style="display:flex;align-items:center;gap:3px">
               <!-- 확대/축소 -->
@@ -451,6 +455,9 @@
                 data-tooltip="PPT 모드 — 패널 너비에 맞춰 확대 후 페이지 단위 이동 (↑↓ 키)"
                 style="font-size:10px;padding:0 7px;height:22px;color:#f0c060;border:1px solid rgba(240,192,96,.35);border-radius:4px;font-weight:600">🎬
                 PPT</button>
+              <button class="tb" id="slide-mode-btn" onclick="SlideMode.toggle()"
+                data-tooltip="슬라이드 모드 — page-break 기준 16:9 카드로 미리보기"
+                style="font-size:10px;padding:0 7px;height:22px;color:#9d8cf7;border:1px solid rgba(124,106,247,.35);border-radius:4px;font-weight:600">📽 Slide</button>
               <button class="tb" id="pv-trans-btn" onclick="PV.toggleTrans()"
                 data-tooltip="페이지 방향 전환 (가로/세로)"
                 style="font-size:10px;padding:0 7px;height:22px;color:#f0c060;border:1px solid rgba(240,192,96,.35);border-radius:4px;font-weight:600">↔
@@ -475,9 +482,7 @@
                 data-tooltip="서식 있는 복사 — Word·구글독스에 붙여넣기 시 서식 유지">📋 복사</button>
               <button class="tb tb-copy-text" id="copy-text-btn" onclick="CP.copyText()"
                 data-tooltip="텍스트 복사 — 서식 없이 순수 텍스트만">Ａ 텍스트</button>
-              <button class="tb" id="ai-ppt-btn" onclick="AiPPT.open()"
-                data-tooltip="AI PPT — 현재 문서를 ScholarSlide에서 슬라이드로 변환"
-                style="font-size:10px;padding:0 7px;height:22px;color:#f7c96a;border:1px solid rgba(247,201,106,.35);border-radius:4px;font-weight:600;background:rgba(247,201,106,.10)">📊 AI PPT</button>
+             
               <button class="tb" id="pv-sync-btn" onclick="SS.toggle()"
                 data-tooltip="에디터 ↔ PV 스크롤 동기화 ON/OFF"
                 style="font-size:10px;padding:0 7px;height:22px;color:#6af7b0;border:1px solid rgba(106,247,176,.35);border-radius:4px;font-weight:600;background:rgba(106,247,176,.12)">🔗 동기화 ON</button>
@@ -513,6 +518,12 @@
       <div class="ss">|</div>
       <div class="si" id="cursor-pos">줄 1, 열 1</div>
       <div class="ss">|</div>
+      <div class="si" id="statusbar-ar-wrap" style="display:none;align-items:center;gap:4px">
+        <button id="gh-ar-btn" onclick="GH.toggleAutoRefresh()" title="자동 새로고침 ON/OFF" class="gh-ar-btn gh-ar-btn-circle on"><span class="gh-ar-dot"></span></button>
+        <button id="gh-ar-setting-btn" onclick="GH.showArIntervalSetting()" title="자동 새로고침 간격(초) 설정" class="gh-ar-setting-btn gh-ar-statusbar">⚙</button>
+        <span id="gh-ar-countdown" class="gh-ar-countdown" style="display:none" title="다음 새로고침까지 남은 시간"></span>
+      </div>
+      <div class="ss" id="statusbar-ar-sep" style="display:none">|</div>
       <div class="si" id="sel-info"></div>
       <div class="ssp"></div>
       <div class="si" id="error-count" onclick="App.toggleErr()"></div>
@@ -520,6 +531,7 @@
       <div class="si">UTF-8</div>
       <div class="ss">|</div>
       <div class="si" id="mode-ind">NORMAL</div>
+      <div id="doc-stats-bar" class="si"><span id="sw">0 단어</span><span id="sc">0 자</span><span id="sp">약 0 페이지</span></div>
     </div>
   </div><!-- #app -->
 
@@ -529,6 +541,13 @@
       <div class="mh">
         <span>🐙 GitHub 연결 설정</span>
         <button class="btn-ic" onclick="GH.hideSettings()">✕</button>
+      </div>
+      <!-- 자동새로고침 / 초설정 / 시간표시 (텍스트로 표시) -->
+      <div class="gh-modal-ar-row">
+        <span style="font-size:11px;color:var(--tx2);margin-right:4px">자동 새로고침</span>
+        <button id="gh-ar-btn-modal" onclick="GH.toggleAutoRefresh()" title="자동 새로고침 ON/OFF" class="gh-ar-btn">🔄 ON</button>
+        <button id="gh-ar-setting-btn-modal" onclick="GH.showArIntervalSetting()" title="자동 새로고침 간격(초) 설정" class="gh-ar-setting-btn">⚙ 초설정</button>
+        <span id="gh-ar-countdown-modal" class="gh-ar-countdown" style="display:none" title="다음 새로고침까지 남은 시간"></span>
       </div>
 
       <!-- ── 주소 3개 한눈에 보기/편집 ── -->
@@ -753,7 +772,7 @@
   <div id="hk-overlay" onclick="App.hideHK()">
     <div id="hk-panel" onclick="event.stopPropagation()">
       <h2>
-        <span>⌨ 단축키 목록</span>
+        <span>⌨ 단축키 목록 &amp; 설정</span>
         <div style="display:flex;align-items:center;gap:6px">
           <button class="btn btn-g btn-sm" id="hk-edit-btn" onclick="HK.toggleEdit()" style="font-size:11px">✎
             편집</button>
@@ -773,8 +792,25 @@
       <!-- 단축키 목록 렌더 영역 -->
       <div id="hk-list-wrap"></div>
 
+      <!-- 현재 줄 하이라이트 ON/OFF -->
+      <div id="hk-line-highlight-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--tx2)">에디터 현재 줄 하이라이트</span>
+        <button type="button" class="btn btn-g btn-sm" id="hk-line-highlight-btn" onclick="EditorLineHighlight.toggle()" style="font-size:11px">ON</button>
+      </div>
+
       <div style="margin-top:10px;font-size:11px;color:var(--tx3)" id="hk-footer-note">
         표 내부: Tab→다음 셀 | Enter→새 행 | ⌨ Code 버튼→언어 선택 | Alt+C→마지막 언어 직접 삽입
+      </div>
+      <!-- 로그인 후 설정: 비밀번호 변경 / 앱 잠금 / 자동 잠금 -->
+      <div id="hk-settings-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:none;flex-wrap:wrap;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--tx3);margin-right:4px">설정</span>
+        <button type="button" class="btn btn-g btn-sm" id="hk-btn-change-pw" onclick="App.hideHK();if(typeof AppLock!=='undefined')AppLock.showChangePw();" style="font-size:11px">🔑 비밀번호 변경</button>
+        <button type="button" class="btn btn-g btn-sm" id="hk-btn-lock" onclick="App.hideHK();if(typeof AppLock!=='undefined')AppLock.lockNow();" style="font-size:11px">🔒 앱 잠금</button>
+        <span style="font-size:11px;color:var(--tx3);margin-left:8px">자동 잠금</span>
+        <input type="number" id="hk-autolock-input" min="0" max="120" step="1" placeholder="0=끄기" title="분 단위 (0=끄기, 최대 120)"
+          style="font-size:11px;padding:4px 8px;width:56px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1)"
+          onchange="if(typeof AppLock!=='undefined')AppLock.setAutoLockMinutes(this.value||0)" />
+        <span style="font-size:11px;color:var(--tx3)">분</span>
       </div>
       <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end" id="hk-edit-actions"
         style="display:none">
@@ -921,7 +957,8 @@
         <div class="tab" onclick="CM.tab('cite')">② 인용 삽입</div>
         <div class="tab" onclick="CM.tab('convert')">③ 스타일 변환</div>
         <div class="tab" onclick="CM.tab('lib')">④ 저장된 목록</div>
-        <div class="tab" onclick="CM.tab('search')" style="color:var(--ac2)">⑤ 🔎 논문 검색</div>
+        <div class="tab" onclick="CM.tab('manual')">⑤ 수동참고문헌삽입</div>
+        <div class="tab" onclick="CM.tab('search')" style="color:var(--ac2)">⑥ 논문검색</div>
       </div>
 
       <!-- ADD -->
@@ -1025,6 +1062,20 @@
         </div>
       </div>
 
+      <!-- MANUAL REF INSERT (인용 삽입 시 선택된 항목만 추가) -->
+      <div class="tp" id="cp-manual">
+        <div style="display:flex;gap:7px;margin-bottom:9px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--tx2)">수동참고문헌 <span id="manual-cnt" style="color:var(--ac);font-weight:600">0</span>건</span>
+          <span class="spacer"></span>
+          <button class="btn btn-g btn-sm" onclick="CM.insertRefSectionFromManual()">📄 참고문헌 섹션 삽입</button>
+          <button class="btn btn-g btn-sm" onclick="CM.downloadManual()">⬇ 목록 다운로드</button>
+          <button class="btn btn-g btn-sm" style="color:var(--er)" onclick="CM.clearManual()">전체 삭제</button>
+        </div>
+        <div id="manual-ref-log" class="lib-list">
+          <div class="cite-empty">인용 삽입 시 선택된 항목이 여기에 추가됩니다.</div>
+        </div>
+      </div>
+
       <!-- SEARCH TAB -->
       <div class="tp" id="cp-search">
         <!-- 검색창 -->
@@ -1075,8 +1126,7 @@
         </div>
       </div>
       <button class="btn btn-g btn-sm" onclick="App.hideModal('cite-modal')">닫기</button>
-      <button class="btn btn-p btn-sm" id="cite-ins-btn" onclick="CM.insert()" style="display:none">✔ 선택 항목 인용
-        삽입</button>
+      <button class="btn btn-p btn-sm" id="cite-ins-btn" onclick="CM.insert()" style="display:none">✔ 선택 항목 인용 삽입</button>
     </div>
   </div>
   </div>
@@ -1167,51 +1217,149 @@
   <!-- COLOR PICKER MODAL -->
   <!-- SCHOLAR SEARCH MODAL -->
   <div class="ov" id="scholar-modal">
-    <div class="modal" style="max-width:520px">
-      <h3>🔎 Google Scholar 검색</h3>
-      <div class="fg">
-        <label class="fl">검색어 (논문 제목, 저자, 키워드 등)</label>
-        <div style="display:flex;gap:7px">
-          <input class="fi" id="scholar-q" type="text" placeholder="예) structural equation modeling education Korea"
-            style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+    <div class="modal" style="max-width:560px">
+      <h3>🔎 학술 논문 검색</h3>
+      <div class="tab-row scholar-tabs" style="margin-top:8px;flex-wrap:wrap;gap:2px">
+        <div class="tab active" onclick="Scholar.tab('google')">Google Scholar</div>
+        <div class="tab" onclick="Scholar.tab('yonsei')">연세대</div>
+        <div class="tab" onclick="Scholar.tab('sciencedirect')">ScienceDirect</div>
+        <div class="tab" onclick="Scholar.tab('riss')">RISS</div>
+        <div class="tab" onclick="Scholar.tab('kci')">KCI</div>
+        <div class="tab" onclick="Scholar.tab('dbpia')">DBpia</div>
+        <div class="tab" onclick="Scholar.tab('ieee')">IEEE</div>
+      </div>
+      <!-- Google Scholar -->
+      <div class="tp active" id="scholar-panel-google">
+        <div class="fg">
+          <label class="fl">검색어 (논문 제목, 저자, 키워드 등)</label>
+          <div style="display:flex;gap:7px">
+            <input class="fi" id="scholar-q" type="text" placeholder="예) structural equation modeling education Korea"
+              style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+            <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">검색 옵션</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label style="font-size:12px;color:var(--tx2)">언어:</label>
+            <select id="scholar-lang" class="fi" style="width:auto;padding:4px 8px">
+              <option value="ko">한국어 우선</option>
+              <option value="">전체</option>
+              <option value="en">영어 우선</option>
+            </select>
+            <label style="font-size:12px;color:var(--tx2)">기간:</label>
+            <select id="scholar-year" class="fi" style="width:auto;padding:4px 8px">
+              <option value="">전체 기간</option>
+              <option value="2024">2024년~</option>
+              <option value="2022">2022년~</option>
+              <option value="2020">2020년~</option>
+              <option value="2015">2015년~</option>
+              <option value="2010">2010년~</option>
+            </select>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--tx2);cursor:pointer">
+              <input type="checkbox" id="scholar-review" style="accent-color:var(--ac)"> 리뷰 논문만
+            </label>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:10px;line-height:1.6">💡 검색 결과는 새 창에서 열립니다.</div>
+      </div>
+      <!-- 연세대 학술정보원 -->
+      <div class="tp" id="scholar-panel-yonsei">
+        <div class="fg">
+          <label class="fl">검색어</label>
+          <div style="display:flex;gap:7px">
+            <input class="fi" id="scholar-yonsei-q" type="text" placeholder="검색어 입력"
+              style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+            <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">연세대학교 학술정보원 통합검색</div>
+      </div>
+      <!-- ScienceDirect -->
+      <div class="tp" id="scholar-panel-sciencedirect">
+        <div class="fg">
+          <label class="fl">키워드 (qs)</label>
+          <input class="fi" id="scholar-sd-qs" type="text" placeholder="검색 키워드" style="margin-bottom:8px">
+        </div>
+        <div class="fg">
+          <label class="fl">저자 (authors)</label>
+          <input class="fi" id="scholar-sd-authors" type="text" placeholder="저자명 (선택)" style="margin-bottom:8px">
+        </div>
+        <div class="fg">
+          <label class="fl">간행물/저널 (pub)</label>
+          <input class="fi" id="scholar-sd-pub" type="text" placeholder="저널명 (선택)" style="margin-bottom:8px">
+        </div>
+        <div style="display:flex;gap:7px;margin-top:8px">
           <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
         </div>
       </div>
-      <div class="fg">
-        <label class="fl">검색 옵션</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <label style="font-size:12px;color:var(--tx2)">언어:</label>
-          <select id="scholar-lang" class="fi" style="width:auto;padding:4px 8px">
-            <option value="ko">한국어 우선</option>
-            <option value="">전체</option>
-            <option value="en">영어 우선</option>
-          </select>
-          <label style="font-size:12px;color:var(--tx2)">기간:</label>
-          <select id="scholar-year" class="fi" style="width:auto;padding:4px 8px">
-            <option value="">전체 기간</option>
-            <option value="2024">2024년~</option>
-            <option value="2022">2022년~</option>
-            <option value="2020">2020년~</option>
-            <option value="2015">2015년~</option>
-            <option value="2010">2010년~</option>
-          </select>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--tx2);cursor:pointer">
-            <input type="checkbox" id="scholar-review" style="accent-color:var(--ac)"> 리뷰 논문만
-          </label>
+      <!-- RISS -->
+      <div class="tp" id="scholar-panel-riss">
+        <div class="fg">
+          <label class="fl">검색어 (query)</label>
+          <div style="display:flex;gap:7px">
+            <input class="fi" id="scholar-riss-q" type="text" placeholder="검색어 입력"
+              style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+            <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+          </div>
         </div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">RISS 학술연구정보서비스</div>
       </div>
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px;line-height:1.6">
-        💡 검색 결과는 <b>Google Scholar 새 창</b>에서 열립니다.<br>
-        논문 제목 클릭 → 인용 버튼 → APA 복사 → 📚 References 탭에 붙여넣기
+      <!-- KCI -->
+      <div class="tp" id="scholar-panel-kci">
+        <div class="fg">
+          <label class="fl">일반 검색 (mainSearchKeyword)</label>
+          <input class="fi" id="scholar-kci-main" type="text" placeholder="검색어" style="margin-bottom:8px">
+        </div>
+        <div class="fg">
+          <label class="fl">저자명</label>
+          <input class="fi" id="scholar-kci-author" type="text" placeholder="저자명 (선택)" style="margin-bottom:8px">
+        </div>
+        <div class="fg">
+          <label class="fl">간행지명</label>
+          <input class="fi" id="scholar-kci-journal" type="text" placeholder="간행지명 (선택)" style="margin-bottom:8px">
+        </div>
+        <div class="fg">
+          <label class="fl">발행기관명</label>
+          <input class="fi" id="scholar-kci-publisher" type="text" placeholder="발행기관명 (선택)" style="margin-bottom:8px">
+        </div>
+        <div style="display:flex;gap:7px;margin-top:8px">
+          <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+        </div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:6px">※ 입력란이 채워지지 않으면 #mainSearchKeyword에 Ctrl+V로 붙여넣기</div>
       </div>
-      <div class="fg" id="scholar-recent-wrap" style="display:none">
+      <!-- DBpia -->
+      <div class="tp" id="scholar-panel-dbpia">
+        <div class="fg">
+          <label class="fl">검색어</label>
+          <div style="display:flex;gap:7px">
+            <input class="fi" id="scholar-dbpia-q" type="text" placeholder="검색어 입력"
+              style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+            <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">DBpia 학술콘텐츠 플랫폼</div>
+      </div>
+      <!-- IEEE -->
+      <div class="tp" id="scholar-panel-ieee">
+        <div class="fg">
+          <label class="fl">검색어</label>
+          <div style="display:flex;gap:7px">
+            <input class="fi" id="scholar-ieee-q" type="text" placeholder="검색어 입력"
+              style="flex:1" onkeydown="if(event.key==='Enter')Scholar.search()">
+            <button class="btn btn-p" onclick="Scholar.search()" style="white-space:nowrap">검색 →</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">IEEE Xplore Digital Library</div>
+      </div>
+      <div class="fg" id="scholar-recent-wrap" style="display:none;margin-top:10px">
         <label class="fl">최근 검색어</label>
         <div id="scholar-recent" style="display:flex;gap:5px;flex-wrap:wrap"></div>
       </div>
       <div class="mf">
         <button class="btn btn-g btn-sm" onclick="Scholar.clear()">검색어 초기화</button>
         <button class="btn btn-g btn-sm" onclick="App.hideModal('scholar-modal')">닫기</button>
-        <button class="btn btn-p btn-sm" onclick="Scholar.search()">🔎 Scholar 검색</button>
+        <button class="btn btn-p btn-sm" onclick="Scholar.search()">🔎 검색</button>
       </div>
     </div>
   </div>
@@ -1302,6 +1450,23 @@
       <h3>📋 논문 양식 선택</h3>
       <p style="font-size:12px;color:var(--tx2);margin-bottom:14px">선택하면 에디터에 구조가 자동 삽입됩니다. 기존 내용은 유지됩니다.</p>
       <div class="tmpl-grid" id="tmpl-grid"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)">
+        <h4 style="font-size:12px;color:var(--tx2);margin-bottom:10px">📽 슬라이드 양식</h4>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+          <label style="font-size:11px;color:var(--tx3)">스타일</label>
+          <select id="slide-tmpl-style" style="font-size:11px;padding:4px 8px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1)">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+          <label style="font-size:11px;color:var(--tx3)">생성 페이지 수</label>
+          <input type="number" id="slide-tmpl-count" min="1" max="50" value="5" style="width:60px;font-size:11px;padding:4px 8px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1)">
+          <button type="button" class="btn btn-p btn-sm" onclick="App.insertSlideTmpl()">생성 후 삽입</button>
+        </div>
+      </div>
       <div class="mf"><button class="btn btn-g btn-sm" onclick="App.hideModal('tmpl-modal')">닫기</button></div>
     </div>
   </div>
