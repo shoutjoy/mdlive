@@ -194,6 +194,18 @@
 }
 
 /* ── titlebar 배경색 버튼들 ── */
+.btn.btn-settings {
+    background: linear-gradient(135deg, #2a2060 0%, #3a2880 100%);
+    color: #c8b8ff;
+    border: 1px solid rgba(160, 130, 255, .4)
+}
+
+.btn.btn-settings:hover {
+    background: linear-gradient(135deg, #3a2880 0%, #4a38a0 100%);
+    color: #e0d4ff;
+    border-color: rgba(180, 160, 255, .7)
+}
+
 .btn.btn-tmpl {
     background: linear-gradient(135deg, #2a2060 0%, #3a2880 100%);
     color: #c8b8ff;
@@ -264,6 +276,18 @@
     background: linear-gradient(135deg, #400e0e 0%, #581414 100%);
     color: #ffaaaa;
     border-color: rgba(247, 160, 160, .6)
+}
+
+[data-theme=light] .btn.btn-settings {
+    background: linear-gradient(135deg, #ede8ff 0%, #ddd4ff 100%);
+    color: #5a30c0;
+    border: 1px solid rgba(90, 48, 192, .3)
+}
+
+[data-theme=light] .btn.btn-settings:hover {
+    background: linear-gradient(135deg, #e5dcff 0%, #d5c8ff 100%);
+    color: #4a20a0;
+    border-color: rgba(90, 48, 192, .5)
 }
 
 [data-theme=light] .btn.btn-tmpl {
@@ -352,6 +376,19 @@
 [data-theme=light] #pv-dark-btn {
     color: #3060c0 !important;
     border-color: rgba(48, 96, 192, .35) !important
+}
+
+/* ── 동기화 버튼 글씨 더 어둡게 (가독성) ── */
+#ed-sync-btn,
+#pv-sync-btn,
+#ed-pv-sync-btn {
+    color: #3ab870 !important;
+}
+[data-theme=light] #ed-sync-btn,
+[data-theme=light] #pv-sync-btn,
+[data-theme=light] #ed-pv-sync-btn {
+    color: #0b6b3a !important;
+    border-color: rgba(11,107,58,.4) !important;
 }
 
 *,
@@ -2481,6 +2518,14 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
     border-bottom: 1px solid #d0c8f0
 }
 
+/* ── 글자 크기 표시 라이트모드 ── */
+[data-theme=light] #fsize-display,
+[data-theme=light] #fsize-input {
+    color: #b85e1a !important;
+    background: #eeeaf8 !important;
+    border-color: #d0c8f0 !important;
+}
+
 [data-theme=light] #hdr,
 [data-theme=light] #hdr2 {
     background: linear-gradient(90deg, #eeebff 0%, #f4f0ff 100%);
@@ -2840,6 +2885,85 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
     max-width: 940px
 }
 
+/* Deep Research 모달: 최대화 */
+#dr-modal-box.dr-modal-maximized {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0;
+    margin: 0
+}
+
+#dr-history-list:empty::before {
+    content: attr(data-empty);
+    display: block;
+    font-size: 11px;
+    color: var(--tx3);
+    padding: 12px 8px;
+    line-height: 1.4
+}
+
+#aiimg-history-list:empty::before {
+    content: attr(data-empty);
+    display: block;
+    font-size: 11px;
+    color: var(--tx3);
+    padding: 12px 8px;
+    line-height: 1.4
+}
+
+.aiimg-ratio.active {
+    background: var(--ac);
+    color: var(--bg1);
+    border-color: var(--ac);
+}
+
+.dr-history-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: var(--r);
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--tx2);
+    border: 1px solid transparent;
+    margin-bottom: 4px;
+    transition: background var(--tr), border-color var(--tr)
+}
+
+.dr-history-item:hover {
+    background: var(--bg4);
+    color: var(--tx)
+}
+
+.dr-history-item .dr-history-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.dr-history-item .dr-history-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 2px;
+    opacity: 0.7
+}
+
+.dr-history-item:hover .dr-history-actions {
+    opacity: 1
+}
+
+.dr-history-item .btn-ic {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 11px
+}
+
 .modal h3 {
     font-size: 15px;
     font-weight: 600;
@@ -2904,6 +3028,11 @@ textarea.fi {
     display: flex;
     border-bottom: 1px solid var(--bd);
     margin-bottom: 14px
+}
+
+[data-theme=light] #cite-modal .tab-row .tab:nth-child(6) {
+    color: #1a0a60 !important;
+    font-weight: 700;
 }
 
 .tab {
@@ -4124,6 +4253,24 @@ kbd {
 [data-theme=light] .tb.tb-translate { color: #0b7a63; }
 [data-theme=light] .tb.tb-translate:hover { color: #095e4b; background: rgba(11,122,99,.1); }
 
+/* 번역기 탭 */
+.tr-tab {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--tx3);
+    cursor: pointer;
+    transition: color .2s, border-color .2s
+}
+.tr-tab:hover { color: var(--tx2) }
+.tr-tab.active {
+    color: var(--ac);
+    border-bottom-color: var(--ac)
+}
+
 /* ═══════════════════════════════════════════════════════
    번역기 로딩 스피너
 ═══════════════════════════════════════════════════════ */
@@ -4157,6 +4304,25 @@ kbd {
    라이트 모드 가독성 개선 (전면 재작성)
    모든 사이드바 텍스트를 어두운 색으로 강제 지정
 ═══════════════════════════════════════════════════════ */
+
+/* ── sb-stats (공개설정·새파일·새폴더) 라이트모드 ── */
+[data-theme=light] #sb-stats {
+    border-top-color: #d0c8f0;
+    color: #1a1a2e;
+}
+[data-theme=light] #sb-stats *,
+[data-theme=light] #sb-stats button {
+    color: #1a1a2e !important;
+}
+[data-theme=light] #sb-stats button[onclick="PVShare.openModal()"] {
+    background: rgba(88,200,248,.2) !important;
+    border-color: rgba(88,200,248,.5) !important;
+    color: #0a5070 !important;
+}
+[data-theme=light] #sb-stats .fm-act-icon,
+[data-theme=light] #sb-stats .fm-act-label {
+    color: #1a1a2e !important;
+}
 
 /* ── 사이드바 전체 기본 텍스트 ── */
 [data-theme=light] #sidebar {

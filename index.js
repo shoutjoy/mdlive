@@ -464,6 +464,84 @@ const AppLock = (() => {
   return { init, handleLockBtn, showChangePw, isUnlocked, hasLock, lockNow, getAutoLockMinutes, setAutoLockMinutes, resetAutoLockTimer, _toast, showReset, hideReset, doReset };
 })();
 
+/* ═══════════════════════════════════════════════════════════
+   AiApiKey — Google AI Studio API 키 암호화 저장
+   PBKDF2 + AES-256-GCM (앱 고정 시크릿)
+═══════════════════════════════════════════════════════════ */
+const AiApiKey = (() => {
+  const STORAGE_KEY = 'mdpro_ai_apikey_enc';
+  const APP_SECRET = 'mdpro_ai_enc_v1_fixed_secret';
+
+  function b64enc(u8) { return btoa(String.fromCharCode(...u8)); }
+  function b64dec(s)  { return new Uint8Array(atob(s).split('').map(c=>c.charCodeAt(0))); }
+
+  async function _deriveKey() {
+    const enc = new TextEncoder();
+    const km = await crypto.subtle.importKey('raw', enc.encode(APP_SECRET), 'PBKDF2', false, ['deriveKey']);
+    const salt = enc.encode('mdpro_ai_salt_v1');
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      km,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async function _encrypt(plaintext) {
+    const key = await _deriveKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      new TextEncoder().encode(plaintext)
+    );
+    return { iv: b64enc(iv), data: b64enc(new Uint8Array(ct)) };
+  }
+
+  async function _decrypt(payload) {
+    const key = await _deriveKey();
+    const iv = b64dec(payload.iv);
+    const data = b64dec(payload.data);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return new TextDecoder().decode(pt);
+  }
+
+  async function save() {
+    const inp = document.getElementById('ai_apikey');
+    if (!inp) return;
+    const val = (inp.value || '').trim();
+    if (!val) {
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      inp.value = '';
+      return;
+    }
+    try {
+      const enc = await _encrypt(val);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(enc));
+    } catch(e) { console.warn('AiApiKey save failed:', e); }
+  }
+
+  async function load() {
+    const inp = document.getElementById('ai_apikey');
+    if (!inp) return;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const payload = JSON.parse(raw);
+      const plain = await _decrypt(payload);
+      inp.value = plain;
+    } catch(e) { console.warn('AiApiKey load failed:', e); }
+  }
+
+  function get() {
+    const inp = document.getElementById('ai_apikey');
+    return inp ? (inp.value || '').trim() : '';
+  }
+
+  return { save, load, get };
+})();
+
 function mdRender(md, showFootnotes) {
     try {
         /* ── ~ 이스케이프 전처리 ──────────────────────────────────
@@ -8312,10 +8390,805 @@ const IMG = (() => {
             el('img-preview-wrap').style.display = 'block';
             el('img-drop-text').textContent = '✓ ' + file.name + ' (' + Math.round(file.size / 1024) + 'KB)';
             el('img-drop-text').style.color = 'var(--ok)';
+            const cropBtn = document.getElementById('img-insert-crop-btn');
+            if (cropBtn) cropBtn.disabled = false;
         };
         reader.readAsDataURL(file);
     }
     return { dragOver, dragLeave, drop, fileSelected };
+})();
+
+const ImgCrop = {
+    openForInsert() {
+        const urlEl = document.getElementById('img-url');
+        const previewEl = document.getElementById('img-preview');
+        const src = (urlEl && urlEl.value && urlEl.value.trim()) || (previewEl && previewEl.src);
+        if (!src || (!src.startsWith('data:') && !src.startsWith('http'))) {
+            alert('먼저 이미지를 업로드하거나 URL을 입력하세요.');
+            return;
+        }
+        if (src.startsWith('http') && previewEl && !previewEl.complete) {
+            alert('이미지 로딩 중입니다. 잠시 후 다시 시도하세요.');
+            return;
+        }
+        window._imgCropTarget = 'insert';
+        window._mdliveCropPending = src;
+        const w = window.open('crop.html', 'crop', 'width=640,height=560,scrollbars=yes');
+        if (!w) { alert('팝업이 차단되었습니다.'); window._imgCropTarget = null; window._mdliveCropPending = null; return; }
+    }
+};
+
+const ImgInsert = {
+    insertToNewFile() {
+        const url = document.getElementById('img-url')?.value?.trim();
+        const alt = document.getElementById('img-alt')?.value?.trim() || '이미지';
+        if (!url) { alert('삽입할 이미지가 없습니다. URL을 입력하거나 이미지를 업로드하세요.'); return; }
+        const title = '이미지-' + new Date().toISOString().slice(0, 10);
+        if (typeof TM !== 'undefined' && TM.newTab) TM.newTab(title, `![${alt}](${url})`, 'md');
+        if (url.startsWith('data:image') && typeof ImgStore !== 'undefined') ImgStore.save(url, alt);
+    }
+};
+
+const ImgStore = (() => {
+    const DB = 'mdlive-img-store';
+    const STORE = 'images';
+    function open() {
+        return new Promise((res, rej) => {
+            const r = indexedDB.open(DB, 1);
+            r.onupgradeneeded = e => {
+                if (!e.target.result.objectStoreNames.contains(STORE)) e.target.result.createObjectStore(STORE, { keyPath: 'id' });
+            };
+            r.onsuccess = () => res(r.result);
+            r.onerror = () => rej(r.error);
+        });
+    }
+    async function save(dataUrl, alt) {
+        if (!dataUrl || !dataUrl.startsWith('data:image')) return;
+        const db = await open();
+        return new Promise((res, rej) => {
+            const t = db.transaction(STORE, 'readwrite');
+            t.objectStore(STORE).put({ id: 'img-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9), dataUrl, alt: alt || '', createdAt: Date.now() });
+            t.oncomplete = () => res();
+            t.onerror = () => rej(t.error);
+        });
+    }
+    return { save };
+})();
+
+(function initImgUrlPreview() {
+    const urlEl = document.getElementById('img-url');
+    if (!urlEl) return;
+    urlEl.addEventListener('input', () => {
+        const v = urlEl.value.trim();
+        const preview = document.getElementById('img-preview');
+        const wrap = document.getElementById('img-preview-wrap');
+        const cropBtn = document.getElementById('img-insert-crop-btn');
+        if (v.startsWith('data:image')) {
+            if (preview) { preview.src = v; preview.style.display = 'block'; }
+            if (wrap) wrap.style.display = 'block';
+            if (cropBtn) cropBtn.disabled = false;
+        } else if (cropBtn && (v.startsWith('http') || v.length > 0)) {
+            cropBtn.disabled = !v;
+        }
+    });
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   AI IMAGE (이미지 모달 내 AI 이미지 탭)
+   모델 선택, 시드 이미지, 프롬프트, 생성, 히스토리, 다운로드(일괄/ZIP/프로젝트.mdp), 크롭
+═══════════════════════════════════════════════════════════ */
+const AiImage = (() => {
+    const DB_NAME = 'mdlive-aiimg-history';
+    const STORE_NAME = 'history';
+    let _seedDataUrl = '';
+    let _resultImages = [];
+    let _currentPrompt = '';
+    let _busy = false;
+    let _historyCache = [];
+    let _cropImageUrl = '';
+    let _cropRect = { x: 0, y: 0, w: 0, h: 0 };
+    let _cropDragging = false;
+    let _cropStart = { x: 0, y: 0 };
+    let _aspectRatio = '1:1';
+    let _analysisResult = { face: '', outfit: '' };
+    let _virtualTryOnDataUrl = '';
+
+    function _openDB() {
+        return new Promise((resolve, reject) => {
+            const r = indexedDB.open(DB_NAME, 1);
+            r.onerror = () => reject(r.error);
+            r.onsuccess = () => resolve(r.result);
+            r.onupgradeneeded = (e) => {
+                if (!e.target.result.objectStoreNames.contains(STORE_NAME)) {
+                    e.target.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+            };
+        });
+    }
+    async function _getAll() {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readonly');
+            const req = t.objectStore(STORE_NAME).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function _add(record) {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readwrite');
+            t.objectStore(STORE_NAME).put(record);
+            t.oncomplete = () => resolve();
+            t.onerror = () => reject(t.error);
+        });
+    }
+    async function _delete(id) {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readwrite');
+            t.objectStore(STORE_NAME).delete(id);
+            t.oncomplete = () => resolve();
+            t.onerror = () => reject(t.error);
+        });
+    }
+    async function _clearAll() {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readwrite');
+            t.objectStore(STORE_NAME).clear();
+            t.oncomplete = () => resolve();
+            t.onerror = () => reject(t.error);
+        });
+    }
+
+    function switchTab(tab) {
+        const insertPanel = el('img-insert-panel');
+        const historyPanel = el('aiimg-history-panel');
+        const centerInsert = el('img-center-insert');
+        const centerAi = el('img-center-ai');
+        const rightSidebar = el('img-right-sidebar');
+        const box = el('image-modal-box');
+        const tabs = document.querySelectorAll('.img-side-tab');
+        if (!insertPanel || !historyPanel) return;
+        if (tab === 'ai') {
+            insertPanel.style.display = 'none';
+            historyPanel.style.display = 'flex';
+            if (centerInsert) centerInsert.style.display = 'none';
+            if (centerAi) centerAi.style.display = 'flex';
+            if (rightSidebar) { rightSidebar.style.display = 'flex'; }
+            if (box) box.style.maxWidth = '920px';
+            tabs.forEach(t => { t.classList.toggle('active', t.getAttribute('data-tab') === 'ai'); });
+            loadHistory();
+        } else {
+            insertPanel.style.display = 'block';
+            historyPanel.style.display = 'none';
+            if (centerInsert) centerInsert.style.display = 'flex';
+            if (centerAi) centerAi.style.display = 'none';
+            if (rightSidebar) rightSidebar.style.display = 'none';
+            if (box) box.style.maxWidth = '480px';
+            tabs.forEach(t => { t.classList.toggle('active', t.getAttribute('data-tab') === 'insert'); });
+        }
+    }
+
+    function toggleMaximize() {
+        const box = el('image-modal-box');
+        if (!box) return;
+        box.classList.toggle('img-modal-maximized');
+        if (box.classList.contains('img-modal-maximized')) {
+            box.style.maxWidth = '';
+            box.style.width = '100vw';
+            box.style.height = '100vh';
+        } else {
+            box.style.maxWidth = document.querySelector('.img-side-tab.active')?.getAttribute('data-tab') === 'ai' ? '920px' : '480px';
+            box.style.width = '';
+            box.style.height = '';
+        }
+    }
+
+    (function initRatioButtons() {
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.aiimg-ratio');
+            if (!btn) return;
+            const modal = document.getElementById('image-modal');
+            if (!modal || !modal.classList.contains('show')) return;
+            document.querySelectorAll('.aiimg-ratio').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _aspectRatio = btn.getAttribute('data-ratio') || '1:1';
+            const ta = document.getElementById('aiimg-prompt');
+            if (ta) {
+                const v = ta.value || '';
+                ta.value = v.replace(/\s*\[비율:\s*[\d:]+\]\s*/g, '').trim();
+                const suffix = ' [비율: ' + _aspectRatio + ']';
+                if (ta.value) ta.value = ta.value + suffix;
+                else ta.value = suffix.trim();
+            }
+        });
+    })();
+
+    const PRESETS = {
+        person: '인물 고정. 동일 인물이 나오도록 유지해 주세요. ',
+        outfit: '복장 고정. 동일 의상·복장이 유지되도록 해 주세요. ',
+        diagram: '플로우차트, 통계 이미지. 도표 형태로 명확하고 보기 좋게 표현해 주세요. ',
+        chart: '차트 형태로 데이터를 시각화해 주세요. ',
+        story: '노트북 LM 스타일의 스토리 이미지. 이야기 흐름에 맞는 일러스트로 생성해 주세요. '
+    };
+    function applyPreset(type) {
+        const ta = el('aiimg-prompt');
+        if (!ta) return;
+        const prefix = PRESETS[type] || '';
+        ta.value = prefix + (ta.value || '');
+        ta.focus();
+    }
+    function applyMenuType(type) {
+        const ta = el('aiimg-prompt');
+        if (!ta) return;
+        const text = (ta.value || '').trim();
+        ta.value = text ? text + ', ' + type : type;
+        ta.focus();
+    }
+    async function analyzeSeedImage() {
+        if (!_seedDataUrl) return;
+        const key = typeof AiApiKey !== 'undefined' ? AiApiKey.get() : '';
+        if (!key) { alert('AI API 키를 설정에서 입력해 주세요.'); return; }
+        const btn = document.getElementById('aiimg-analyze-btn');
+        if (btn) btn.disabled = true;
+        const analysisEl = document.getElementById('aiimg-analysis-text');
+        if (analysisEl) analysisEl.textContent = '분석 중…';
+        try {
+            const base64 = _seedDataUrl.replace(/^data:image\/\w+;base64,/, '');
+            const mime = _seedDataUrl.match(/^data:(image\/\w+);/);
+            const modelId = 'gemini-2.0-flash';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(key)}`;
+            const body = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        { inlineData: { mimeType: mime ? mime[1] : 'image/png', data: base64 } },
+                        { text: '이 이미지에 등장하는 인물과 복장을 분석해서 다음 형식으로만 답해. 다른 말 없이 아래 형식만.\n\n[인물]\n얼굴: 눈 특징, 눈썹, 코, 입 모양, 피부톤 등\n헤어: 길이, 스타일, 색 등\n기타: 성별, 나이대 등\n\n[복장]\n상의, 하의, 악세서리 등 입은 옷과 스타일을 구체적으로.' }
+                    ]
+                }],
+                generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
+            };
+            const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error?.message || 'API 오류');
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const faceMatch = text.match(/\[인물\]([\s\S]*?)(?=\[복장\]|$)/);
+            const outfitMatch = text.match(/\[복장\]([\s\S]*?)$/);
+            _analysisResult.face = faceMatch ? faceMatch[1].trim() : '';
+            _analysisResult.outfit = outfitMatch ? outfitMatch[1].trim() : '';
+            if (analysisEl) analysisEl.textContent = (_analysisResult.face ? '[인물]\n' + _analysisResult.face + '\n\n' : '') + (_analysisResult.outfit ? '[복장]\n' + _analysisResult.outfit : '') || '분석 결과 없음';
+        } catch (e) {
+            if (analysisEl) analysisEl.textContent = '오류: ' + (e.message || String(e));
+        }
+        if (btn) btn.disabled = false;
+    }
+    function onVirtualTryOnFile(ev) {
+        const file = ev.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        ev.target.value = '';
+        const reader = new FileReader();
+        reader.onload = () => {
+            _virtualTryOnDataUrl = reader.result;
+            const imgEl = document.getElementById('aiimg-virtual-tryon-img');
+            const wrap = document.getElementById('aiimg-virtual-tryon-preview');
+            const nameEl = document.getElementById('aiimg-virtual-tryon-name');
+            const clearBtn = document.getElementById('aiimg-virtual-tryon-clear');
+            if (imgEl) imgEl.src = _virtualTryOnDataUrl;
+            if (wrap) wrap.style.display = 'block';
+            if (nameEl) nameEl.textContent = file.name;
+            if (clearBtn) clearBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+    function clearVirtualTryOn() {
+        _virtualTryOnDataUrl = '';
+        const imgEl = document.getElementById('aiimg-virtual-tryon-img');
+        const wrap = document.getElementById('aiimg-virtual-tryon-preview');
+        const nameEl = document.getElementById('aiimg-virtual-tryon-name');
+        const clearBtn = document.getElementById('aiimg-virtual-tryon-clear');
+        const input = document.getElementById('aiimg-virtual-tryon-input');
+        if (imgEl) imgEl.src = '';
+        if (wrap) wrap.style.display = 'none';
+        if (nameEl) nameEl.textContent = '';
+        if (clearBtn) clearBtn.disabled = true;
+        if (input) input.value = '';
+    }
+
+    function onSeedFile(ev) {
+        const file = ev.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            _seedDataUrl = reader.result;
+            const preview = el('aiimg-seed-preview');
+            const placeholder = el('aiimg-seed-placeholder');
+            if (preview) { preview.src = _seedDataUrl; preview.style.display = 'block'; }
+            if (placeholder) placeholder.style.display = 'none';
+            el('aiimg-crop-btn').disabled = false;
+        };
+        reader.readAsDataURL(file);
+        ev.target.value = '';
+        const analyzeBtn = document.getElementById('aiimg-analyze-btn');
+        if (analyzeBtn) analyzeBtn.disabled = false;
+    }
+    function clearSeed() {
+        _seedDataUrl = '';
+        _analysisResult = { face: '', outfit: '' };
+        const preview = el('aiimg-seed-preview');
+        const placeholder = el('aiimg-seed-placeholder');
+        if (preview) { preview.src = ''; preview.style.display = 'none'; }
+        if (placeholder) placeholder.style.display = 'block';
+        el('aiimg-crop-btn').disabled = true;
+        const analyzeBtn = document.getElementById('aiimg-analyze-btn');
+        if (analyzeBtn) analyzeBtn.disabled = true;
+        const analysisEl = document.getElementById('aiimg-analysis-text');
+        if (analysisEl) analysisEl.textContent = '';
+        const personCb = document.getElementById('aiimg-fix-person-cb');
+        const outfitCb = document.getElementById('aiimg-fix-outfit-cb');
+        if (personCb) personCb.checked = false;
+        if (outfitCb) outfitCb.checked = false;
+    }
+    function setResultAsSeed() {
+        if (_resultImages.length === 0) return;
+        _seedDataUrl = _resultImages[0];
+        const preview = el('aiimg-seed-preview');
+        const placeholder = el('aiimg-seed-placeholder');
+        if (preview) { preview.src = _seedDataUrl; preview.style.display = 'block'; }
+        if (placeholder) placeholder.style.display = 'none';
+        el('aiimg-crop-btn').disabled = false;
+        const analyzeBtn = document.getElementById('aiimg-analyze-btn');
+        if (analyzeBtn) analyzeBtn.disabled = false;
+    }
+
+    function openCropUpload() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (ev) => {
+            const file = ev.target.files[0];
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = () => _openCropPopup(reader.result);
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    }
+    function openCropEdit() {
+        if (!_seedDataUrl) return;
+        _openCropPopup(_seedDataUrl);
+    }
+    function openCropForResult(index) {
+        const dataUrl = _resultImages[index];
+        if (!dataUrl) return;
+        window._imgCropTarget = 'result';
+        window._cropResultIndex = index;
+        _openCropPopup(dataUrl);
+    }
+    function openResultInNewWindow(dataUrl) {
+        const w = window.open('', '_blank', 'width=800,height=700,scrollbars=yes');
+        if (!w) return;
+        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>이미지 보기</title><style>body{margin:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body><img src="' + dataUrl.replace(/"/g, '&quot;') + '" style="max-width:100%;max-height:100vh;object-fit:contain" alt=""></body></html>');
+        w.document.close();
+    }
+    function cropCurrentResult() {
+        if (_resultImages.length === 0) return;
+        openCropForResult(0);
+    }
+    function openCurrentResultInNewWindow() {
+        if (_resultImages.length === 0) return;
+        openResultInNewWindow(_resultImages[0]);
+    }
+    function resetModal() {
+        _seedDataUrl = '';
+        _resultImages = [];
+        _currentPrompt = '';
+        _analysisResult = { face: '', outfit: '' };
+        _virtualTryOnDataUrl = '';
+        const preview = el('aiimg-seed-preview');
+        const placeholder = el('aiimg-seed-placeholder');
+        if (preview) { preview.src = ''; preview.style.display = 'none'; }
+        if (placeholder) placeholder.style.display = 'block';
+        const cropBtn = document.getElementById('aiimg-crop-btn');
+        if (cropBtn) cropBtn.disabled = true;
+        if (el('aiimg-prompt')) el('aiimg-prompt').value = '';
+        const centerCrop = document.getElementById('aiimg-center-crop-btn');
+        const centerBig = document.getElementById('aiimg-center-big-btn');
+        if (centerCrop) centerCrop.disabled = true;
+        if (centerBig) centerBig.disabled = true;
+        const rw = el('aiimg-result-wrap');
+        const empty = el('aiimg-empty-result');
+        if (rw) rw.style.display = 'none';
+        if (empty) empty.style.display = 'flex';
+        const wrap = el('aiimg-result-images');
+        if (wrap) wrap.innerHTML = '';
+        const analyzeBtn = document.getElementById('aiimg-analyze-btn');
+        if (analyzeBtn) analyzeBtn.disabled = true;
+        const analysisEl = document.getElementById('aiimg-analysis-text');
+        if (analysisEl) analysisEl.textContent = '';
+        const personCb = document.getElementById('aiimg-fix-person-cb');
+        const outfitCb = document.getElementById('aiimg-fix-outfit-cb');
+        if (personCb) personCb.checked = false;
+        if (outfitCb) outfitCb.checked = false;
+        clearVirtualTryOn();
+    }
+    function _openCropPopup(imageDataUrl) {
+        const w = window.open('crop.html', 'crop', 'width=640,height=560,scrollbars=yes');
+        if (!w) { alert('팝업이 차단되었습니다. 크롭 창을 허용해 주세요.'); return; }
+        window._mdliveCropPending = imageDataUrl;
+    }
+    (function initCropMessage() {
+        window.addEventListener('message', (ev) => {
+            if (ev.data && ev.data.type === 'crop-ready') {
+                const img = window._mdliveCropPending;
+                window._mdliveCropPending = null;
+                if (ev.source && !ev.source.closed && img) ev.source.postMessage({ type: 'crop', image: img }, '*');
+                return;
+            }
+            if (!ev.data || ev.data.type !== 'aiimg-cropped' || !ev.data.dataUrl) return;
+            if (window._imgCropTarget === 'result' && typeof window._cropResultIndex === 'number') {
+                const idx = window._cropResultIndex;
+                window._imgCropTarget = null;
+                window._cropResultIndex = null;
+                if (_resultImages[idx] !== undefined) {
+                    _resultImages[idx] = ev.data.dataUrl;
+                    _renderResult();
+                }
+                return;
+            }
+            if (window._imgCropTarget === 'insert') {
+                window._imgCropTarget = null;
+                const urlEl = el('img-url');
+                const preview = el('img-preview');
+                const wrap = el('img-preview-wrap');
+                if (urlEl) urlEl.value = ev.data.dataUrl;
+                if (preview) { preview.src = ev.data.dataUrl; preview.style.display = 'block'; }
+                if (wrap) wrap.style.display = 'block';
+                return;
+            }
+            _seedDataUrl = ev.data.dataUrl;
+            const preview = el('aiimg-seed-preview');
+            const placeholder = el('aiimg-seed-placeholder');
+            if (preview) { preview.src = _seedDataUrl; preview.style.display = 'block'; }
+            if (placeholder) placeholder.style.display = 'none';
+            const cropBtn = document.getElementById('aiimg-crop-btn');
+            if (cropBtn) cropBtn.disabled = false;
+            const analyzeBtn = document.getElementById('aiimg-analyze-btn');
+            if (analyzeBtn) analyzeBtn.disabled = false;
+        });
+    })();
+
+    function _renderResult() {
+        const wrap = el('aiimg-result-images');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        const rw = el('aiimg-result-wrap');
+        const empty = el('aiimg-empty-result');
+        if (_resultImages.length) {
+            if (rw) rw.style.display = 'block';
+            if (empty) empty.style.display = 'none';
+            _resultImages.forEach((dataUrl, i) => {
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = 'position:relative;display:inline-block';
+                const img = document.createElement('img');
+                img.src = dataUrl;
+                img.style.cssText = 'max-width:100%;max-height:400px;width:auto;object-fit:contain;border-radius:8px;border:1px solid var(--bd);cursor:pointer;display:block';
+                img.title = '클릭: 다운로드 | 더블클릭: 크게 보기';
+                img.dataset.index = String(i);
+                img.onclick = (e) => {
+                    if (e.detail === 2) {
+                        openResultInNewWindow(dataUrl);
+                        return;
+                    }
+                    const a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = `aiimg-${Date.now()}-${i}.png`;
+                    a.click();
+                };
+                wrapper.appendChild(img);
+                wrap.appendChild(wrapper);
+            });
+            const centerCrop = document.getElementById('aiimg-center-crop-btn');
+            const centerBig = document.getElementById('aiimg-center-big-btn');
+            if (centerCrop) centerCrop.disabled = false;
+            if (centerBig) centerBig.disabled = false;
+        } else {
+            if (rw) rw.style.display = 'none';
+            if (empty) empty.style.display = 'flex';
+            const centerCrop = document.getElementById('aiimg-center-crop-btn');
+            const centerBig = document.getElementById('aiimg-center-big-btn');
+            if (centerCrop) centerCrop.disabled = true;
+            if (centerBig) centerBig.disabled = true;
+        }
+    }
+
+    async function generate() {
+        if (_busy) return;
+        const promptEl = el('aiimg-prompt');
+        const prompt = promptEl ? promptEl.value.trim() : '';
+        if (!prompt) { alert('프롬프트를 입력하세요.'); return; }
+        const key = typeof AiApiKey !== 'undefined' ? AiApiKey.get() : '';
+        if (!key) { alert('AI API 키를 설정에서 입력해 주세요.'); return; }
+        const modelId = (el('aiimg-model') && el('aiimg-model').value) || 'gemini-2.0-flash-exp-image-generation';
+        _busy = true;
+        _currentPrompt = prompt;
+        const loadingEl = el('aiimg-loading');
+        if (loadingEl) loadingEl.style.display = 'block';
+        el('aiimg-generate-btn').disabled = true;
+        _setProgress(0);
+        let progressInterval = setInterval(() => {
+            const pctEl = document.getElementById('aiimg-progress-pct');
+            if (!pctEl) return;
+            const current = parseInt(pctEl.textContent, 10) || 0;
+            if (current >= 90) return;
+            _setProgress(Math.min(current + 5, 90));
+        }, 500);
+        const contents = [];
+        if (_seedDataUrl) {
+            const base64 = _seedDataUrl.replace(/^data:image\/\w+;base64,/, '');
+            const mime = _seedDataUrl.match(/^data:(image\/\w+);/);
+            contents.push({
+                inlineData: { mimeType: mime ? mime[1] : 'image/png', data: base64 }
+            });
+        }
+        contents.push({ text: prompt });
+        const aspectHint = _aspectRatio ? `\n[이미지 비율: ${_aspectRatio}로 생성해 주세요.]` : '';
+        contents[contents.length - 1].text = prompt + aspectHint;
+        const personCb = document.getElementById('aiimg-fix-person-cb');
+        const outfitCb = document.getElementById('aiimg-fix-outfit-cb');
+        let prefix = '';
+        if (personCb && personCb.checked && _analysisResult.face) {
+            prefix += '[인물 고정 - 아래 특징 유지]\n' + _analysisResult.face + '\n\n';
+        }
+        if (outfitCb && outfitCb.checked && _analysisResult.outfit) {
+            prefix += '[복장 고정 - 아래 의상 유지]\n' + _analysisResult.outfit + '\n\n';
+        }
+        if (prefix) contents[contents.length - 1].text = prefix + contents[contents.length - 1].text;
+        if (_virtualTryOnDataUrl) {
+            const vbase64 = _virtualTryOnDataUrl.replace(/^data:image\/\w+;base64,/, '');
+            const vmime = _virtualTryOnDataUrl.match(/^data:(image\/\w+);/);
+            contents.push({
+                inlineData: { mimeType: vmime ? vmime[1] : 'image/png', data: vbase64 }
+            });
+            contents.push({ text: '위 옷/스타일을 적용한 이미지로 생성해 주세요.' });
+        }
+        const body = {
+            contents: [{ role: 'user', parts: contents }],
+            generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+                responseMimeType: 'text/plain'
+            }
+        };
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(key)}`;
+            const r = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(120000)
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error?.message || `HTTP ${r.status}`);
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            const newImages = [];
+            parts.forEach(p => {
+                if (p.inlineData && p.inlineData.data) {
+                    const mime = p.inlineData.mimeType || 'image/png';
+                    newImages.push('data:' + mime + ';base64,' + p.inlineData.data);
+                }
+            });
+            if (newImages.length > 0) {
+                _resultImages = newImages;
+                _renderResult();
+                const record = {
+                    id: 'aiimg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9),
+                    prompt,
+                    imageData: newImages,
+                    createdAt: Date.now()
+                };
+                await _add(record);
+                _historyCache.unshift(record);
+                _renderHistory();
+            } else {
+                _resultImages = [];
+                _renderResult();
+                alert('이미지가 생성되지 않았습니다. 다른 모델이나 프롬프트를 시도해 보세요.');
+            }
+        } catch (e) {
+            _resultImages = [];
+            _renderResult();
+            alert('오류: ' + (e.message || String(e)));
+        } finally {
+            _busy = false;
+            clearInterval(progressInterval);
+            _setProgress(100);
+            setTimeout(() => {
+                const loadingEl = el('aiimg-loading');
+                if (loadingEl) loadingEl.style.display = 'none';
+                _setProgress(0);
+            }, 400);
+            el('aiimg-generate-btn').disabled = false;
+        }
+    }
+    function _setProgress(pct) {
+        const pctEl = document.getElementById('aiimg-progress-pct');
+        const barEl = document.getElementById('aiimg-progress-bar');
+        if (pctEl) pctEl.textContent = pct + '%';
+        if (barEl) barEl.style.width = pct + '%';
+    }
+
+    function _renderHistory() {
+        const list = el('aiimg-history-list');
+        if (!list) return;
+        list.textContent = '';
+        list.removeAttribute('data-empty');
+        if (!_historyCache.length) {
+            list.setAttribute('data-empty', '생성된 이미지가 여기에 저장됩니다.');
+            return;
+        }
+        _historyCache.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        _historyCache.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'dr-history-item';
+            div.style.cssText = 'padding:6px;margin-bottom:6px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;background:var(--bg4);position:relative';
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:flex-start;gap:6px';
+            const thumbWrap = document.createElement('div');
+            thumbWrap.style.cssText = 'flex:1;min-width:0;height:72px;background:var(--bg3);border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center';
+            const img = document.createElement('img');
+            img.src = Array.isArray(item.imageData) && item.imageData[0] ? item.imageData[0] : '';
+            img.style.cssText = 'max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block';
+            const cap = document.createElement('div');
+            cap.style.cssText = 'font-size:10px;color:var(--tx3);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+            cap.textContent = (item.prompt || '').slice(0, 24) + (item.prompt && item.prompt.length > 24 ? '…' : '');
+            thumbWrap.appendChild(img);
+            const col = document.createElement('div');
+            col.style.cssText = 'flex:1;min-width:0';
+            col.appendChild(thumbWrap);
+            col.appendChild(cap);
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn btn-g btn-sm';
+            delBtn.style.cssText = 'font-size:10px;padding:2px 6px;flex-shrink:0';
+            delBtn.textContent = '×';
+            delBtn.title = '이 항목 삭제';
+            delBtn.onclick = (e) => { e.stopPropagation(); removeHistoryItem(item.id); };
+            row.appendChild(col);
+            row.appendChild(delBtn);
+            div.appendChild(row);
+            div.onclick = () => {
+                _resultImages = Array.isArray(item.imageData) ? [...item.imageData] : [];
+                _currentPrompt = item.prompt || '';
+                if (el('aiimg-prompt')) el('aiimg-prompt').value = _currentPrompt;
+                _renderResult();
+            };
+            list.appendChild(div);
+        });
+    }
+    async function loadHistory() {
+        try {
+            _historyCache = await _getAll();
+        } catch (_) {
+            _historyCache = [];
+        }
+        _renderHistory();
+    }
+    async function clearAllHistory() {
+        if (!_historyCache.length) return;
+        if (!confirm('히스토리를 모두 삭제할까요?')) return;
+        try {
+            await _clearAll();
+            _historyCache = [];
+            _renderHistory();
+        } catch (e) {
+            alert('삭제 실패: ' + (e.message || String(e)));
+        }
+    }
+    async function removeHistoryItem(id) {
+        try {
+            await _delete(id);
+            _historyCache = _historyCache.filter(item => item.id !== id);
+            _renderHistory();
+        } catch (e) {
+            alert('삭제 실패: ' + (e.message || String(e)));
+        }
+    }
+
+    function downloadAll() {
+        _resultImages.forEach((dataUrl, i) => {
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `aiimg-${Date.now()}-${i}.png`;
+            a.click();
+        });
+    }
+    function downloadZip() {
+        if (typeof JSZip === 'undefined') { alert('ZIP 라이브러리를 불러올 수 없습니다.'); return; }
+        const zip = new JSZip();
+        _resultImages.forEach((dataUrl, i) => {
+            const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+            zip.file(`aiimg-${i + 1}.png`, base64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `aiimg-${Date.now()}.zip`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+    }
+    function downloadProject() {
+        if (typeof JSZip === 'undefined') { alert('ZIP 라이브러리를 불러올 수 없습니다.'); return; }
+        const project = {
+            version: 1,
+            prompt: _currentPrompt,
+            modelId: (el('aiimg-model') && el('aiimg-model').value) || '',
+            seedImage: _seedDataUrl || null,
+            results: _resultImages.map((dataUrl, i) => ({ index: i, data: dataUrl })),
+            createdAt: Date.now()
+        };
+        const zip = new JSZip();
+        zip.file('project.json', JSON.stringify(project, null, 2));
+        _resultImages.forEach((dataUrl, i) => {
+            const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+            zip.file(`image-${i + 1}.png`, base64, { base64: true });
+        });
+        zip.generateAsync({ type: 'blob' }).then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `aiimg-project-${Date.now()}.mdp`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+    }
+
+    function insertToEditor() {
+        const dataUrl = _resultImages[0];
+        if (!dataUrl) { alert('삽입할 결과 이미지가 없습니다.'); return; }
+        const ed = typeof ED !== 'undefined' && ED.ed ? ED.ed() : null;
+        if (!ed) { alert('에디터를 찾을 수 없습니다.'); return; }
+        const alt = 'AI 이미지';
+        const s = ed.selectionStart, e = ed.selectionEnd;
+        ins(ed, s, e, `![${alt}](${dataUrl})`);
+        if (typeof ImgStore !== 'undefined') ImgStore.save(dataUrl, alt);
+        if (typeof App !== 'undefined' && App.render) App.render();
+        if (typeof US !== 'undefined' && US.snap) US.snap();
+    }
+    function insertToNewFile() {
+        const dataUrl = _resultImages[0];
+        if (!dataUrl) { alert('삽입할 결과 이미지가 없습니다.'); return; }
+        const title = '이미지-' + new Date().toISOString().slice(0, 10);
+        if (typeof TM !== 'undefined' && TM.newTab) TM.newTab(title, `![AI 이미지](${dataUrl})`, 'md');
+        if (typeof ImgStore !== 'undefined') ImgStore.save(dataUrl, 'AI 이미지');
+    }
+    function insertSeedToEditor() {
+        if (!_seedDataUrl) { alert('삽입할 시드 이미지가 없습니다.'); return; }
+        const ed = typeof ED !== 'undefined' && ED.ed ? ED.ed() : null;
+        if (!ed) { alert('에디터를 찾을 수 없습니다.'); return; }
+        const alt = '시드 이미지';
+        const s = ed.selectionStart, e = ed.selectionEnd;
+        ins(ed, s, e, `![${alt}](${_seedDataUrl})`);
+        if (typeof ImgStore !== 'undefined') ImgStore.save(_seedDataUrl, alt);
+        if (typeof App !== 'undefined' && App.render) App.render();
+        if (typeof US !== 'undefined' && US.snap) US.snap();
+    }
+    function insertSeedToNewFile() {
+        if (!_seedDataUrl) { alert('삽입할 시드 이미지가 없습니다.'); return; }
+        const title = '이미지-' + new Date().toISOString().slice(0, 10);
+        if (typeof TM !== 'undefined' && TM.newTab) TM.newTab(title, `![시드 이미지](${_seedDataUrl})`, 'md');
+        if (typeof ImgStore !== 'undefined') ImgStore.save(_seedDataUrl, '시드 이미지');
+    }
+
+    return {
+        switchTab, toggleMaximize, applyPreset, applyMenuType, onSeedFile, clearSeed,
+        openCropUpload, openCropEdit,
+        generate, setResultAsSeed, downloadAll, downloadZip, downloadProject, loadHistory,
+        insertToEditor, insertToNewFile, insertSeedToEditor, insertSeedToNewFile,
+        resetModal, clearAllHistory, removeHistoryItem,
+        cropCurrentResult, openCurrentResultInNewWindow,
+        analyzeSeedImage, onVirtualTryOnFile, clearVirtualTryOn
+    };
 })();
 
 let lastCodeLang = 'python';// track last used language for Alt+C
@@ -8656,7 +9529,7 @@ const ED = {
     lineBreak() { const ed = this.ed(), s = ed.selectionStart; ins(ed, s, s, '<br>\n') },
     insertNbsp() { const ed = this.ed(); if (!ed) return; const s = ed.selectionStart, e = ed.selectionEnd; ins(ed, s, e, '&nbsp;'); US.snap(); },
     link() { const text = el('link-text').value || '링크'; const url = el('link-url').value || '#'; const ed = this.ed(), s = ed.selectionStart; ins(ed, s, s, `[${text}](${url})`); App.hideModal('link-modal'); el('link-text').value = ''; el('link-url').value = '' },
-    image() { const alt = el('img-alt').value || '이미지'; const url = el('img-url').value || '#'; const ed = this.ed(), s = ed.selectionStart; ins(ed, s, s, `![${alt}](${url})`); el('img-alt').value = ''; el('img-url').value = ''; App.hideModal('image-modal') },
+    image() { const alt = el('img-alt').value || '이미지'; const url = el('img-url').value || '#'; const ed = this.ed(), s = ed.selectionStart; ins(ed, s, s, `![${alt}](${url})`); if (url.startsWith('data:image') && typeof ImgStore !== 'undefined') ImgStore.save(url, alt); el('img-alt').value = ''; el('img-url').value = ''; App.hideModal('image-modal') },
     math() { const ed = this.ed(), s = ed.selectionStart, e = ed.selectionEnd, sel = ed.value.substring(s, e); ins(ed, s, e, sel ? `$$\n${sel}\n$$` : '\n$$\n\\phi = \\frac{\\lambda_2}{c^2}\n$$\n') },
     footnote() {
         const ed = this.ed();
@@ -9458,6 +10331,8 @@ const HK = (() => {
         'app.save':         () => App.smartSave(),
         'app.find':         () => App.toggleFind(),
         'app.hotkeys':      () => App.showHK(),
+        'app.themeDark':    () => App.setTheme('dark'),
+        'app.themeLight':   () => App.setTheme('light'),
         'app.lock':         () => { if (typeof AppLock !== 'undefined') AppLock.lockNow(); },
         'app.nbsp':         () => { const ed = el('editor'), s = ed.selectionStart; ins(ed, s, ed.selectionEnd, '&nbsp;'); US.snap(); },
         'tab.new':          () => TM.newTab(),
@@ -9536,6 +10411,8 @@ const HK = (() => {
                 { desc: 'Split 보기', keys: 'Alt + 1', action: 'view.split' },
                 { desc: '에디터만', keys: 'Alt + 2', action: 'view.editor' },
                 { desc: '미리보기만', keys: 'Alt + 3', action: 'view.preview' },
+                { desc: '전체 다크모드', keys: 'Shift + Ctrl + 1', action: 'app.themeDark' },
+                { desc: '전체 라이트모드', keys: 'Shift + Ctrl + 2', action: 'app.themeLight' },
             ]
         },
         {
@@ -10294,6 +11171,18 @@ const App = {
         } catch (e) {}
         App._updateEditorThemeBtn();
     },
+    setTheme(theme) {
+        const isLight = theme === 'light';
+        document.documentElement.dataset.theme = isLight ? 'light' : '';
+        const ep = document.getElementById('editor-pane');
+        if (ep) ep.dataset.editorTheme = isLight ? 'light' : 'dark';
+        if (typeof PV !== 'undefined' && PV.setDark) PV.setDark(!isLight);
+        try {
+            localStorage.setItem('mdpro_theme', isLight ? 'light' : 'dark');
+            localStorage.setItem('mdpro_editor_theme', isLight ? 'light' : 'dark');
+        } catch (e) {}
+        App._updateEditorThemeBtn();
+    },
     toggleEditorTheme() {
         const ep = document.getElementById('editor-pane');
         if (!ep) return;
@@ -10321,6 +11210,7 @@ const App = {
         el('img-drop-text').style.color = '';
         el('img-preview-wrap').style.display = 'none';
         el('img-dropzone').style.borderColor = ''; el('img-dropzone').style.background = '';
+        if (typeof AiImage !== 'undefined') AiImage.switchTab('insert');
         el('image-modal').classList.add('vis'); setTimeout(() => el('img-alt').focus(), 50);
     },
     showCite() { CM.open(); el('cite-modal').classList.add('vis') },
@@ -10756,6 +11646,7 @@ $$
 
 window.addEventListener('DOMContentLoaded', () => {
     App.init();
+    AiApiKey.load().catch(() => {});
     /* 전역 날짜·시간 라이브 갱신 (잠금 버튼 앞 표시) */
     const dtEl = el('app-datetime');
     if (dtEl) {
@@ -10824,6 +11715,425 @@ window.addEventListener('DOMContentLoaded', () => {
     })();
 });
 /* ═══════════════════════════════════════════════════════════
+   AI 질문 — Gemini 모델 선택 + 질문/답변 + thinking + 새 파일 삽입
+═══════════════════════════════════════════════════════════ */
+const DeepResearch = (() => {
+    let _result = '';
+    let _thinking = '';
+    let _busy = false;
+    let _newFileMode = false;
+    let _currentTab = 'question';
+    let _dragInit = false;
+    let _abortController = null;
+    const DB_NAME = 'mdlive-dr-history';
+    const STORE_NAME = 'history';
+
+    const $ = id => document.getElementById(id);
+
+    function _openDB() {
+        return new Promise((resolve, reject) => {
+            const r = indexedDB.open(DB_NAME, 1);
+            r.onerror = () => reject(r.error);
+            r.onsuccess = () => resolve(r.result);
+            r.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    const s = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    s.createIndex('createdAt', 'createdAt', { unique: false });
+                }
+            };
+        });
+    }
+
+    async function _getAll() {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readonly');
+            const store = t.objectStore(STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function _add(record) {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readwrite');
+            t.objectStore(STORE_NAME).put(record);
+            t.oncomplete = () => resolve();
+            t.onerror = () => reject(t.error);
+        });
+    }
+
+    async function _delete(id) {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readwrite');
+            t.objectStore(STORE_NAME).delete(id);
+            t.oncomplete = () => resolve();
+            t.onerror = () => reject(t.error);
+        });
+    }
+
+    function _renderHistoryList(items) {
+        const list = $('dr-history-list');
+        if (!list) return;
+        list.textContent = '';
+        list.removeAttribute('data-empty');
+        if (!items.length) {
+            list.setAttribute('data-empty', '질문 후 여기에 히스토리가 저장됩니다.');
+            return;
+        }
+        items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        items.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'dr-history-item';
+            row.setAttribute('data-id', item.id);
+            const title = document.createElement('span');
+            title.className = 'dr-history-title';
+            title.textContent = item.title || '(제목 없음)';
+            const actions = document.createElement('span');
+            actions.className = 'dr-history-actions';
+            const renameBtn = document.createElement('button');
+            renameBtn.type = 'button';
+            renameBtn.className = 'btn-ic';
+            renameBtn.title = '이름 변경';
+            renameBtn.textContent = '✎';
+            renameBtn.onclick = (e) => { e.stopPropagation(); DeepResearch.renameHistory(item.id); };
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn-ic';
+            delBtn.title = '삭제';
+            delBtn.textContent = '✕';
+            delBtn.onclick = (e) => { e.stopPropagation(); DeepResearch.deleteHistory(item.id); };
+            actions.append(renameBtn, delBtn);
+            row.append(title, actions);
+            row.onclick = () => DeepResearch.loadHistoryItem(item.id);
+            list.appendChild(row);
+        });
+    }
+
+    let _historyCache = [];
+    let _historySearch = '';
+
+    async function loadHistory() {
+        try {
+            _historyCache = await _getAll();
+        } catch (_) {
+            _historyCache = [];
+        }
+        filterHistory(_historySearch);
+    }
+
+    function filterHistory(query) {
+        _historySearch = (query || '').trim().toLowerCase();
+        let list = _historyCache;
+        if (_historySearch) {
+            list = list.filter(item => {
+                const t = (item.title || '').toLowerCase();
+                const p = (item.prompt || '').toLowerCase();
+                const r = (item.result || '').toLowerCase();
+                return t.includes(_historySearch) || p.includes(_historySearch) || r.includes(_historySearch);
+            });
+        }
+        _renderHistoryList(list);
+    }
+
+    async function loadHistoryItem(id) {
+        const list = _historyCache.filter(x => x.id === id);
+        const item = list[0];
+        if (!item) return;
+        const inp = $('dr-prompt'), out = $('dr-output'), thinkEl = $('dr-thinking'), thinkBtn = $('dr-thinking-btn'), insBtn = $('dr-insert-btn'), modelSel = $('dr-model');
+        if (inp) inp.value = item.prompt || '';
+        if (out) out.value = item.result || '';
+        _result = item.result || '';
+        _thinking = item.thinking || '';
+        if (thinkEl) {
+            thinkEl.value = item.thinking || '';
+            thinkEl.style.display = item.thinking ? 'flex' : 'none';
+        }
+        if (thinkBtn) thinkBtn.style.display = item.thinking ? '' : 'none';
+        if (insBtn) insBtn.disabled = !(item.result && item.result.length > 0);
+        if (modelSel && item.modelId) {
+            modelSel.value = item.modelId;
+        }
+        switchTab('question');
+    }
+
+    function renameHistory(id) {
+        const item = _historyCache.find(x => x.id === id);
+        if (!item) return;
+        const newTitle = prompt('파일명(제목)을 입력하세요. 검색에 사용됩니다.', item.title || '');
+        if (newTitle == null || newTitle === '') return;
+        const title = newTitle.trim() || item.title;
+        const updated = { ...item, title };
+        _add(updated).then(() => {
+            const idx = _historyCache.findIndex(x => x.id === id);
+            if (idx >= 0) _historyCache[idx] = updated;
+            filterHistory(_historySearch);
+        }).catch(() => alert('저장 실패'));
+    }
+
+    function deleteHistory(id) {
+        if (!confirm('이 히스토리를 삭제할까요?')) return;
+        _delete(id).then(() => {
+            _historyCache = _historyCache.filter(x => x.id !== id);
+            filterHistory(_historySearch);
+        }).catch(() => alert('삭제 실패'));
+    }
+
+    function switchTab(tab) {
+        _currentTab = tab;
+        const q = $('dr-panel-question'), p = $('dr-panel-pro');
+        const tabs = document.querySelectorAll('#dr-tabs .tr-tab');
+        if (q) q.style.display = tab === 'question' ? 'flex' : 'none';
+        if (p) p.style.display = tab === 'pro-preview' ? 'flex' : 'none';
+        tabs.forEach(t => {
+            const active = t.getAttribute('data-tab') === tab;
+            t.classList.toggle('active', active);
+        });
+        const inp = tab === 'question' ? $('dr-prompt') : $('dr-prompt-pro');
+        if (inp) setTimeout(() => inp.focus(), 50);
+    }
+
+    function _initDraggable() {
+        if (_dragInit) return;
+        _dragInit = true;
+        const box = $('dr-modal-box'), handle = document.querySelector('.dr-modal-drag');
+        if (!box || !handle) return;
+        let dx = 0, dy = 0, startX = 0, startY = 0;
+        handle.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (box.classList.contains('dr-modal-maximized')) return;
+            startX = e.clientX - dx;
+            startY = e.clientY - dy;
+            const onMove = (ev) => {
+                dx = ev.clientX - startX;
+                dy = ev.clientY - startY;
+                box.style.transform = `translate(${dx}px, ${dy}px)`;
+            };
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    }
+
+    function toggleMaximize() {
+        const box = $('dr-modal-box');
+        if (!box) return;
+        const on = box.classList.toggle('dr-modal-maximized');
+        box.style.transform = on ? '' : box.style.transform || '';
+        if (!on) { box.style.transform = ''; }
+        const btn = $('dr-maximize-btn');
+        if (btn) btn.title = on ? '원래 크기' : '최대화';
+    }
+
+    async function _callApi(prompt, modelId, signal) {
+        const key = typeof AiApiKey !== 'undefined' ? AiApiKey.get() : '';
+        if (!key) throw new Error('AI API 키를 설정에서 입력·저장해 주세요.');
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(key)}`;
+        const body = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0.5,
+                maxOutputTokens: 8192,
+                ...(modelId.includes('2.5-pro') && { thinkingConfig: { includeThoughts: true } })
+            }
+        };
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: signal || AbortSignal.timeout(120000)
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error?.message || `HTTP ${r.status}`);
+        }
+        const d = await r.json();
+        const parts = d.candidates?.[0]?.content?.parts || [];
+        let text = '';
+        let thoughts = '';
+        for (const p of parts) {
+            const t = p.text || '';
+            if (p.thought) thoughts += t;
+            else text += t;
+        }
+        return { text: text.trim(), thoughts: thoughts.trim() };
+    }
+
+    function stopRun() {
+        if (_abortController) _abortController.abort();
+    }
+
+    function show() {
+        const modal = $('deep-research-modal');
+        if (!modal) return;
+        const box = $('dr-modal-box');
+        if (box) {
+            box.classList.remove('dr-modal-maximized');
+            box.style.transform = '';
+        }
+        _initDraggable();
+        switchTab('question');
+        const ed = $('editor');
+        if (ed) {
+            const sel = ed.value.substring(ed.selectionStart, ed.selectionEnd).trim();
+            if (sel) {
+                const inp = $('dr-prompt');
+                if (inp) inp.value = sel;
+            }
+        }
+        modal.classList.add('vis');
+        _newFileMode = false;
+        const hint = $('dr-insert-hint');
+        if (hint) hint.textContent = '새파일로 삽입';
+        loadHistory();
+        setTimeout(() => { const inp = $('dr-prompt'); if (inp) inp.focus(); }, 60);
+    }
+
+    function hide() {
+        const m = $('deep-research-modal');
+        if (m) m.classList.remove('vis');
+    }
+
+    async function run() {
+        if (_busy) return;
+        const inp = $('dr-prompt'), out = $('dr-output'), thinkEl = $('dr-thinking');
+        const loadEl = $('dr-loading'), thinkBtn = $('dr-thinking-btn'), insBtn = $('dr-insert-btn'), stopBtn = $('dr-stop-btn');
+        const prompt = inp ? inp.value.trim() : '';
+        if (!prompt) { alert('질문을 입력해 주세요.'); return; }
+        const modelId = $('dr-model')?.value || 'gemini-2.5-pro';
+
+        _busy = true;
+        _abortController = new AbortController();
+        const timeoutId = setTimeout(() => { if (_abortController) _abortController.abort(); }, 120000);
+        if (loadEl) loadEl.style.display = 'flex';
+        if (stopBtn) stopBtn.style.display = '';
+        if (out) out.value = '답변 생성 중…';
+        if (thinkEl) { thinkEl.value = ''; thinkEl.style.display = 'none'; }
+        if (thinkBtn) thinkBtn.style.display = 'none';
+        if (insBtn) insBtn.disabled = true;
+
+        try {
+            const { text, thoughts } = await _callApi(prompt, modelId, _abortController.signal);
+            _result = text;
+            _thinking = thoughts;
+            if (out) out.value = text || '(결과 없음)';
+            if (thinkEl) thinkEl.value = thoughts;
+            if (thinkBtn) thinkBtn.style.display = thoughts ? '' : 'none';
+            if (insBtn) insBtn.disabled = !text;
+            const title = prompt.slice(0, 50).trim() + (prompt.length > 50 ? '…' : '');
+            const record = {
+                id: 'dr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9),
+                title,
+                prompt,
+                result: text || '',
+                thinking: thoughts || '',
+                modelId,
+                createdAt: Date.now()
+            };
+            await _add(record);
+            _historyCache.unshift(record);
+            filterHistory(_historySearch);
+        } catch (e) {
+            _result = '';
+            _thinking = '';
+            if (e.name === 'AbortError') {
+                if (out) out.value = '⏹ 진행이 중지되었습니다.';
+            } else {
+                if (out) out.value = '⚠ ' + (e.message || String(e));
+            }
+            if (thinkBtn) thinkBtn.style.display = 'none';
+            if (insBtn) insBtn.disabled = true;
+        } finally {
+            _busy = false;
+            _abortController = null;
+            clearTimeout(timeoutId);
+            if (loadEl) loadEl.style.display = 'none';
+            if (stopBtn) stopBtn.style.display = 'none';
+        }
+    }
+
+    async function runPro() {
+        const inp = $('dr-prompt-pro'), out = $('dr-output'), insBtn = $('dr-insert-btn');
+        const prompt = inp ? inp.value.trim() : '';
+        if (!prompt) { alert('리서치 질문을 입력해 주세요.'); return; }
+        out.value = '⏳ Deep Research Pro Preview (deep-research-pro-preview-12-2025)는 Interactions API를 사용하며, 현재 서비스 준비 중입니다.';
+        _result = out.value;
+        if (insBtn) insBtn.disabled = false;
+    }
+
+    function toggleThinking() {
+        const thinkEl = $('dr-thinking'), btn = $('dr-thinking-btn');
+        if (!thinkEl || !btn) return;
+        const show = thinkEl.style.display !== 'flex';
+        thinkEl.style.display = show ? 'flex' : 'none';
+        btn.textContent = show ? '💭 생각 숨기기' : '💭 생각';
+    }
+
+    function _drFixedFilename() {
+        const d = new Date();
+        const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0'), min = String(d.getMinutes()).padStart(2, '0');
+        return `dr-${y}-${m}-${day}-${h}${min}`;
+    }
+
+    function insertToNewFile() {
+        const out = $('dr-output');
+        const txt = out ? out.value.trim() : _result;
+        if (!txt) {
+            alert('삽입할 답변이 없습니다. 먼저 질문을 실행해 주세요.');
+            return;
+        }
+        if (typeof TM === 'undefined') {
+            alert('탭 기능을 사용할 수 없습니다.');
+            return;
+        }
+        const name = _drFixedFilename();
+        TM.newTab(name, txt, 'md');
+        hide();
+    }
+
+    function toggleNewFile() {
+        _newFileMode = !_newFileMode;
+        const fn = $('dr-filename'), hint = $('dr-insert-hint');
+        if (fn) fn.style.display = _newFileMode ? 'inline-block' : 'none';
+        if (hint) hint.textContent = '새파일로 삽입';
+        if (_newFileMode && fn) fn.focus();
+    }
+
+    function insert() {
+        const out = $('dr-output');
+        const txt = out ? out.value.trim() : _result;
+        if (!txt) return;
+
+        const ed = $('editor');
+        if (!ed) return;
+        const s = ed.selectionStart, e2 = ed.selectionEnd;
+        ed.setRangeText(txt, s, e2, 'end');
+        ed.focus();
+        if (typeof US !== 'undefined') US.snap();
+        if (typeof TM !== 'undefined') TM.markDirty();
+        if (typeof App !== 'undefined') App.render();
+        hide();
+    }
+
+    function copyResult() {
+        const out = $('dr-output');
+        const txt = out ? out.value.trim() : _result;
+        if (!txt) return;
+        navigator.clipboard.writeText(txt).then(() => alert('복사되었습니다.')).catch(() => {});
+    }
+
+    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory };
+})();
+
+/* ═══════════════════════════════════════════════════════════
    TRANSLATOR — 번역기 (Shift+Alt+G)
    1순위: MyMemory API (무료·CORS OK·API키 불필요)
    2순위: 공개 LibreTranslate 인스턴스
@@ -10831,6 +12141,33 @@ window.addEventListener('DOMContentLoaded', () => {
 const Translator = (() => {
     let _lastResult = '';
     let _busy = false;
+    let _currentTab = 'translate';
+
+    /* ── Gemini API 호출 ─────────────────────────────────── */
+    const _LANG_NAMES = { ko:'한국어', en:'영어', ja:'일본어', zh:'중국어', fr:'프랑스어', de:'독일어', es:'스페인어', ru:'러시아어', pt:'포르투갈어', it:'이탈리아어', ar:'아랍어' };
+    async function _callGemini(prompt, userText, modelId) {
+        const key = typeof AiApiKey !== 'undefined' ? AiApiKey.get() : '';
+        if (!key) throw new Error('AI API 키를 설정에서 입력·저장해 주세요.');
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(key)}`;
+        const body = {
+            contents: [{ parts: [{ text: prompt + '\n\n' + userText }] }],
+            generationConfig: { temperature: 0.4, maxOutputTokens: 8192 }
+        };
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(60000)
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error?.message || `HTTP ${r.status}`);
+        }
+        const d = await r.json();
+        const txt = d.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!txt) throw new Error('AI 응답이 비어 있습니다.');
+        return txt.trim();
+    }
 
     /* ── MyMemory (1순위) ───────────────────────────────── */
     const _MM_CODE = { zh:'zh-CN', ko:'ko', en:'en', ja:'ja',
@@ -10846,17 +12183,18 @@ const Translator = (() => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const d = await r.json();
         if (d.responseStatus !== 200)
-            throw new Error(d.responseDetails || 'MyMemory 오류');
-        const t = d.responseData.translatedText;
+            throw new Error(d.responseDetails || d.responseStatus || 'MyMemory 오류');
+        const t = d.responseData?.translatedText;
         /* MyMemory가 그대로 반환하거나 에러문 반환 시 예외 */
-        if (!t || t === text) throw new Error('번역 결과 없음');
-        return t;
+        if (!t || (typeof t === 'string' && t === text)) throw new Error('번역 결과 없음');
+        return String(t);
     }
 
     /* ── LibreTranslate 공개 인스턴스 (2순위) ─────────────── */
     const _LT_HOSTS = [
         'https://translate.argosopentech.com',
         'https://libretranslate.de',
+        'https://translate.cutie.dating',
     ];
     async function _libreTranslate(text, sl, tl) {
         for (const host of _LT_HOSTS) {
@@ -10865,11 +12203,12 @@ const Translator = (() => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ q: text, source: sl, target: tl, format: 'text' }),
-                    signal: AbortSignal.timeout(9000),
+                    signal: AbortSignal.timeout(12000),
                 });
                 if (!r.ok) continue;
                 const d = await r.json();
-                if (d.translatedText) return d.translatedText;
+                const t = d.translatedText || d.translation;
+                if (t) return t;
             } catch { /* 다음 서버 시도 */ }
         }
         throw new Error('모든 번역 서버에 접속할 수 없습니다');
@@ -10913,6 +12252,7 @@ const Translator = (() => {
             }
         }
         modal.classList.add('vis');
+        switchTab('translate');
         setTimeout(() => { const inp = $('tr-input'); if (inp) inp.focus(); }, 60);
     }
 
@@ -10921,18 +12261,98 @@ const Translator = (() => {
         if (m) m.classList.remove('vis');
     }
 
-    async function translate() {
+    function switchTab(tab) {
+        _currentTab = tab;
+        document.querySelectorAll('#tr-tabs .tr-tab').forEach(b => {
+            b.classList.toggle('active', b.dataset.tab === tab);
+        });
+        const aiTrans = $('tr-ai-translate-panel'), aiWrite = $('tr-ai-write-panel'), langRow = $('tr-lang-row'), transBtn = $('tr-translate-btn');
+        if (aiTrans) aiTrans.style.display = (tab === 'ai-translate') ? 'flex' : 'none';
+        if (aiWrite) aiWrite.style.display = (tab === 'ai-write') ? 'flex' : 'none';
+        if (langRow) langRow.style.display = (tab === 'translate' || tab === 'ai-translate') ? 'flex' : 'none';
+        if (transBtn) {
+            transBtn.textContent = tab === 'ai-translate' ? '🤖 AI 번역' : '🌐 번역';
+            transBtn.onclick = () => (tab === 'ai-translate' ? aiTranslate() : translate());
+        }
+    }
+
+    async function aiTranslate() {
         if (_busy) return;
         const inp = $('tr-input'), out = $('tr-output');
         const loadEl = $('tr-loading'), insBtn = $('tr-insert-btn');
         const text = inp ? inp.value.trim() : '';
         if (!text) { _setStatus('⚠ 번역할 텍스트를 입력해 주세요.', 'warn'); return; }
-        const sl = $('tr-src-lang').value, tl = $('tr-tgt-lang').value;
+        const sl = $('tr-src-lang')?.value, tl = $('tr-tgt-lang')?.value;
+        if (sl === tl) { _setStatus('⚠ 원본/번역 언어가 같습니다.', 'warn'); return; }
+        const prompt = ($('tr-ai-translate-prompt')?.value || '').trim() || '넌 대학교수, 연구자야 이 번역을 학술연구자에 맞는 용어로 번역해';
+        const model = $('tr-model')?.value || 'gemini-2.5-flash';
+        const fullPrompt = `${prompt}\n\n다음 텍스트를 ${_LANG_NAMES[sl] || sl}에서 ${_LANG_NAMES[tl] || tl}로 번역해:`;
+
+        _busy = true;
+        if (loadEl) loadEl.style.display = 'flex';
+        if (out) out.value = 'AI 번역 중…';
+        if (insBtn) insBtn.disabled = true;
+        _setStatus('');
+        try {
+            const result = await _callGemini(fullPrompt, text, model);
+            _lastResult = result;
+            if (out) out.value = result;
+            if (insBtn) insBtn.disabled = false;
+            _setStatus(`✅ 완료 · ${result.length}자`, 'ok');
+        } catch (e) {
+            _lastResult = '';
+            if (out) out.value = `⚠ ${e.message}`;
+            _setStatus('❌ 오류', 'err');
+        } finally {
+            _busy = false;
+            if (loadEl) loadEl.style.display = 'none';
+        }
+    }
+
+    async function aiWrite() {
+        if (_busy) return;
+        const inp = $('tr-input'), out = $('tr-output');
+        const loadEl = $('tr-loading'), insBtn = $('tr-insert-btn');
+        const text = inp ? inp.value.trim() : '';
+        if (!text) { _setStatus('⚠ 텍스트를 입력해 주세요.', 'warn'); return; }
+        const prompt = ($('tr-ai-write-prompt')?.value || '').trim() || '넌 대학교수, 연구자야 이 번역을 학술연구자에 맞는 글로 다시 써줘. 문장은 ~이다 체로 용어를 학술적용어에 맞게, 대학원이상수준의 글로 써줘';
+        const model = $('tr-model-write')?.value || 'gemini-2.5-flash';
+
+        _busy = true;
+        if (loadEl) loadEl.style.display = 'flex';
+        if (out) out.value = 'AI 글쓰기 중…';
+        if (insBtn) insBtn.disabled = true;
+        _setStatus('');
+        try {
+            const result = await _callGemini(prompt, text, model);
+            _lastResult = result;
+            if (out) out.value = result;
+            if (insBtn) insBtn.disabled = false;
+            _setStatus(`✅ 완료 · ${result.length}자`, 'ok');
+        } catch (e) {
+            _lastResult = '';
+            if (out) out.value = `⚠ ${e.message}`;
+            _setStatus('❌ 오류', 'err');
+        } finally {
+            _busy = false;
+            if (loadEl) loadEl.style.display = 'none';
+        }
+    }
+
+    async function translate() {
+        if (_busy) return;
+        const inp = $('tr-input'), out = $('tr-output');
+        const loadEl = $('tr-loading'), insBtn = $('tr-insert-btn');
+        const srcSel = $('tr-src-lang'), tgtSel = $('tr-tgt-lang');
+        const text = inp ? inp.value.trim() : '';
+        if (!text) { _setStatus('⚠ 번역할 텍스트를 입력해 주세요.', 'warn'); return; }
+        if (!srcSel || !tgtSel) { _setStatus('⚠ 언어 선택 요소를 찾을 수 없습니다.', 'err'); return; }
+        const sl = srcSel.value, tl = tgtSel.value;
         if (sl === tl) { _setStatus('⚠ 원본/번역 언어가 같습니다.', 'warn'); return; }
 
         _busy = true;
         if (loadEl) loadEl.style.display = 'flex';
-        if (out) out.innerHTML = '<span style="color:var(--tx3);font-style:italic">번역 중…</span>';
+        if (out) out.value = '번역 중…';
         if (insBtn) insBtn.disabled = true;
         _setStatus('');
 
@@ -10940,14 +12360,16 @@ const Translator = (() => {
         try {
             const result = await _doTranslate(text, sl, tl);
             _lastResult = result;
-            if (out) out.textContent = result;
+            if (out) out.value = result;
             if (insBtn) insBtn.disabled = false;
             _setStatus(`✅ 완료 (${((Date.now()-t0)/1000).toFixed(1)}s) · ${result.length}자`, 'ok');
         } catch (e) {
             _lastResult = '';
-            if (out) out.innerHTML =
-                `<span style="color:var(--er)">⚠ 번역 실패: ${e.message}</span>` +
-                `<br><span style="font-size:11px;color:var(--tx3)">네트워크 상태 또는 언어 조합을 확인하세요.</span>`;
+            const msg = e.message || String(e);
+            const hint = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')
+                ? '네트워크 연결 또는 CORS를 확인하세요. (로컬 파일 실행 시 브라우저가 차단할 수 있습니다)'
+                : '네트워크 상태 또는 언어 조합을 확인하세요.';
+            if (out) out.value = `⚠ 번역 실패: ${msg}\n${hint}`;
             _setStatus('❌ 오류', 'err');
         } finally {
             _busy = false;
@@ -10963,39 +12385,45 @@ const Translator = (() => {
         if (inp && _lastResult) {
             const prev = inp.value;
             inp.value = _lastResult;
-            if (out) out.textContent = prev;
+            if (out) out.value = prev;
             _lastResult = prev;
             _updateCount();
         }
     }
 
     function insertResult() {
-        if (!_lastResult) return;
+        const out = $('tr-output');
+        const txt = out ? out.value.trim() : _lastResult;
+        if (!txt) return;
         const ed = $('editor');
         if (!ed) return;
         const mode = ($('tr-insert-mode') || {}).value || 'replace';
         const s = ed.selectionStart, e2 = ed.selectionEnd;
         const orig = ed.value.substring(s, e2);
-        const txt = mode === 'replace' ? _lastResult
-                  : mode === 'after'   ? orig + _lastResult
-                  : mode === 'newline' ? (orig ? orig + '\n' : '') + '\n' + _lastResult
-                  : orig + '\n\n> ' + _lastResult;  /* both */
-        ed.setRangeText(txt, s, e2, 'end');
+        const insertTxt = mode === 'replace' ? txt
+                  : mode === 'after'   ? orig + txt
+                  : mode === 'newline' ? (orig ? orig + '\n' : '') + '\n' + txt
+                  : orig + '\n\n> ' + txt;  /* both */
+        ed.setRangeText(insertTxt, s, e2, 'end');
         ed.focus();
         if (typeof US !== 'undefined') US.snap();
         if (typeof TM !== 'undefined') TM.markDirty();
         if (typeof App !== 'undefined') App.render();
-        _setStatus('✔ 에디터에 삽입되었습니다.', 'ok');
-        setTimeout(hide, 500);
+        const insertMsg = $('tr-insert-msg');
+        if (insertMsg) { insertMsg.textContent = '✔ 에디터에 삽입되었습니다.'; insertMsg.style.display = ''; insertMsg.style.color = 'var(--ok)'; }
+        _setStatus('');
+        setTimeout(() => { if (insertMsg) { insertMsg.textContent = ''; insertMsg.style.display = 'none'; } hide(); }, 500);
     }
 
     function copyResult() {
-        if (!_lastResult) return;
-        navigator.clipboard.writeText(_lastResult)
+        const out = $('tr-output');
+        const txt = out ? out.value.trim() : _lastResult;
+        if (!txt) return;
+        navigator.clipboard.writeText(txt)
             .then(() => _setStatus('📋 복사되었습니다.', 'ok'))
             .catch(() => {
                 const ta = document.createElement('textarea');
-                ta.value = _lastResult;
+                ta.value = txt;
                 document.body.appendChild(ta);
                 ta.select(); document.execCommand('copy');
                 document.body.removeChild(ta);
@@ -11018,7 +12446,7 @@ const Translator = (() => {
         if (inp) { inp.value = ''; _updateCount(); }
         _lastResult = '';
         const out = $('tr-output');
-        if (out) out.innerHTML = '<span style="color:var(--tx3);font-style:italic">번역 결과가 여기에 표시됩니다.</span>';
+        if (out) out.value = '';
         const insBtn = $('tr-insert-btn');
         if (insBtn) insBtn.disabled = true;
         _setStatus('');
@@ -11026,20 +12454,29 @@ const Translator = (() => {
 
     function onInput() { _updateCount(); }
 
-    /* Ctrl+Enter → 번역 */
+    function onOutputInput() {
+        const out = $('tr-output'), insBtn = $('tr-insert-btn');
+        if (out) _lastResult = out.value;
+        if (insBtn) insBtn.disabled = !(out && out.value.trim());
+    }
+
+    /* Ctrl+Enter → 번역/AI */
     document.addEventListener('DOMContentLoaded', () => {
-  AppLock.init();
+        AppLock.init();
         const inp = $('tr-input');
         if (inp) {
             inp.addEventListener('keydown', e => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    e.preventDefault(); translate();
+                    e.preventDefault();
+                    if (_currentTab === 'ai-translate') aiTranslate();
+                    else if (_currentTab === 'ai-write') aiWrite();
+                    else translate();
                 }
             });
         }
     });
 
-    return { show, hide, translate, swapLang, insertResult, copyResult, openBrowser, clearInput, onInput };
+    return { show, hide, translate, swapLang, insertResult, copyResult, openBrowser, clearInput, onInput, onOutputInput, switchTab, aiTranslate, aiWrite };
 })();
 
 /* ═══════════════════════════════════════════════════════════

@@ -66,12 +66,14 @@
         <span id="rm-badge">RESEARCH</span>
         <span id="app-datetime" class="app-datetime" title="현재 날짜·시간" style="font-size:11px;font-family:var(--fm);color:var(--tx2);margin-right:8px;white-space:nowrap"></span>
         <button class="btn btn-sm" id="app-lock-btn" onclick="if(typeof AppLock!=='undefined'&&AppLock.hasLock())AppLock.lockNow()" data-tooltip="앱 잠금 (Ctrl+G)" title="앱 잠금 (Ctrl+G)" style="display:none;background:rgba(124,106,247,.15);border:1px solid rgba(124,106,247,.35);color:#9d8cf7">🔒 잠금</button>
+        <button class="btn btn-sm btn-settings" onclick="App.showHK()" data-tooltip="단축키 목록 &amp; 설정 (Alt+?)" data-key="Alt+?" title="설정">⚙ 설정</button>
         <button class="btn btn-sm btn-tmpl" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
         <button class="btn btn-sm btn-research" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)"
           data-key="Ctrl+Shift+R">🔬 Research</button>
+        <button class="btn btn-sm" onclick="DeepResearch.show()" data-tooltip="Deep Research (AI 질문)"
+          style="background:linear-gradient(135deg,#1a2a40 0%,#1e3558 100%);color:#6ac8f7;border:1px solid rgba(106,200,247,.35);font-weight:600">📚 Deep Research</button>
         <button class="btn btn-sm btn-ref" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용"
           data-key="Ctrl+Shift+C">📚 References</button>
-        <button class="btn btn-sm" id="ed-sync-btn" onclick="SS.toggle()" data-tooltip="스크롤 동기화 ON/OFF (Shift+Alt+M)" data-key="Shift+Alt+M" style="font-size:10px;padding:0 8px;height:24px;color:#6af7b0;border:1px solid rgba(106,247,176,.35);border-radius:4px;font-weight:600;background:rgba(106,247,176,.12)">🔗 동기화</button>
         <button class="btn btn-sm btn-scholar" onclick="Scholar.show()" data-tooltip="Google Scholar 검색 (새 창)"
           data-key="Ctrl+Shift+G">🔎 Scholar</button>
         <button class="btn btn-sm" onclick="AiPPT.open()" data-tooltip="AI PPT — ScholarSlide에서 슬라이드 만들기"
@@ -254,9 +256,8 @@
       </div>
       <div class="ts"></div>
       <div class="tg">
-        <button class="tb tb-sys" onclick="App.toggleTheme()" data-tooltip="전체 다크/라이트 (에디터+PV 함께 전환)">◑</button>
+        <button class="tb tb-sys" onclick="App.toggleTheme()" data-tooltip="전체 다크/라이트 (Shift+Ctrl+1: 다크, Shift+Ctrl+2: 라이트)">◑</button>
         <button class="tb tb-sys active" id="ln-btn" onclick="LN.toggle()" data-tooltip="줄 번호">ln</button>
-        <button class="tb tb-sys" onclick="App.showHK()" data-tooltip="단축키 목록 &amp; 설정" data-key="Alt+?">?</button>
       </div>
     </div>
 
@@ -418,6 +419,7 @@
             <span class="pane-lbl"><span></span>Editor</span>
             <span class="spacer"></span>
             <div style="display:flex;align-items:center;gap:3px;margin-right:6px">
+              <button class="tb" id="ed-sync-btn" onclick="SS.toggle()" data-tooltip="내부 PV 스크롤 동기화 ON/OFF (Shift+Alt+M)" data-key="Shift+Alt+M" style="font-size:10px;padding:0 7px;height:22px;color:#6af7b0;border:1px solid rgba(106,247,176,.35);border-radius:4px;font-weight:600;background:rgba(106,247,176,.12)">🔗 동기화</button>
               <button class="tb" id="ed-pv-sync-btn" onclick="if(typeof PW!=='undefined'&&PW.hasWin())PW.sendToggleSync()" data-tooltip="새창 PV 스크롤 동기화 ON/OFF (새창 미리보기 열림 시)"
                 style="font-size:10px;padding:0 7px;height:22px;color:#888;border:1px solid rgba(255,255,255,.15);border-radius:4px;font-weight:600;background:rgba(255,255,255,.05)">🔗 PV 동기화 OFF</button>
               <button class="tb tb-sys" id="ed-theme-btn" onclick="App.toggleEditorTheme()" data-tooltip="에디터 다크/라이트 (클릭 시 전환)" style="font-size:14px" title="에디터 테마">◑</button>
@@ -789,9 +791,6 @@
           style="font-size:10px;padding:2px 7px;vertical-align:middle">+ 행 추가</button>
       </div>
 
-      <!-- 단축키 목록 렌더 영역 -->
-      <div id="hk-list-wrap"></div>
-
       <!-- 현재 줄 하이라이트 ON/OFF -->
       <div id="hk-line-highlight-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--tx2)">에디터 현재 줄 하이라이트</span>
@@ -812,11 +811,26 @@
           onchange="if(typeof AppLock!=='undefined')AppLock.setAutoLockMinutes(this.value||0)" />
         <span style="font-size:11px;color:var(--tx3)">분</span>
       </div>
+      <!-- AI API Key (Google AI Studio) -->
+      <div id="ai-apikey-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--tx3);margin-right:4px">AI API Key</span>
+        <input id="ai_apikey" type="password" placeholder="Google AI Studio API 키"
+          style="font-size:11px;padding:4px 8px;min-width:140px;max-width:260px;flex:1;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1)"
+          title="https://aistudio.google.com/api-keys 에서 발급">
+        <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style="font-size:11px;color:var(--ac)" title="API 키 발급">키 발급</a>
+        <button type="button" class="btn btn-g btn-sm" onclick="AiApiKey.save()" style="font-size:11px">저장</button>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--tx3);line-height:1.5">
+        <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style="color:var(--ac)">https://aistudio.google.com/api-keys</a> 링크에서 API 키를 생성하여 붙여넣으세요.
+      </div>
       <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end" id="hk-edit-actions"
         style="display:none">
         <button class="btn btn-g btn-sm" onclick="HK.resetDefault()">↩ 기본값 복원</button>
         <button class="btn btn-p btn-sm" onclick="HK.saveEdit()">저장</button>
       </div>
+
+      <!-- 단축키 목록 렌더 영역 (맨 아래) -->
+      <div id="hk-list-wrap" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)"></div>
     </div>
   </div>
 
@@ -1181,35 +1195,181 @@
   </div>
 
   <!-- IMAGE MODAL -->
-  <div class="ov" id="image-modal">
-    <div class="modal" style="max-width:480px">
-      <h3>🖼 이미지 삽입</h3>
-      <!-- Drag & Drop Zone -->
-      <div id="img-dropzone"
-        style="border:2px dashed var(--bd);border-radius:8px;padding:20px;text-align:center;margin-bottom:14px;cursor:pointer;transition:all .2s;background:var(--bg3)"
-        onclick="document.getElementById('img-file-input').click()" ondragover="IMG.dragOver(event)"
-        ondragleave="IMG.dragLeave(event)" ondrop="IMG.drop(event)">
-        <div id="img-drop-text" style="font-size:13px;color:var(--tx2)">🖼 이미지를 드래그하거나 클릭해서 선택</div>
-        <div style="font-size:11px;color:var(--tx3);margin-top:4px">PNG, JPG, GIF, WebP 지원 · Base64로 자동 삽입</div>
-        <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMG.fileSelected(event)">
+  <div class="ov" id="image-modal" onclick="if(event.target===this)App.hideModal('image-modal')">
+    <div class="modal img-modal-layout" id="image-modal-box" style="max-width:480px;display:flex;flex-direction:column;max-height:90vh" onclick="event.stopPropagation()">
+      <div class="mh img-modal-drag" style="cursor:move;user-select:none;display:flex;align-items:center;justify-content:space-between">
+        <span>🖼 이미지</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-g btn-sm" onclick="App.hideModal('image-modal');event.stopPropagation()" style="font-size:11px">닫기</button>
+          <button class="btn-ic" id="img-modal-maximize" onclick="AiImage.toggleMaximize();event.stopPropagation()" title="최대화">⛶</button>
+        </div>
       </div>
-      <div id="img-preview-wrap" style="display:none;margin-bottom:12px;text-align:center">
-        <img id="img-preview" style="max-width:100%;max-height:160px;border-radius:4px;border:1px solid var(--bd)">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <div style="flex:1;height:1px;background:var(--bd)"></div>
-        <span style="font-size:11px;color:var(--tx3)">또는 URL 입력</span>
-        <div style="flex:1;height:1px;background:var(--bd)"></div>
-      </div>
-      <div class="mb">
-        <div class="fg"><label class="fl">Alt 텍스트</label><input class="fi" id="img-alt" type="text"
-            placeholder="이미지 설명"></div>
-        <div class="fg"><label class="fl">URL 또는 경로</label><input class="fi" id="img-url" type="text"
-            placeholder="https://..."></div>
-      </div>
-      <div class="mf">
-        <button class="btn btn-g btn-sm" onclick="App.hideModal('image-modal')">취소</button>
-        <button class="btn btn-p btn-sm" onclick="ED.image()">삽입</button>
+      <div id="img-modal-body" style="flex:1;display:flex;min-height:0;overflow:hidden">
+        <div id="img-left-sidebar" style="width:200px;flex-shrink:0;border-right:1px solid var(--bd);display:flex;flex-direction:column;background:var(--bg3)">
+          <div style="padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+            <button type="button" class="btn btn-g btn-sm img-side-tab active" data-tab="insert" onclick="AiImage.switchTab('insert')" style="justify-content:center">이미지 삽입</button>
+            <button type="button" class="btn btn-g btn-sm img-side-tab" data-tab="ai" onclick="AiImage.switchTab('ai')" style="justify-content:center">AI 이미지</button>
+          </div>
+          <div id="img-insert-panel" style="flex:1;overflow-y:auto;padding:8px">
+            <div id="img-dropzone" style="border:2px dashed var(--bd);border-radius:8px;padding:16px;text-align:center;cursor:pointer;background:var(--bg4)" onclick="document.getElementById('img-file-input').click()" ondragover="IMG.dragOver(event)" ondragleave="IMG.dragLeave(event)" ondrop="IMG.drop(event)">
+              <div id="img-drop-text" style="font-size:12px;color:var(--tx2)">🖼 클릭 또는 드래그</div>
+              <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMG.fileSelected(event)">
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:var(--tx3)">또는 URL</div>
+            <input class="fi" id="img-url" type="text" placeholder="https://..." style="margin-top:4px;padding:6px 8px;font-size:12px">
+            <div id="img-preview-wrap" style="display:none;margin-top:8px;text-align:center">
+              <img id="img-preview" style="max-width:100%;max-height:120px;border-radius:4px;border:1px solid var(--bd)">
+            </div>
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="ImgCrop.openForInsert()" id="img-insert-crop-btn" disabled>✂ 크롭</button>
+            </div>
+            <div class="fg" style="margin-top:10px">
+              <label class="fl">Alt 텍스트</label>
+              <input class="fi" id="img-alt" type="text" placeholder="설명" style="padding:6px 8px;font-size:12px">
+            </div>
+            <div style="margin-top:10px;display:flex;gap:6px">
+              <button class="btn btn-p btn-sm" onclick="ED.image()" style="font-size:11px">문서에 삽입</button>
+              <button class="btn btn-g btn-sm" style="font-size:11px" onclick="ImgInsert.insertToNewFile()">+ 새파일</button>
+            </div>
+          </div>
+          <div id="aiimg-history-panel" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
+            <div class="aiimg-history-header" style="padding:8px 10px;font-size:11px;color:var(--tx3);font-weight:600;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px">
+              <span>히스토리</span>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:10px;flex-shrink:0" onclick="AiImage.clearAllHistory()" title="히스토리 전체 삭제">히스토리 지우기</button>
+            </div>
+            <div id="aiimg-history-list" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:6px" data-empty="생성된 이미지가 여기에 저장됩니다."></div>
+          </div>
+        </div>
+        <div id="img-center" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--bd)">
+          <div id="img-center-insert" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:13px;padding:20px">이미지를 업로드하거나 AI 이미지 탭에서 생성하세요.</div>
+          <div id="img-center-ai" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+            <div style="padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--bd);flex-shrink:0">
+              <button type="button" class="btn btn-p btn-sm" onclick="AiImage.setResultAsSeed()">결과를 시드로 설정</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="AiImage.downloadAll()">일괄 다운로드</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="AiImage.downloadZip()">ZIP 다운로드</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="AiImage.downloadProject()">프로젝트 다운로드 (.mdp)</button>
+            </div>
+            <div style="padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--bd);flex-shrink:0;align-items:center">
+              <button type="button" class="btn btn-p btn-sm" onclick="AiImage.insertToEditor()">이미지 삽입</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="AiImage.insertToNewFile()">+ 새파일에 삽입</button>
+              <button type="button" class="btn btn-g btn-sm" id="aiimg-center-crop-btn" onclick="AiImage.cropCurrentResult()" style="font-size:11px" disabled>✂ 크롭</button>
+              <button type="button" class="btn btn-g btn-sm" id="aiimg-center-big-btn" onclick="AiImage.openCurrentResultInNewWindow()" style="font-size:11px" disabled>크게 보기</button>
+            </div>
+            <div id="aiimg-loading" style="display:none;flex-direction:column;align-items:stretch;gap:8px;padding:12px 16px;border-bottom:1px solid var(--bd);flex-shrink:0">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="flex:1;height:10px;background:var(--bg4);border-radius:5px;overflow:hidden">
+                  <div id="aiimg-progress-bar" style="height:100%;width:0%;background:var(--ac);border-radius:5px;transition:width 0.2s"></div>
+                </div>
+                <span id="aiimg-progress-pct" style="font-size:13px;font-weight:600;min-width:36px">0%</span>
+              </div>
+              <span style="font-size:12px;color:var(--tx3)">생성 중…</span>
+            </div>
+            <div id="aiimg-result-wrap" style="flex:1;overflow:auto;padding:12px;display:none">
+              <div id="aiimg-result-images" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-content:flex-start"></div>
+            </div>
+            <div id="aiimg-empty-result" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:13px;padding:20px">오른쪽에서 프롬프트 입력 후 이미지 생성</div>
+          </div>
+        </div>
+        <div id="img-right-sidebar" style="display:none;width:280px;flex-shrink:0;flex-direction:column;overflow-y:auto;padding:10px;gap:12px">
+          <div style="display:flex;justify-content:flex-end">
+            <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="AiImage.resetModal()" title="시드·결과·프롬프트·히스토리 초기화">전체 초기화</button>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--tx3)">시드 이미지 (선택)</label>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px;flex:1" onclick="document.getElementById('aiimg-seed-input').click()">일반 업로드</button>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px;flex:1" onclick="AiImage.openCropUpload()">크롭하여 업로드</button>
+            </div>
+            <input type="file" id="aiimg-seed-input" accept="image/*" style="display:none" onchange="AiImage.onSeedFile(event)">
+            <div id="aiimg-seed-wrap" style="margin-top:8px;width:100%;aspect-ratio:1;max-height:140px;border:2px dashed var(--bd);border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer" onclick="document.getElementById('aiimg-seed-input').click()">
+              <img id="aiimg-seed-preview" alt="" style="max-width:100%;max-height:100%;object-fit:contain;display:none">
+              <span id="aiimg-seed-placeholder" style="font-size:11px;color:var(--tx3)">업로드</span>
+            </div>
+            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" id="aiimg-crop-btn" onclick="AiImage.openCropEdit()" disabled>✂ 크롭 편집</button>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="AiImage.clearSeed()">시드 지우기</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-fix-btn" style="font-size:11px" onclick="AiImage.applyPreset('person')" title="인물 고정">인물 고정</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-fix-btn" style="font-size:11px" onclick="AiImage.applyPreset('outfit')" title="복장 고정">복장 고정</button>
+            </div>
+            <div style="margin-top:8px;padding:6px 8px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
+              <div style="font-size:11px;color:var(--tx3);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <span>이미지분석결과</span>
+                <button type="button" class="btn btn-g btn-sm" style="font-size:10px" id="aiimg-analyze-btn" onclick="AiImage.analyzeSeedImage()" disabled>분석 실행</button>
+              </div>
+              <div id="aiimg-analysis-text" style="font-size:10px;color:var(--tx2);max-height:60px;overflow-y:auto;white-space:pre-wrap;word-break:break-word"></div>
+              <div style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+                  <input type="checkbox" id="aiimg-fix-person-cb" style="width:14px;height:14px">
+                  <span>인물 고정</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+                  <input type="checkbox" id="aiimg-fix-outfit-cb" style="width:14px;height:14px">
+                  <span>복장 고정</span>
+                </label>
+              </div>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="btn btn-p btn-sm" style="font-size:11px" onclick="AiImage.insertSeedToEditor()">이미지 삽입</button>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="AiImage.insertSeedToNewFile()">+ 새파일</button>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--tx3)">모델</label>
+            <select id="aiimg-model" class="fi" style="width:100%;margin-top:4px;padding:6px 8px;font-size:12px">
+              <option value="gemini-2.0-flash-exp-image-generation">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
+              <option value="gemini-3-pro-image">Nano Banana Pro (Gemini 3 Pro Image)</option>
+              <option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--tx3)">메뉴 type</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+              <button type="button" class="btn btn-g btn-sm aiimg-menu-type" style="font-size:10px" data-type="극사실주의" onclick="AiImage.applyMenuType('극사실주의')">극사실주의</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-menu-type" style="font-size:10px" data-type="스튜디오" onclick="AiImage.applyMenuType('스튜디오')">스튜디오</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-menu-type" style="font-size:10px" data-type="패션" onclick="AiImage.applyMenuType('패션')">패션</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-menu-type" style="font-size:10px" data-type="일본만화" onclick="AiImage.applyMenuType('일본만화')">일본만화</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-menu-type" style="font-size:10px" data-type="수채화" onclick="AiImage.applyMenuType('수채화')">수채화</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-menu-type" style="font-size:10px" data-type="단순화그림체" onclick="AiImage.applyMenuType('단순화그림체')">단순화그림체</button>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--tx3)">메뉴</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+              <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="AiImage.applyPreset('person')">인물</button>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="AiImage.applyPreset('diagram')">도표</button>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="AiImage.applyPreset('chart')">차트</button>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="AiImage.applyPreset('story')">스토리</button>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--tx3)">비율</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+              <button type="button" class="btn btn-g btn-sm aiimg-ratio active" data-ratio="1:1" style="font-size:11px">1:1</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-ratio" data-ratio="3:4" style="font-size:11px">3:4</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-ratio" data-ratio="4:3" style="font-size:11px">4:3</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-ratio" data-ratio="9:16" style="font-size:11px">9:16</button>
+              <button type="button" class="btn btn-g btn-sm aiimg-ratio" data-ratio="16:9" style="font-size:11px">16:9</button>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--tx3)">프롬프트</label>
+            <textarea id="aiimg-prompt" class="fi" rows="4" placeholder="이미지 설명…" style="margin-top:4px;resize:vertical;min-height:80px;font-size:13px"></textarea>
+          </div>
+          <button type="button" class="btn btn-p" onclick="AiImage.generate()" id="aiimg-generate-btn" style="font-weight:600">🖼 이미지 생성</button>
+          <div style="margin-top:10px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
+            <label style="font-size:11px;color:var(--tx3)">Virtual try-on 이미지</label>
+            <p style="font-size:10px;color:var(--tx3);margin:4px 0 6px">옷 이미지 또는 인물 이미지를 올리면 생성 시 적용됩니다.</p>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="document.getElementById('aiimg-virtual-tryon-input').click()">업로드</button>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" id="aiimg-virtual-tryon-clear" onclick="AiImage.clearVirtualTryOn()" disabled>지우기</button>
+              <span id="aiimg-virtual-tryon-name" style="font-size:11px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px"></span>
+            </div>
+            <input type="file" id="aiimg-virtual-tryon-input" accept="image/*" style="display:none" onchange="AiImage.onVirtualTryOnFile(event)">
+            <div id="aiimg-virtual-tryon-preview" style="margin-top:6px;max-height:80px;display:none;border-radius:4px;overflow:hidden">
+              <img id="aiimg-virtual-tryon-img" alt="" style="max-width:100%;max-height:80px;object-fit:contain">
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1610,8 +1770,53 @@
           <button class="btn-ic" onclick="Translator.hide()">✕</button>
         </div>
       </div>
-      <!-- 언어 선택 -->
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0">
+      <!-- 탭 -->
+      <div id="tr-tabs" style="display:flex;gap:2px;padding:8px 14px 0;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <button type="button" class="tr-tab active" data-tab="translate" onclick="Translator.switchTab('translate')">번역</button>
+        <button type="button" class="tr-tab" data-tab="ai-translate" onclick="Translator.switchTab('ai-translate')">AI학술번역</button>
+        <button type="button" class="tr-tab" data-tab="ai-write" onclick="Translator.switchTab('ai-write')">AI학술 글쓰기</button>
+      </div>
+      <!-- AI학술번역: 프롬프트 + 모델 (탭 전환 시 표시) -->
+      <div id="tr-ai-translate-panel" style="display:none;flex-direction:column;padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;gap:8px">
+        <div>
+          <label style="font-size:10px;color:var(--tx3)">프롬프트</label>
+          <textarea id="tr-ai-translate-prompt" class="fi" rows="2" placeholder="AI에게 지시할 내용"
+            style="width:100%;margin-top:4px;font-size:12px;resize:vertical;min-height:48px">넌 대학교수, 연구자야 이 번역을 학술연구자에 맞는 용어로 번역해</textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:10px;color:var(--tx3)">모델</label>
+            <select id="tr-model" class="fi" style="width:100%;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <!-- AI학술 글쓰기: 프롬프트 + 모델 (언어 선택 없음) -->
+      <div id="tr-ai-write-panel" style="display:none;flex-direction:column;padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;gap:8px">
+        <div>
+          <label style="font-size:10px;color:var(--tx3)">프롬프트</label>
+          <textarea id="tr-ai-write-prompt" class="fi" rows="2" placeholder="AI에게 지시할 내용"
+            style="width:100%;margin-top:4px;font-size:12px;resize:vertical;min-height:48px">넌 대학교수, 연구자야 이 번역을 학술연구자에 맞는 글로 다시 써줘. 문장은 ~이다 체로 용어를 학술적용어에 맞게, 대학원이상수준의 글로 써줘</textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:10px;color:var(--tx3)">모델</label>
+            <select id="tr-model-write" class="fi" style="width:100%;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+            </select>
+          </div>
+          <button class="btn btn-p" onclick="Translator.aiWrite()" style="margin-top:16px;padding:5px 18px;font-size:12px;font-weight:600">✎ AI 요청</button>
+        </div>
+      </div>
+      <!-- 언어 선택 (번역 / AI학술번역 탭에서만 표시) -->
+      <div id="tr-lang-row" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0">
         <div style="flex:1;display:flex;flex-direction:column;gap:3px">
           <label style="font-size:10px;color:var(--tx3)">원본 언어</label>
           <select id="tr-src-lang" class="fi" style="padding:5px 8px;font-size:12px">
@@ -1646,7 +1851,7 @@
             <option value="ar">🇸🇦 아랍어</option>
           </select>
         </div>
-        <button class="btn btn-p" onclick="Translator.translate()"
+        <button class="btn btn-p" id="tr-translate-btn" onclick="Translator.translate()"
           style="margin-top:16px;padding:5px 18px;flex-shrink:0;font-size:12px;font-weight:600">🌐 번역</button>
       </div>
       <!-- 본문 -->
@@ -1674,10 +1879,10 @@
               <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openBrowser()" title="Google 번역에서 열기">↗</button>
             </div>
           </div>
-          <div id="tr-output"
-            style="flex:1;overflow-y:auto;padding:12px;font-size:13px;line-height:1.7;color:var(--tx);background:var(--bg3);white-space:pre-wrap;word-break:break-word;min-height:120px">
-            <span style="color:var(--tx3);font-style:italic">번역 결과가 여기에 표시됩니다.</span>
-          </div>
+          <textarea id="tr-output" class="fi"
+            style="flex:1;resize:none;border:none;border-radius:0;background:var(--bg3);font-size:13px;line-height:1.7;padding:12px;outline:none;color:var(--tx);font-family:inherit;min-height:120px;white-space:pre-wrap;word-break:break-word"
+            placeholder="번역 결과가 여기에 표시됩니다."
+            oninput="Translator.onOutputInput()"></textarea>
           <!-- 로딩 -->
           <div id="tr-loading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:5;align-items:center;justify-content:center;border-radius:0 0 8px 0">
             <div style="display:flex;flex-direction:column;align-items:center;gap:8px;color:#fff">
@@ -1691,6 +1896,7 @@
       <!-- 하단 -->
       <div style="padding:8px 12px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <span style="font-size:11px;color:var(--tx2)">삽입:</span>
+        <span id="tr-insert-msg" style="font-size:11px;color:var(--ok);display:none"></span>
         <select id="tr-insert-mode" class="fi" style="padding:3px 6px;font-size:11px">
           <option value="replace">선택 영역 교체</option>
           <option value="after">선택 뒤에 추가</option>
@@ -1700,6 +1906,98 @@
         <div style="flex:1"></div>
         <button class="btn btn-g btn-sm" onclick="Translator.hide()">닫기</button>
         <button class="btn btn-p btn-sm" id="tr-insert-btn" onclick="Translator.insertResult()" disabled>✔ 에디터에 삽입</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deep Research 모달 -->
+  <div class="ov" id="deep-research-modal" onclick="if(event.target===this)DeepResearch.hide()">
+    <div id="dr-modal-box" class="modal dr-modal-draggable" style="max-width:960px;width:95vw;max-height:90vh;display:flex;flex-direction:column;position:relative">
+      <div class="mh dr-modal-drag" style="cursor:move;user-select:none">
+        <span>📚 Deep Research</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-g btn-sm" onclick="DeepResearch.hide();event.stopPropagation()" style="font-size:11px;padding:4px 10px">닫기</button>
+          <button class="btn-ic" id="dr-maximize-btn" onclick="DeepResearch.toggleMaximize();event.stopPropagation()" title="최대화">⛶</button>
+          <button class="btn-ic" onclick="DeepResearch.hide()">✕</button>
+        </div>
+      </div>
+      <div id="dr-body" style="flex:1;display:flex;overflow:hidden;min-height:0">
+        <!-- 왼쪽 히스토리 사이드바 -->
+        <div id="dr-sidebar" style="width:220px;flex-shrink:0;border-right:1px solid var(--bd);display:flex;flex-direction:column;background:var(--bg3)">
+          <div style="padding:8px;border-bottom:1px solid var(--bd);flex-shrink:0">
+            <input type="text" id="dr-history-search" class="fi" placeholder="히스토리 검색…"
+              style="font-size:12px;padding:6px 8px" oninput="DeepResearch.filterHistory(this.value)">
+          </div>
+          <div id="dr-history-list" style="flex:1;overflow-y:auto;padding:6px"
+            data-empty="질문 후 여기에 히스토리가 저장됩니다."></div>
+        </div>
+        <!-- 오른쪽 메인 -->
+        <div id="dr-main" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
+      <!-- 탭 -->
+      <div id="dr-tabs" style="display:flex;gap:2px;padding:8px 14px 0;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <button type="button" class="tr-tab active" data-tab="question" onclick="DeepResearch.switchTab('question')">질문</button>
+        <button type="button" class="tr-tab" data-tab="pro-preview" onclick="DeepResearch.switchTab('pro-preview')">Deep Research Pro Preview</button>
+      </div>
+      <!-- 탭: 질문 (모델 선택) -->
+      <div id="dr-panel-question" style="padding:8px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:10px;color:var(--tx3)">모델</label>
+            <select id="dr-model" class="fi" style="width:100%;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--tx3)">질문</label>
+          <textarea id="dr-prompt" class="fi" rows="3" placeholder="질문을 입력하세요…"
+            style="width:100%;margin-top:4px;font-size:13px;resize:vertical;min-height:72px"></textarea>
+        </div>
+        <button class="btn btn-p" onclick="DeepResearch.run()" style="font-size:12px;font-weight:600">💬 질문하기</button>
+      </div>
+      <!-- 탭: Deep Research Pro Preview (에이전트) -->
+      <div id="dr-panel-pro" style="display:none;padding:8px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;flex-direction:column;gap:8px;flex:0 0 auto">
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">deep-research-pro-preview-12-2025 · Interactions API (준비 중)</div>
+        <div>
+          <label style="font-size:10px;color:var(--tx3)">리서치 질문</label>
+          <textarea id="dr-prompt-pro" class="fi" rows="3" placeholder="연구할 주제를 입력하세요…"
+            style="width:100%;margin-top:4px;font-size:13px;resize:vertical;min-height:72px"></textarea>
+        </div>
+        <button class="btn btn-p" onclick="DeepResearch.runPro()" style="font-size:12px;font-weight:600">🔍 리서치 실행</button>
+      </div>
+      <!-- 출력 -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:200px;position:relative">
+        <div style="padding:6px 12px;font-size:10px;color:var(--tx3);font-weight:600;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
+          <span>답변</span>
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="btn btn-g btn-sm" id="dr-stop-btn" onclick="DeepResearch.stopRun()" style="font-size:10px;padding:2px 8px;display:none;color:var(--er);border-color:var(--er)">⏹ 진행 중지</button>
+            <button class="btn btn-g btn-sm" id="dr-thinking-btn" onclick="DeepResearch.toggleThinking()" style="font-size:10px;padding:2px 8px;display:none">💭 생각</button>
+            <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="DeepResearch.copyResult()" title="복사">📋</button>
+          </div>
+        </div>
+        <div id="dr-loading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:5;align-items:center;justify-content:center;color:#fff;font-size:13px;gap:10px;flex-direction:column">
+          <div class="tr-spinner"></div>
+          <span>답변 생성 중…</span>
+        </div>
+        <textarea id="dr-output" class="fi" readonly
+          style="flex:1;resize:vertical;min-height:180px;border:none;border-radius:0;background:var(--bg3);font-size:13px;line-height:1.7;padding:12px;outline:none;color:var(--tx);font-family:inherit;white-space:pre-wrap"
+          placeholder="답변이 여기에 표시됩니다."></textarea>
+        <textarea id="dr-thinking" class="fi" readonly
+          style="display:none;flex:1;resize:none;border:none;border-radius:0;background:var(--bg2);font-size:12px;line-height:1.6;padding:12px;outline:none;color:var(--tx3);font-family:inherit;min-height:80px;white-space:pre-wrap;border-top:1px solid var(--bd)"
+          placeholder="생각 (thinking) 내용"></textarea>
+      </div>
+      <!-- 삽입 -->
+      <div style="padding:8px 12px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <button class="btn btn-p btn-sm" id="dr-insert-btn" onclick="DeepResearch.insert()" disabled>문서에 삽입</button>
+        <button class="btn btn-sm" id="dr-newfile-btn" onclick="DeepResearch.insertToNewFile()" title="새 파일로 삽입 (정해진 파일명)"
+          style="color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600;padding:2px 10px">＋</button>
+        <span id="dr-insert-hint" style="font-size:11px;color:var(--tx3)">새파일로 삽입</span>
+        <div style="flex:1"></div>
+        <button class="btn btn-g btn-sm" onclick="DeepResearch.hide()">닫기</button>
+      </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1732,6 +2030,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="index.js"></script>
   
 
