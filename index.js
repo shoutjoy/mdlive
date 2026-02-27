@@ -10549,6 +10549,7 @@ const HK = (() => {
         'app.hotkeys':      () => App.showHK(),
         'app.themeDark':    () => App.setTheme('dark'),
         'app.themeLight':   () => App.setTheme('light'),
+        'app.themeToggle':  () => App.toggleTheme(),
         'app.lock':         () => { if (typeof AppLock !== 'undefined') AppLock.lockNow(); },
         'app.nbsp':         () => { const ed = el('editor'), s = ed.selectionStart; ins(ed, s, ed.selectionEnd, '&nbsp;'); US.snap(); },
         'tab.new':          () => TM.newTab(),
@@ -10627,8 +10628,7 @@ const HK = (() => {
                 { desc: 'Split 보기', keys: 'Alt + 1', action: 'view.split' },
                 { desc: '에디터만', keys: 'Alt + 2', action: 'view.editor' },
                 { desc: '미리보기만', keys: 'Alt + 3', action: 'view.preview' },
-                { desc: '전체 다크모드', keys: 'Shift + Ctrl + 1', action: 'app.themeDark' },
-                { desc: '전체 라이트모드', keys: 'Shift + Ctrl + 2', action: 'app.themeLight' },
+                { desc: '전체 다크/라이트 토글', keys: 'Alt + 4', action: 'app.themeToggle' },
             ]
         },
         {
@@ -11035,6 +11035,8 @@ function hkKey(e) {
     /* Alt+숫자 시 e.key가 %^ 등으로 오므로, Digit 키는 e.code로 숫자 사용 */
     let mainKey = e.key;
     if (e.altKey && e.code && /^Digit\d$/.test(e.code)) mainKey = e.code.replace('Digit', '');
+    /* Shift+Ctrl+숫자 시 e.key가 !@# 등으로 오므로, Digit는 e.code로 숫자 사용 (전체 테마 단축키 등 매칭) */
+    else if ((ctrl || e.ctrlKey || e.metaKey) && e.shiftKey && e.code && /^Digit\d$/.test(e.code)) mainKey = e.code.replace('Digit', '');
     else if (e.key && e.key.length === 1) mainKey = e.key.toUpperCase();
     parts.push(mainKey);
     return parts.join('+');
@@ -11835,13 +11837,16 @@ $$
    GitHub Pages 대응: blob: URL SW 미사용, scope 자동 감지
 ═══════════════════════════════════════════════════════════ */
 (function () {
-    // 1. Manifest 동적 생성 (blob: URL — 항상 동작)
+    // 1. Manifest 동적 생성 (blob: URL — 절대 URL 사용 시 start_url/scope 오류 감소)
+    const origin = location.origin;
+    const pathBase = location.pathname.replace(/[^/]*$/, '');
+    const startPath = location.pathname || '/';
     const manifest = {
         name: 'Markdown PDF Editor Pro',
         short_name: 'MD PRO V20',
         description: '연구·논문 전용 마크다운 에디터',
-        start_url: location.pathname,   // GitHub Pages 서브경로 대응
-        scope: location.pathname.replace(/[^/]*$/, ''),
+        start_url: origin + startPath,
+        scope: origin + pathBase,
         display: 'standalone',
         background_color: '#0f0f13',
         theme_color: '#1a1a24',
