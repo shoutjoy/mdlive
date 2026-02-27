@@ -8490,8 +8490,11 @@ const AiImage = (() => {
     let _cropDragging = false;
     let _cropStart = { x: 0, y: 0 };
     let _aspectRatio = '1:1';
+    let _seedAspectRatio = '';
     let _analysisResult = { face: '', outfit: '' };
+    let _analysisHistory = [];
     let _virtualTryOnDataUrl = '';
+    let _virtualTryOnExtractedDataUrl = '';
 
     function _openDB() {
         return new Promise((resolve, reject) => {
@@ -8586,45 +8589,92 @@ const AiImage = (() => {
         }
     }
 
+    function _gcd(a, b) { return b ? _gcd(b, a % b) : a; }
+    function _setSeedAspectRatio(dataUrl) {
+        _seedAspectRatio = '';
+        if (!dataUrl) return;
+        const img = new Image();
+        img.onload = function() {
+            const w = img.naturalWidth, h = img.naturalHeight;
+            if (w && h) {
+                const g = _gcd(w, h);
+                _seedAspectRatio = (w / g) + ':' + (h / g);
+            }
+        };
+        img.src = dataUrl;
+    }
     (function initRatioButtons() {
         document.addEventListener('click', (e) => {
             const btn = e.target.closest('.aiimg-ratio');
             if (!btn) return;
-            const modal = document.getElementById('image-modal');
-            if (!modal || !modal.classList.contains('show')) return;
+            const sidebar = document.getElementById('img-right-sidebar');
+            if (!sidebar || sidebar.style.display === 'none') return;
             document.querySelectorAll('.aiimg-ratio').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             _aspectRatio = btn.getAttribute('data-ratio') || '1:1';
             const ta = document.getElementById('aiimg-prompt');
             if (ta) {
                 const v = ta.value || '';
-                ta.value = v.replace(/\s*\[비율:\s*[\d:]+\]\s*/g, '').trim();
-                const suffix = ' [비율: ' + _aspectRatio + ']';
+                ta.value = v.replace(/\s*\[비율:\s*[\d:]+\]\s*/g, '').replace(/\s*[\d:]+\s*비율로\s*(해줘|넣어줘)\s*/g, '').trim();
+                const ratioText = _aspectRatio + ' 비율로 넣어줘';
+                const suffix = ' ' + ratioText;
                 if (ta.value) ta.value = ta.value + suffix;
-                else ta.value = suffix.trim();
+                else ta.value = ratioText;
             }
         });
     })();
 
     const PRESETS = {
-        person: '인물 고정. 동일 인물이 나오도록 유지해 주세요. ',
-        outfit: '복장 고정. 동일 의상·복장이 유지되도록 해 주세요. ',
-        diagram: '플로우차트, 통계 이미지. 도표 형태로 명확하고 보기 좋게 표현해 주세요. ',
-        chart: '차트 형태로 데이터를 시각화해 주세요. ',
-        story: '노트북 LM 스타일의 스토리 이미지. 이야기 흐름에 맞는 일러스트로 생성해 주세요. '
+        person: 'Same person. Keep the same character. ',
+        outfit: 'Same outfit. Keep the same clothing. ',
+        diagram: 'Flowchart, statistics diagram. Clear and readable. ',
+        chart: 'Chart visualization. ',
+        story: 'Notebook LM style story illustration. '
+    };
+    const MENU_TYPE_EN = {
+        '극사실주의': 'hyperrealism',
+        '스튜디오': 'studio',
+        '패션': 'fashion',
+        '일본만화': 'japanese manga style',
+        '수채화': 'watercolor',
+        '단순화그림체': 'simplified illustration style'
     };
     function applyPreset(type) {
         const ta = el('aiimg-prompt');
         if (!ta) return;
-        const prefix = PRESETS[type] || '';
+        let prefix = '';
+        if (type === 'person') {
+            const faceText = _analysisResult.face || (document.getElementById('aiimg-analysis-text') && document.getElementById('aiimg-analysis-text').textContent.trim()) || '';
+            if (faceText) {
+                prefix = faceText + '\n\nKeep the same person. Maintain the character\'s face and appearance. ';
+            } else {
+                prefix = PRESETS.person;
+            }
+        } else if (type === 'outfit') {
+            if (_analysisResult.outfit) prefix = '[복장 고정]\n' + _analysisResult.outfit + '\n\n';
+            else prefix = PRESETS.outfit;
+        } else {
+            prefix = PRESETS[type] || '';
+        }
         ta.value = prefix + (ta.value || '');
+        ta.focus();
+    }
+    function sendAnalysisToPrompt() {
+        const analysisEl = document.getElementById('aiimg-analysis-text');
+        const ta = document.getElementById('aiimg-prompt');
+        if (!analysisEl || !ta) return;
+        const text = (analysisEl.textContent || '').trim();
+        if (!text) return;
+        const current = (ta.value || '').trim();
+        ta.value = current ? current + '\n\n' + text : text;
         ta.focus();
     }
     function applyMenuType(type) {
         const ta = el('aiimg-prompt');
         if (!ta) return;
+        const en = MENU_TYPE_EN[type] || type;
         const text = (ta.value || '').trim();
-        ta.value = text ? text + ', ' + type : type;
+        ta.value = text ? text + ', ' + en : en;
         ta.focus();
     }
     async function analyzeSeedImage() {
@@ -8638,7 +8688,7 @@ const AiImage = (() => {
         try {
             const base64 = _seedDataUrl.replace(/^data:image\/\w+;base64,/, '');
             const mime = _seedDataUrl.match(/^data:(image\/\w+);/);
-            const modelId = 'gemini-2.0-flash';
+            const modelId = 'gemini-2.5-flash';
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(key)}`;
             const body = {
                 contents: [{
@@ -8658,7 +8708,16 @@ const AiImage = (() => {
             const outfitMatch = text.match(/\[복장\]([\s\S]*?)$/);
             _analysisResult.face = faceMatch ? faceMatch[1].trim() : '';
             _analysisResult.outfit = outfitMatch ? outfitMatch[1].trim() : '';
-            if (analysisEl) analysisEl.textContent = (_analysisResult.face ? '[인물]\n' + _analysisResult.face + '\n\n' : '') + (_analysisResult.outfit ? '[복장]\n' + _analysisResult.outfit : '') || '분석 결과 없음';
+            const displayText = (_analysisResult.face ? '[인물]\n' + _analysisResult.face + '\n\n' : '') + (_analysisResult.outfit ? '[복장]\n' + _analysisResult.outfit : '') || '분석 결과 없음';
+            if (analysisEl) analysisEl.textContent = displayText;
+            _analysisHistory.unshift({
+                id: 'analysis-' + Date.now(),
+                text: displayText,
+                face: _analysisResult.face,
+                outfit: _analysisResult.outfit,
+                createdAt: Date.now()
+            });
+            if (_analysisHistory.length > 50) _analysisHistory.pop();
         } catch (e) {
             if (analysisEl) analysisEl.textContent = '오류: ' + (e.message || String(e));
         }
@@ -8671,29 +8730,102 @@ const AiImage = (() => {
         const reader = new FileReader();
         reader.onload = () => {
             _virtualTryOnDataUrl = reader.result;
+            _virtualTryOnExtractedDataUrl = '';
             const imgEl = document.getElementById('aiimg-virtual-tryon-img');
             const wrap = document.getElementById('aiimg-virtual-tryon-preview');
             const nameEl = document.getElementById('aiimg-virtual-tryon-name');
             const clearBtn = document.getElementById('aiimg-virtual-tryon-clear');
+            const extractedWrap = document.getElementById('aiimg-virtual-tryon-extracted-wrap');
+            const extractedImg = document.getElementById('aiimg-virtual-tryon-extracted-img');
+            const extractedLoading = document.getElementById('aiimg-virtual-tryon-extracted-loading');
             if (imgEl) imgEl.src = _virtualTryOnDataUrl;
             if (wrap) wrap.style.display = 'block';
+            const descEl = document.getElementById('aiimg-virtual-tryon-desc');
+            if (descEl) descEl.textContent = '옷 이미지 또는 인물 이미지를 올리면 AI가 옷을 추출하고, 생성 시 적용됩니다.';
             if (nameEl) nameEl.textContent = file.name;
             if (clearBtn) clearBtn.disabled = false;
+            const reextractBtn = document.getElementById('aiimg-virtual-tryon-reextract');
+            if (reextractBtn) reextractBtn.disabled = false;
+            const refExtracted = document.getElementById('aiimg-tryon-ref-extracted');
+            if (refExtracted) refExtracted.checked = true;
+            if (extractedWrap) { extractedWrap.style.display = 'none'; if (extractedImg) extractedImg.style.display = 'none'; }
+            extractClothingForTryOn();
         };
         reader.readAsDataURL(file);
     }
+    async function extractClothingForTryOn() {
+        if (!_virtualTryOnDataUrl) return;
+        const key = typeof AiApiKey !== 'undefined' ? AiApiKey.get() : '';
+        if (!key) return;
+        const modelId = (el('aiimg-model') && el('aiimg-model').value) || 'gemini-2.0-flash-exp-image-generation';
+        const extractedWrap = document.getElementById('aiimg-virtual-tryon-extracted-wrap');
+        const extractedImg = document.getElementById('aiimg-virtual-tryon-extracted-img');
+        const extractedLoading = document.getElementById('aiimg-virtual-tryon-extracted-loading');
+        if (extractedLoading) { extractedLoading.style.display = 'block'; extractedImg.style.display = 'none'; }
+        if (extractedWrap) extractedWrap.style.display = 'block';
+        try {
+            const base64 = _virtualTryOnDataUrl.replace(/^data:image\/\w+;base64,/, '');
+            const mime = _virtualTryOnDataUrl.match(/^data:(image\/\w+);/);
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(key)}`;
+            const body = {
+                contents: [{
+                    role: 'user',
+                    parts: [
+                        { inlineData: { mimeType: mime ? mime[1] : 'image/png', data: base64 } },
+                        { text: '이 이미지에서 옷(의상)만 추출해서 흰색 배경 위에 의상만 보이게 해줘. 인물은 제거하고 옷만 보이게 생성해 줘.' }
+                    ]
+                }],
+                generationConfig: {
+                    responseModalities: ['TEXT', 'IMAGE'],
+                    responseMimeType: 'text/plain'
+                }
+            };
+            const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error?.message || 'API 오류');
+            const parts = data.candidates?.[0]?.content?.parts || [];
+            let extractedDataUrl = '';
+            parts.forEach(p => {
+                if (p.inlineData && p.inlineData.data) {
+                    const mt = p.inlineData.mimeType || 'image/png';
+                    extractedDataUrl = 'data:' + mt + ';base64,' + p.inlineData.data;
+                }
+            });
+            if (extractedDataUrl) {
+                _virtualTryOnExtractedDataUrl = extractedDataUrl;
+                if (extractedImg) { extractedImg.src = extractedDataUrl; extractedImg.style.display = 'block'; }
+            }
+        } catch (e) {
+            if (extractedLoading) {
+                extractedLoading.textContent = '오류: ' + (e.message || String(e)).slice(0, 40);
+                extractedLoading.style.display = 'block';
+            }
+        }
+        if (extractedLoading && _virtualTryOnExtractedDataUrl) extractedLoading.style.display = 'none';
+    }
     function clearVirtualTryOn() {
         _virtualTryOnDataUrl = '';
+        _virtualTryOnExtractedDataUrl = '';
         const imgEl = document.getElementById('aiimg-virtual-tryon-img');
         const wrap = document.getElementById('aiimg-virtual-tryon-preview');
         const nameEl = document.getElementById('aiimg-virtual-tryon-name');
         const clearBtn = document.getElementById('aiimg-virtual-tryon-clear');
         const input = document.getElementById('aiimg-virtual-tryon-input');
+        const extractedWrap = document.getElementById('aiimg-virtual-tryon-extracted-wrap');
+        const extractedImg = document.getElementById('aiimg-virtual-tryon-extracted-img');
+        const extractedLoading = document.getElementById('aiimg-virtual-tryon-extracted-loading');
         if (imgEl) imgEl.src = '';
         if (wrap) wrap.style.display = 'none';
+        const descEl = document.getElementById('aiimg-virtual-tryon-desc');
+        if (descEl) descEl.textContent = '이미지가 없는 경우 참고하지 않습니다.';
         if (nameEl) nameEl.textContent = '';
         if (clearBtn) clearBtn.disabled = true;
         if (input) input.value = '';
+        const reextractBtn = document.getElementById('aiimg-virtual-tryon-reextract');
+        if (reextractBtn) reextractBtn.disabled = true;
+        if (extractedWrap) extractedWrap.style.display = 'none';
+        if (extractedImg) extractedImg.src = '';
+        if (extractedLoading) { extractedLoading.style.display = 'none'; extractedLoading.textContent = '추출 중…'; }
     }
 
     function onSeedFile(ev) {
@@ -8702,10 +8834,13 @@ const AiImage = (() => {
         const reader = new FileReader();
         reader.onload = () => {
             _seedDataUrl = reader.result;
+            _setSeedAspectRatio(_seedDataUrl);
             const preview = el('aiimg-seed-preview');
             const placeholder = el('aiimg-seed-placeholder');
             if (preview) { preview.src = _seedDataUrl; preview.style.display = 'block'; }
             if (placeholder) placeholder.style.display = 'none';
+            const bigBtn = document.getElementById('aiimg-seed-big-btn');
+            if (bigBtn) bigBtn.style.display = 'block';
             el('aiimg-crop-btn').disabled = false;
         };
         reader.readAsDataURL(file);
@@ -8715,11 +8850,14 @@ const AiImage = (() => {
     }
     function clearSeed() {
         _seedDataUrl = '';
+        _seedAspectRatio = '';
         _analysisResult = { face: '', outfit: '' };
         const preview = el('aiimg-seed-preview');
         const placeholder = el('aiimg-seed-placeholder');
         if (preview) { preview.src = ''; preview.style.display = 'none'; }
         if (placeholder) placeholder.style.display = 'block';
+        const bigBtn = document.getElementById('aiimg-seed-big-btn');
+        if (bigBtn) bigBtn.style.display = 'none';
         el('aiimg-crop-btn').disabled = true;
         const analyzeBtn = document.getElementById('aiimg-analyze-btn');
         if (analyzeBtn) analyzeBtn.disabled = true;
@@ -8732,11 +8870,19 @@ const AiImage = (() => {
     }
     function setResultAsSeed() {
         if (_resultImages.length === 0) return;
+        if (_virtualTryOnExtractedDataUrl && _resultImages[0] === _virtualTryOnExtractedDataUrl) {
+            alert('Try-on 추출 이미지는 시드로 사용할 수 없습니다.');
+            return;
+        }
         _seedDataUrl = _resultImages[0];
+        if (_virtualTryOnExtractedDataUrl && _seedDataUrl === _virtualTryOnExtractedDataUrl) return;
+        _setSeedAspectRatio(_seedDataUrl);
         const preview = el('aiimg-seed-preview');
         const placeholder = el('aiimg-seed-placeholder');
         if (preview) { preview.src = _seedDataUrl; preview.style.display = 'block'; }
         if (placeholder) placeholder.style.display = 'none';
+        const bigBtn = document.getElementById('aiimg-seed-big-btn');
+        if (bigBtn) bigBtn.style.display = 'block';
         el('aiimg-crop-btn').disabled = false;
         const analyzeBtn = document.getElementById('aiimg-analyze-btn');
         if (analyzeBtn) analyzeBtn.disabled = false;
@@ -8759,6 +8905,16 @@ const AiImage = (() => {
         if (!_seedDataUrl) return;
         _openCropPopup(_seedDataUrl);
     }
+    function openTryOnCropEdit() {
+        if (!_virtualTryOnDataUrl) return;
+        window._imgCropTarget = 'tryon';
+        _openCropPopup(_virtualTryOnDataUrl);
+    }
+    function openTryOnExtractedCropEdit() {
+        if (!_virtualTryOnExtractedDataUrl) return;
+        window._imgCropTarget = 'tryon-extracted';
+        _openCropPopup(_virtualTryOnExtractedDataUrl);
+    }
     function openCropForResult(index) {
         const dataUrl = _resultImages[index];
         if (!dataUrl) return;
@@ -8769,7 +8925,22 @@ const AiImage = (() => {
     function openResultInNewWindow(dataUrl) {
         const w = window.open('', '_blank', 'width=800,height=700,scrollbars=yes');
         if (!w) return;
-        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>이미지 보기</title><style>body{margin:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body><img src="' + dataUrl.replace(/"/g, '&quot;') + '" style="max-width:100%;max-height:100vh;object-fit:contain" alt=""></body></html>');
+        const esc = (s) => (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>이미지 보기</title><style>body{margin:0;background:#1a1a2e;display:flex;flex-direction:column;min-height:100vh;align-items:center}.img-toolbar{flex-shrink:0;padding:8px;display:flex;gap:8px;align-items:center}.img-toolbar button{padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;border:1px solid #4a4a6a;background:#2a2a3a;color:#e8e8f0}.img-toolbar button:hover{background:#3a3a4a}.img-wrap{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:12px;min-height:0}.img-wrap img{display:block}</style></head><body><div class="img-toolbar"><button type="button" id="zoomOut">축소</button><button type="button" id="zoomIn">확대</button><span id="zoomPct" style="color:#888;font-size:13px;min-width:60px">100%</span></div><div class="img-wrap" id="imgWrap"><img id="viewImg" src="' + esc(dataUrl) + '" alt=""></div><script>(function(){var img=document.getElementById("viewImg");var wrap=document.getElementById("imgWrap");var pct=document.getElementById("zoomPct");var scale=1;var nw,nh;function update(){if(nw&&nh){img.style.width=(nw*scale)+"px";img.style.height=(nh*scale)+"px";wrap.style.width=(nw*scale)+"px";wrap.style.height=(nh*scale)+"px";}pct.textContent=Math.round(scale*100)+"%";}img.onload=function(){nw=img.naturalWidth;nh=img.naturalHeight;update();};document.getElementById("zoomIn").onclick=function(){scale=Math.min(scale*1.25,5);update();};document.getElementById("zoomOut").onclick=function(){scale=Math.max(scale/1.25,0.2);update();};})();</script></body></html>';
+        w.document.write(html);
+        w.document.close();
+    }
+    function openSeedInNewWindow() {
+        if (!_seedDataUrl) return;
+        openResultInNewWindow(_seedDataUrl);
+    }
+    function openTryOnImageInNewWindow(type) {
+        const imgEl = type === 'extracted' ? document.getElementById('aiimg-virtual-tryon-extracted-img') : document.querySelector('#aiimg-virtual-tryon-img');
+        const src = imgEl && imgEl.src;
+        if (!src || src === window.location.href) return;
+        const w = window.open('', '_blank', 'width=800,height=700,scrollbars=yes');
+        if (!w) return;
+        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>이미지 보기</title><style>body{margin:0;background:#1a1a2e;display:flex;align-items:center;justify-content:center;min-height:100vh}</style></head><body><img src="' + src.replace(/"/g, '&quot;') + '" style="max-width:100%;max-height:100vh;object-fit:contain" alt=""></body></html>');
         w.document.close();
     }
     function cropCurrentResult() {
@@ -8782,6 +8953,7 @@ const AiImage = (() => {
     }
     function resetModal() {
         _seedDataUrl = '';
+        _seedAspectRatio = '';
         _resultImages = [];
         _currentPrompt = '';
         _analysisResult = { face: '', outfit: '' };
@@ -8790,6 +8962,8 @@ const AiImage = (() => {
         const placeholder = el('aiimg-seed-placeholder');
         if (preview) { preview.src = ''; preview.style.display = 'none'; }
         if (placeholder) placeholder.style.display = 'block';
+        const seedBigBtn = document.getElementById('aiimg-seed-big-btn');
+        if (seedBigBtn) seedBigBtn.style.display = 'none';
         const cropBtn = document.getElementById('aiimg-crop-btn');
         if (cropBtn) cropBtn.disabled = true;
         if (el('aiimg-prompt')) el('aiimg-prompt').value = '';
@@ -8827,6 +9001,22 @@ const AiImage = (() => {
                 return;
             }
             if (!ev.data || ev.data.type !== 'aiimg-cropped' || !ev.data.dataUrl) return;
+            if (window._imgCropTarget === 'tryon') {
+                window._imgCropTarget = null;
+                _virtualTryOnDataUrl = ev.data.dataUrl;
+                const imgEl = document.getElementById('aiimg-virtual-tryon-img');
+                if (imgEl) { imgEl.src = _virtualTryOnDataUrl; }
+                return;
+            }
+            if (window._imgCropTarget === 'tryon-extracted') {
+                window._imgCropTarget = null;
+                _virtualTryOnExtractedDataUrl = ev.data.dataUrl;
+                const imgEl = document.getElementById('aiimg-virtual-tryon-extracted-img');
+                if (imgEl) { imgEl.src = _virtualTryOnExtractedDataUrl; imgEl.style.display = 'block'; }
+                const loadingEl = document.getElementById('aiimg-virtual-tryon-extracted-loading');
+                if (loadingEl) loadingEl.style.display = 'none';
+                return;
+            }
             if (window._imgCropTarget === 'result' && typeof window._cropResultIndex === 'number') {
                 const idx = window._cropResultIndex;
                 window._imgCropTarget = null;
@@ -8847,11 +9037,18 @@ const AiImage = (() => {
                 if (wrap) wrap.style.display = 'block';
                 return;
             }
+            if (_virtualTryOnExtractedDataUrl && ev.data.dataUrl === _virtualTryOnExtractedDataUrl) {
+                alert('Try-on 추출 이미지는 시드로 사용할 수 없습니다.');
+                return;
+            }
             _seedDataUrl = ev.data.dataUrl;
+            _setSeedAspectRatio(_seedDataUrl);
             const preview = el('aiimg-seed-preview');
             const placeholder = el('aiimg-seed-placeholder');
             if (preview) { preview.src = _seedDataUrl; preview.style.display = 'block'; }
             if (placeholder) placeholder.style.display = 'none';
+            const bigBtn = document.getElementById('aiimg-seed-big-btn');
+            if (bigBtn) bigBtn.style.display = 'block';
             const cropBtn = document.getElementById('aiimg-crop-btn');
             if (cropBtn) cropBtn.disabled = false;
             const analyzeBtn = document.getElementById('aiimg-analyze-btn');
@@ -8933,7 +9130,9 @@ const AiImage = (() => {
             });
         }
         contents.push({ text: prompt });
-        const aspectHint = _aspectRatio ? `\n[이미지 비율: ${_aspectRatio}로 생성해 주세요.]` : '';
+        const promptHasRatio = /비율|\d+\s*:\s*\d+/.test(prompt);
+        let aspectHint = '';
+        if (!promptHasRatio && _seedAspectRatio) aspectHint = '\n[이미지 비율: ' + _seedAspectRatio + '로 생성해 주세요.]';
         contents[contents.length - 1].text = prompt + aspectHint;
         const personCb = document.getElementById('aiimg-fix-person-cb');
         const outfitCb = document.getElementById('aiimg-fix-outfit-cb');
@@ -8945,13 +9144,15 @@ const AiImage = (() => {
             prefix += '[복장 고정 - 아래 의상 유지]\n' + _analysisResult.outfit + '\n\n';
         }
         if (prefix) contents[contents.length - 1].text = prefix + contents[contents.length - 1].text;
-        if (_virtualTryOnDataUrl) {
-            const vbase64 = _virtualTryOnDataUrl.replace(/^data:image\/\w+;base64,/, '');
-            const vmime = _virtualTryOnDataUrl.match(/^data:(image\/\w+);/);
+        const useOrigin = document.getElementById('aiimg-tryon-ref-origin') && document.getElementById('aiimg-tryon-ref-origin').checked;
+        const tryOnDataUrl = useOrigin ? _virtualTryOnDataUrl : _virtualTryOnExtractedDataUrl;
+        if (tryOnDataUrl) {
+            const vbase64 = tryOnDataUrl.replace(/^data:image\/\w+;base64,/, '');
+            const vmime = tryOnDataUrl.match(/^data:(image\/\w+);/);
             contents.push({
                 inlineData: { mimeType: vmime ? vmime[1] : 'image/png', data: vbase64 }
             });
-            contents.push({ text: '위 옷/스타일을 적용한 이미지로 생성해 주세요.' });
+            contents.push({ text: useOrigin ? '위 이미지를 참고하여 생성해 주세요.' : '위 옷/스타일을 적용한 이미지로 생성해 주세요.' });
         }
         const body = {
             contents: [{ role: 'user', parts: contents }],
@@ -9032,6 +9233,13 @@ const AiImage = (() => {
             const div = document.createElement('div');
             div.className = 'dr-history-item';
             div.style.cssText = 'padding:6px;margin-bottom:6px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;background:var(--bg4);position:relative';
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn btn-g btn-sm';
+            delBtn.style.cssText = 'position:absolute;top:4px;left:4px;font-size:10px;padding:2px 6px;z-index:2';
+            delBtn.textContent = '×';
+            delBtn.title = '이 항목 삭제';
+            delBtn.onclick = (e) => { e.stopPropagation(); removeHistoryItem(item.id); };
             const row = document.createElement('div');
             row.style.cssText = 'display:flex;align-items:flex-start;gap:6px';
             const thumbWrap = document.createElement('div');
@@ -9047,15 +9255,8 @@ const AiImage = (() => {
             col.style.cssText = 'flex:1;min-width:0';
             col.appendChild(thumbWrap);
             col.appendChild(cap);
-            const delBtn = document.createElement('button');
-            delBtn.type = 'button';
-            delBtn.className = 'btn btn-g btn-sm';
-            delBtn.style.cssText = 'font-size:10px;padding:2px 6px;flex-shrink:0';
-            delBtn.textContent = '×';
-            delBtn.title = '이 항목 삭제';
-            delBtn.onclick = (e) => { e.stopPropagation(); removeHistoryItem(item.id); };
             row.appendChild(col);
-            row.appendChild(delBtn);
+            div.appendChild(delBtn);
             div.appendChild(row);
             div.onclick = () => {
                 _resultImages = Array.isArray(item.imageData) ? [...item.imageData] : [];
@@ -9179,15 +9380,26 @@ const AiImage = (() => {
         if (typeof TM !== 'undefined' && TM.newTab) TM.newTab(title, `![시드 이미지](${_seedDataUrl})`, 'md');
         if (typeof ImgStore !== 'undefined') ImgStore.save(_seedDataUrl, '시드 이미지');
     }
+    function insertAnalysisToEditor() {
+        const analysisEl = document.getElementById('aiimg-analysis-text');
+        const text = (analysisEl && analysisEl.textContent || '').trim();
+        if (!text) { alert('삽입할 분석 결과가 없습니다.'); return; }
+        const ed = typeof ED !== 'undefined' && ED.ed ? ED.ed() : null;
+        if (!ed) { alert('에디터를 찾을 수 없습니다.'); return; }
+        const s = ed.selectionStart, e = ed.selectionEnd;
+        ins(ed, s, e, '\n\n' + text + '\n\n');
+        if (typeof App !== 'undefined' && App.render) App.render();
+        if (typeof US !== 'undefined' && US.snap) US.snap();
+    }
 
     return {
-        switchTab, toggleMaximize, applyPreset, applyMenuType, onSeedFile, clearSeed,
-        openCropUpload, openCropEdit,
+        switchTab, toggleMaximize, applyPreset, applyMenuType, sendAnalysisToPrompt, onSeedFile, clearSeed,
+        openCropUpload, openCropEdit, openTryOnCropEdit, openTryOnExtractedCropEdit,
         generate, setResultAsSeed, downloadAll, downloadZip, downloadProject, loadHistory,
-        insertToEditor, insertToNewFile, insertSeedToEditor, insertSeedToNewFile,
+        insertToEditor, insertToNewFile, insertSeedToEditor, insertSeedToNewFile, insertAnalysisToEditor,
         resetModal, clearAllHistory, removeHistoryItem,
-        cropCurrentResult, openCurrentResultInNewWindow,
-        analyzeSeedImage, onVirtualTryOnFile, clearVirtualTryOn
+        cropCurrentResult, openCurrentResultInNewWindow, openSeedInNewWindow,
+        analyzeSeedImage, onVirtualTryOnFile, clearVirtualTryOn, extractClothingForTryOn, openTryOnImageInNewWindow
     };
 })();
 
@@ -11623,8 +11835,8 @@ $$
     } catch(e) {}
 
     // 2. Service Worker — blob: URL은 GitHub Pages에서 scope 오류 발생
-    //    → sw.js 파일이 있을 때만 등록, 없으면 기존 SW 해제
-    if ('serviceWorker' in navigator) {
+    //    → sw.js 파일이 있을 때만 등록 (http/https에서만, file:// 제외)
+    if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.protocol === 'https:')) {
         // 기존에 blob: URL로 등록된 SW가 있으면 해제 (구버전 호환)
         navigator.serviceWorker.getRegistrations().then(regs => {
             regs.forEach(reg => {
