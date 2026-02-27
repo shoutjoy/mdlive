@@ -11057,6 +11057,13 @@ function handleKey(e) {
         }
     }
 
+    /* ── Alt+4: 전체 다크/라이트 토글 (항상 동작) ── */
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.code === 'Digit4' || e.key === '4')) {
+        e.preventDefault();
+        if (typeof App !== 'undefined' && App.toggleTheme) App.toggleTheme();
+        return;
+    }
+
     /* ── Ctrl+9: 에디터 축소, Ctrl+0: 에디터 확대 ── */
     if ((e.ctrlKey || e.metaKey) && e.key === '9') { e.preventDefault(); EZ.dec(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); EZ.inc(); return; }
