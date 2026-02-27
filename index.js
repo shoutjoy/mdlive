@@ -328,6 +328,7 @@ const AppLock = (() => {
   }
 
   function showChangePw() { _showLockScreen('change'); }
+  function showSetPw()    { _showLockScreen('set'); }
   function isUnlocked()   { return _unlocked; }
   function hasLock()     { return !!localStorage.getItem(LOCK_KEY); }
 
@@ -461,7 +462,7 @@ const AppLock = (() => {
     }
   }
 
-  return { init, handleLockBtn, showChangePw, isUnlocked, hasLock, lockNow, getAutoLockMinutes, setAutoLockMinutes, resetAutoLockTimer, _toast, showReset, hideReset, doReset };
+  return { init, handleLockBtn, showChangePw, showSetPw, isUnlocked, hasLock, lockNow, getAutoLockMinutes, setAutoLockMinutes, resetAutoLockTimer, _toast, showReset, hideReset, doReset };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -9402,6 +9403,7 @@ const AiImage = (() => {
         analyzeSeedImage, onVirtualTryOnFile, clearVirtualTryOn, extractClothingForTryOn, openTryOnImageInNewWindow
     };
 })();
+window.AiImage = AiImage;
 
 let lastCodeLang = 'python';// track last used language for Alt+C
 
@@ -10934,16 +10936,29 @@ const HK = (() => {
                 if (settingsRow && typeof AppLock !== 'undefined') {
                     const unlocked = AppLock.isUnlocked();
                     const hasLock = AppLock.hasLock();
-                    if (unlocked && hasLock) {
-                        settingsRow.style.display = 'flex';
-                        if (btnChangePw) btnChangePw.style.display = '';
-                        if (btnLock) btnLock.style.display = '';
-                        const autolockInp = document.getElementById('hk-autolock-input');
-                        if (autolockInp) autolockInp.value = AppLock.getAutoLockMinutes();
-                    } else {
-                        settingsRow.style.display = 'none';
+                    settingsRow.style.display = 'flex';
+                    if (btnChangePw) {
+                        if (hasLock) {
+                            btnChangePw.textContent = '🔑 비밀번호 변경';
+                            btnChangePw.onclick = function() { App.hideHK(); AppLock.showChangePw(); };
+                            btnChangePw.style.display = '';
+                        } else {
+                            btnChangePw.textContent = '🔑 비밀번호 설정';
+                            btnChangePw.onclick = function() { App.hideHK(); AppLock.showSetPw(); };
+                            btnChangePw.style.display = '';
+                        }
                     }
+                    if (btnLock) {
+                        btnLock.style.display = hasLock ? '' : 'none';
+                    }
+                    const autolockInp = document.getElementById('hk-autolock-input');
+                    if (autolockInp) autolockInp.value = AppLock.getAutoLockMinutes();
+                } else if (settingsRow) {
+                    settingsRow.style.display = 'none';
                 }
+                /* 에디터 현재 줄 하이라이트 행 항상 표시 */
+                const lineHighlightRow = document.getElementById('hk-line-highlight-row');
+                if (lineHighlightRow) lineHighlightRow.style.display = 'flex';
                 render();
                 el('hk-overlay').classList.add('vis');
                 try { if (typeof EditorLineHighlight !== 'undefined') EditorLineHighlight.updateUI(); } catch (e) { console.warn('EditorLineHighlight.updateUI:', e); }
@@ -12344,6 +12359,7 @@ const DeepResearch = (() => {
 
     return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory };
 })();
+window.DeepResearch = DeepResearch;
 
 /* ═══════════════════════════════════════════════════════════
    TRANSLATOR — 번역기 (Shift+Alt+G)

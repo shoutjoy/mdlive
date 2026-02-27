@@ -1,4 +1,4 @@
-#aiimg-seed-wrap<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 
 <head>
@@ -42,6 +42,18 @@
         });
       }
     }
+  </script>
+  <script>
+    // index.js 로드 전 또는 실패 시 onclick에서 참조 오류 방지 (다른 경로/환경에서 동작 보장)
+    (function() {
+      var noop = function() {};
+      if (typeof window.DeepResearch === 'undefined') {
+        window.DeepResearch = new Proxy({}, { get: function() { return noop; } });
+      }
+      if (typeof window.AiImage === 'undefined') {
+        window.AiImage = new Proxy({}, { get: function() { return noop; } });
+      }
+    })();
   </script>
 </head>
 
