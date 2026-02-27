@@ -1822,8 +1822,29 @@
       <div id="tr-ai-translate-panel" style="display:none;flex-direction:column;padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;gap:8px">
         <div>
           <label style="font-size:10px;color:var(--tx3)">프롬프트</label>
-          <textarea id="tr-ai-translate-prompt" class="fi" rows="2" placeholder="AI에게 지시할 내용"
-            style="width:100%;margin-top:4px;font-size:12px;resize:vertical;min-height:48px">넌 대학교수, 연구자야 이 번역을 학술연구자에 맞는 용어로 번역해</textarea>
+          <textarea id="tr-ai-translate-prompt" class="fi" rows="8" placeholder="AI에게 지시할 내용"
+            style="width:561px;max-width:100%;height:151px;min-height:151px;margin-top:4px;font-size:12px;resize:vertical">You are a professional academic translator and scholarly editor.
+
+Translate the following text into the target language specified below.
+The translation must meet the standards of international peer-reviewed journals.
+
+[Source Language]: (Korean or English)
+[Target Language]: (Korean or English)
+
+Translation Requirements:
+
+1. Use a formal, academic, and research-oriented tone.
+2. Ensure conceptual accuracy and terminological consistency.
+3. Employ discipline-specific terminology commonly used in SSCI/SCI-indexed journals.
+4. Do not translate literally; prioritize semantic equivalence and theoretical precision.
+5. Preserve statistical expressions, methodological terms, and theoretical constructs accurately.
+6. Adjust sentence structure to align with academic writing conventions of the target language.
+7. Avoid colloquial expressions.
+8. Improve clarity, coherence, and logical flow where necessary without altering meaning.
+9. Maintain citation format and technical notation exactly as presented.
+
+Output only the final translated text.
+Do not provide explanations unless explicitly requested.</textarea>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div style="flex:1;min-width:140px">
@@ -1841,8 +1862,21 @@
       <div id="tr-ai-write-panel" style="display:none;flex-direction:column;padding:10px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;gap:8px">
         <div>
           <label style="font-size:10px;color:var(--tx3)">프롬프트</label>
-          <textarea id="tr-ai-write-prompt" class="fi" rows="2" placeholder="AI에게 지시할 내용"
-            style="width:100%;margin-top:4px;font-size:12px;resize:vertical;min-height:48px">넌 대학교수, 연구자야 이 번역을 학술연구자에 맞는 글로 다시 써줘. 문장은 ~이다 체로 용어를 학술적용어에 맞게, 대학원이상수준의 글로 써줘</textarea>
+          <textarea id="tr-ai-write-prompt" class="fi" rows="8" placeholder="AI에게 지시할 내용"
+            style="width:561px;max-width:100%;height:151px;min-height:151px;margin-top:4px;font-size:12px;resize:vertical">당신은 해당 분야의 대학교수이자 연구자이다. 
+아래에 제시된 텍스트를 학술 연구 논문 수준의 문체로 재작성하라.
+
+작성 기준은 다음과 같다.
+
+1. 모든 문장은 '~이다' 체의 학술적 서술 방식으로 작성할 것.
+2. 구어적·서술적 표현을 제거하고, 연구 중심의 객관적 문체로 전환할 것.
+3. 개념어는 학문 분야에서 통용되는 전문 학술용어로 정교화할 것.
+4. 의미를 변경하지 않는 범위 내에서 문장을 재구성하여 논리적 응집성과 구조적 명확성을 강화할 것.
+5. 모호한 표현은 제거하고 개념적 정밀성을 확보할 것.
+6. 중복 표현은 축약하고, 문장은 간결하면서도 이론적으로 엄밀하게 구성할 것.
+7. 필요 시 문장 간 인과관계, 논리적 연결성, 이론적 맥락을 보완할 것.
+8. 대학원 이상 수준의 연구 보고서 또는 학술지 논문에 적합한 어휘를 사용할 것.
+9. 설명이나 해설 없이 최종 수정된 문장만 제시할 것.</textarea>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div style="flex:1;min-width:140px">
@@ -1918,7 +1952,7 @@
             <span>번역 결과</span>
             <div style="display:flex;gap:4px">
               <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.copyResult()" title="복사">📋</button>
-              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openBrowser()" title="Google 번역에서 열기">↗</button>
+              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openBrowser()" title="구글번역기">화살표(gt)</button>
             </div>
           </div>
           <textarea id="tr-output" class="fi"
@@ -1972,6 +2006,9 @@
           </div>
           <div id="dr-history-list" style="flex:1;overflow-y:auto;padding:6px"
             data-empty="질문 후 여기에 히스토리가 저장됩니다."></div>
+          <div style="padding:8px;border-top:1px solid var(--bd);flex-shrink:0">
+            <button type="button" class="btn btn-g btn-sm" id="dr-history-save-all-btn" onclick="DeepResearch.openHistorySaveModal()" style="width:100%;font-size:11px">히스토리 전체저장</button>
+          </div>
         </div>
         <!-- 오른쪽 메인 -->
         <div id="dr-main" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
@@ -2016,14 +2053,15 @@
           <div style="display:flex;gap:4px;align-items:center">
             <button class="btn btn-g btn-sm" id="dr-stop-btn" onclick="DeepResearch.stopRun()" style="font-size:10px;padding:2px 8px;display:none;color:var(--er);border-color:var(--er)">⏹ 진행 중지</button>
             <button class="btn btn-g btn-sm" id="dr-thinking-btn" onclick="DeepResearch.toggleThinking()" style="font-size:10px;padding:2px 8px;display:none">💭 생각</button>
-            <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="DeepResearch.copyResult()" title="복사">📋</button>
+            <button class="btn btn-sm" onclick="DeepResearch.openResultInNewWindow()" title="새 창에서 마크다운 적용 결과 보기" style="color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600;padding:2px 10px">새창</button>
+            <button class="btn btn-sm" onclick="DeepResearch.copyResult()" title="복사" style="color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600;padding:2px 10px">복사</button>
           </div>
         </div>
         <div id="dr-loading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:5;align-items:center;justify-content:center;color:#fff;font-size:13px;gap:10px;flex-direction:column">
           <div class="tr-spinner"></div>
           <span>답변 생성 중…</span>
         </div>
-        <textarea id="dr-output" class="fi" readonly
+        <textarea id="dr-output" class="fi"
           style="flex:1;resize:vertical;min-height:180px;border:none;border-radius:0;background:var(--bg3);font-size:13px;line-height:1.7;padding:12px;outline:none;color:var(--tx);font-family:inherit;white-space:pre-wrap"
           placeholder="답변이 여기에 표시됩니다."></textarea>
         <textarea id="dr-thinking" class="fi" readonly
@@ -2033,18 +2071,29 @@
       <!-- 삽입 -->
       <div style="padding:8px 12px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <button class="btn btn-p btn-sm" id="dr-insert-btn" onclick="DeepResearch.insert()" disabled>문서에 삽입</button>
-        <button class="btn btn-sm" id="dr-newfile-btn" onclick="DeepResearch.insertToNewFile()" title="새 파일로 삽입 (정해진 파일명)"
+        <button class="btn btn-sm" id="dr-newfile-btn" onclick="DeepResearch.insertToNewFile()" title="새 파일로 삽입 (파일명은 옆 입력란에 미리 입력 가능)"
           style="color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600;padding:2px 10px">＋</button>
-        <span id="dr-insert-hint" style="font-size:11px;color:var(--tx3)">새파일로 삽입</span>
+        <input type="text" id="dr-insert-hint" class="fi" placeholder="새파일로 삽입 (파일명 입력)"
+          style="font-size:11px;color:var(--tx2);width:140px;min-width:0;padding:4px 8px"
+          title="비우면 자동 파일명(dr-날짜시각), 입력하면 해당 이름으로 새 파일 생성">
         <div style="flex:1"></div>
         <button class="btn btn-g btn-sm" onclick="DeepResearch.hide()">닫기</button>
       </div>
         </div>
       </div>
+      <!-- 히스토리 전체저장 선택 모달 -->
+      <div id="dr-history-save-modal" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:10;align-items:center;justify-content:center;border-radius:0 0 8px 0" onclick="if(event.target===this)DeepResearch.closeHistorySaveModal()">
+        <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:20px;min-width:260px;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--tx)">히스토리 저장</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button type="button" class="btn btn-p btn-sm" onclick="DeepResearch.saveHistoryAsZip();DeepResearch.closeHistorySaveModal()" style="width:100%;font-size:12px">ZIP으로 저장 (로컬)</button>
+            <button type="button" class="btn btn-g btn-sm" onclick="DeepResearch.saveHistoryBatch();DeepResearch.closeHistorySaveModal()" style="width:100%;font-size:12px">일괄 저장 (각 항목을 .md 파일로)</button>
+            <button type="button" class="btn btn-g btn-sm" onclick="DeepResearch.closeHistorySaveModal()" style="width:100%;font-size:12px">취소</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-
-  <!-- 문자표 모달 -->
   <div class="ov" id="charmap-modal" onclick="if(event.target===this)CharMap.hide()">
     <div class="modal" style="max-width:620px;max-height:85vh;display:flex;flex-direction:column">
       <div class="mh">

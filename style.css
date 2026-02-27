@@ -2885,15 +2885,19 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
     max-width: 940px
 }
 
-/* 번역기 모달 전체화면 */
-#translator-modal-inner.tr-fullscreen,
-#translator-modal-inner:fullscreen,
-#translator-modal-inner::-webkit-full-screen {
+/* 번역기 모달 전체화면 — 앱 내 전체화면 (img-modal-maximized와 동일 방식) */
+#translator-modal-inner.tr-maximized {
+    width: 100vw !important;
+    height: 100vh !important;
     max-width: none !important;
-    width: 100% !important;
-    height: 100% !important;
     max-height: none !important;
-    border-radius: 0
+    border-radius: 0;
+    margin: 0;
+}
+#translator-modal-inner.tr-maximized #tr-ai-translate-prompt,
+#translator-modal-inner.tr-maximized #tr-ai-write-prompt {
+    height: 151px;
+    min-height: 151px;
 }
 
 /* 이미지 모달 전체화면 */

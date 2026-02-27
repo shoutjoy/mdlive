@@ -12056,13 +12056,19 @@ const DeepResearch = (() => {
             renameBtn.title = '이름 변경';
             renameBtn.textContent = '✎';
             renameBtn.onclick = (e) => { e.stopPropagation(); DeepResearch.renameHistory(item.id); };
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'btn-ic';
+            saveBtn.title = '이 항목만 .md 파일로 저장';
+            saveBtn.textContent = '💾';
+            saveBtn.onclick = (e) => { e.stopPropagation(); DeepResearch.saveHistoryItemToFile(item.id); };
             const delBtn = document.createElement('button');
             delBtn.type = 'button';
             delBtn.className = 'btn-ic';
             delBtn.title = '삭제';
             delBtn.textContent = '✕';
             delBtn.onclick = (e) => { e.stopPropagation(); DeepResearch.deleteHistory(item.id); };
-            actions.append(renameBtn, delBtn);
+            actions.append(renameBtn, saveBtn, delBtn);
             row.append(title, actions);
             row.onclick = () => DeepResearch.loadHistoryItem(item.id);
             list.appendChild(row);
@@ -12136,6 +12142,73 @@ const DeepResearch = (() => {
             _historyCache = _historyCache.filter(x => x.id !== id);
             filterHistory(_historySearch);
         }).catch(() => alert('삭제 실패'));
+    }
+
+    function _drSafeFilename(title) {
+        const t = (title || '제목없음').trim() || '제목없음';
+        return t.replace(/\.md$/i, '').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 200) + '.md';
+    }
+
+    function openHistorySaveModal() {
+        const modal = $('dr-history-save-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeHistorySaveModal() {
+        const modal = $('dr-history-save-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function saveHistoryAsZip() {
+        if (typeof JSZip === 'undefined') { alert('ZIP 라이브러리를 불러올 수 없습니다.'); return; }
+        const items = _historyCache.filter(it => it.result && it.result.trim());
+        if (!items.length) { alert('저장할 히스토리가 없습니다.'); return; }
+        const zip = new JSZip();
+        items.forEach((item, i) => {
+            const name = _drSafeFilename(item.title || 'item-' + (i + 1));
+            zip.file(name, item.result.trim(), { createFolders: false });
+        });
+        zip.generateAsync({ type: 'blob' }).then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'dr-history-' + (new Date().toISOString().slice(0, 10)) + '.zip';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }).catch(() => alert('ZIP 생성 실패'));
+    }
+
+    function saveHistoryBatch() {
+        const items = _historyCache.filter(it => it.result && it.result.trim());
+        if (!items.length) { alert('저장할 히스토리가 없습니다.'); return; }
+        items.forEach((item, i) => {
+            setTimeout(() => {
+                const name = _drSafeFilename(item.title || 'item-' + (i + 1));
+                const blob = new Blob([item.result.trim()], { type: 'text/markdown;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }, i * 150);
+        });
+        if (items.length > 0) alert(items.length + '개 파일이 다운로드됩니다. (브라우저 기본 저장 위치 확인)');
+    }
+
+    function saveHistoryItemToFile(id) {
+        const item = _historyCache.find(x => x.id === id);
+        if (!item || !item.result || !item.result.trim()) {
+            alert('저장할 내용이 없습니다.');
+            return;
+        }
+        const name = _drSafeFilename(item.title);
+        const blob = new Blob([item.result.trim()], { type: 'text/markdown;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(a.href);
     }
 
     function switchTab(tab) {
@@ -12349,7 +12422,9 @@ const DeepResearch = (() => {
             alert('탭 기능을 사용할 수 없습니다.');
             return;
         }
-        const name = _drFixedFilename();
+        const hintEl = $('dr-insert-hint');
+        const customName = hintEl && hintEl.value ? hintEl.value.trim() : '';
+        const name = customName !== '' ? customName.replace(/\.md$/i, '') : _drFixedFilename();
         TM.newTab(name, txt, 'md');
         hide();
     }
@@ -12385,7 +12460,36 @@ const DeepResearch = (() => {
         navigator.clipboard.writeText(txt).then(() => alert('복사되었습니다.')).catch(() => {});
     }
 
-    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory };
+    function openResultInNewWindow() {
+        const out = $('dr-output');
+        const txt = out ? out.value.trim() : _result;
+        if (!txt) {
+            alert('표시할 답변이 없습니다.');
+            return;
+        }
+        let html;
+        try {
+            html = typeof mdRender === 'function' ? mdRender(txt, true) : (typeof marked !== 'undefined' ? marked.parse(txt) : txt.replace(/\n/g, '<br>'));
+        } catch (e) {
+            html = '<p style="color:red">' + (e.message || '렌더 오류') + '</p>';
+        }
+        html = (html || '').replace(/<\/script>/gi, '<\\/script>');
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        const w = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+        if (!w) {
+            alert('팝업이 차단되었을 수 있습니다. 새 창 허용 후 다시 시도해 주세요.');
+            return;
+        }
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>답변 미리보기</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body class="dr-pv-window" style="margin:0;background:var(--bg1)">' +
+            '<div id="preview-container" class="preview-container" style="position:absolute;inset:0;overflow:auto;padding:24px;box-sizing:border-box">' +
+            '<div class="preview-page" data-page="1">' + html + '</div></div></body></html>'
+        );
+        w.document.close();
+    }
+
+    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, openResultInNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile };
 })();
 window.DeepResearch = DeepResearch;
 
@@ -12515,30 +12619,20 @@ const Translator = (() => {
     function hide() {
         const m = $('translator-modal');
         if (m) m.classList.remove('vis');
-        if (document.fullscreenElement && document.fullscreenElement.id === 'translator-modal-inner') {
-            document.exitFullscreen().catch(() => {});
-        }
+        const inner = document.getElementById('translator-modal-inner');
+        if (inner) inner.classList.remove('tr-maximized');
     }
 
     function toggleFullscreen() {
         const el = document.getElementById('translator-modal-inner');
         if (!el) return;
-        if (document.fullscreenElement) {
-            document.exitFullscreen().catch(() => {});
-        } else {
-            el.requestFullscreen().catch(() => {});
+        const on = el.classList.toggle('tr-maximized');
+        const btn = document.getElementById('tr-fullscreen-btn');
+        if (btn) {
+            btn.textContent = on ? '전체화면 해제' : '전체화면';
+            btn.title = on ? '전체화면 해제' : '전체화면';
         }
     }
-
-    function _updateFullscreenBtn() {
-        const btn = document.getElementById('tr-fullscreen-btn');
-        if (!btn) return;
-        btn.textContent = document.fullscreenElement ? '전체화면 해제' : '전체화면';
-        const el = document.getElementById('translator-modal-inner');
-        if (el) el.classList.toggle('tr-fullscreen', !!document.fullscreenElement);
-    }
-
-    document.addEventListener('fullscreenchange', _updateFullscreenBtn);
 
     function switchTab(tab) {
         _currentTab = tab;
