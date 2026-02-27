@@ -8561,7 +8561,7 @@ const AiImage = (() => {
             if (centerInsert) centerInsert.style.display = 'none';
             if (centerAi) centerAi.style.display = 'flex';
             if (rightSidebar) { rightSidebar.style.display = 'flex'; }
-            if (box) box.style.maxWidth = '920px';
+            if (box) box.style.maxWidth = '960px';
             tabs.forEach(t => { t.classList.toggle('active', t.getAttribute('data-tab') === 'ai'); });
             loadHistory();
         } else {
@@ -8570,7 +8570,7 @@ const AiImage = (() => {
             if (centerInsert) centerInsert.style.display = 'flex';
             if (centerAi) centerAi.style.display = 'none';
             if (rightSidebar) rightSidebar.style.display = 'none';
-            if (box) box.style.maxWidth = '480px';
+            if (box) box.style.maxWidth = '720px';
             tabs.forEach(t => { t.classList.toggle('active', t.getAttribute('data-tab') === 'insert'); });
         }
     }
@@ -8578,15 +8578,17 @@ const AiImage = (() => {
     function toggleMaximize() {
         const box = el('image-modal-box');
         if (!box) return;
-        box.classList.toggle('img-modal-maximized');
-        if (box.classList.contains('img-modal-maximized')) {
+        const on = box.classList.toggle('img-modal-maximized');
+        if (on) {
             box.style.maxWidth = '';
-            box.style.width = '100vw';
-            box.style.height = '100vh';
         } else {
-            box.style.maxWidth = document.querySelector('.img-side-tab.active')?.getAttribute('data-tab') === 'ai' ? '920px' : '480px';
-            box.style.width = '';
-            box.style.height = '';
+            const isAi = document.querySelector('.img-side-tab.active')?.getAttribute('data-tab') === 'ai';
+            box.style.maxWidth = isAi ? '960px' : '720px';
+        }
+        const btn = document.getElementById('img-modal-maximize');
+        if (btn) {
+            btn.textContent = on ? '전체화면 해제' : '전체화면';
+            btn.title = on ? '전체화면 해제' : '전체화면';
         }
     }
 
@@ -11686,7 +11688,13 @@ const App = {
         clearTimeout(t._tid);
         t._tid = setTimeout(() => t.classList.remove('show'), duration || 2200);
     },
-    hideModal(id) { el(id).classList.remove('vis') },
+    hideModal(id) {
+        if (id === 'image-modal') {
+            const box = el('image-modal-box');
+            if (box) box.classList.remove('img-modal-maximized');
+        }
+        el(id).classList.remove('vis');
+    },
     openColorPicker(m) { ColorPicker.open(m) },
     applyColor() { ColorPicker.apply() },
     showCaption(type) { CAP.show(type) },
@@ -12487,7 +12495,30 @@ const Translator = (() => {
     function hide() {
         const m = $('translator-modal');
         if (m) m.classList.remove('vis');
+        if (document.fullscreenElement && document.fullscreenElement.id === 'translator-modal-inner') {
+            document.exitFullscreen().catch(() => {});
+        }
     }
+
+    function toggleFullscreen() {
+        const el = document.getElementById('translator-modal-inner');
+        if (!el) return;
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        } else {
+            el.requestFullscreen().catch(() => {});
+        }
+    }
+
+    function _updateFullscreenBtn() {
+        const btn = document.getElementById('tr-fullscreen-btn');
+        if (!btn) return;
+        btn.textContent = document.fullscreenElement ? '전체화면 해제' : '전체화면';
+        const el = document.getElementById('translator-modal-inner');
+        if (el) el.classList.toggle('tr-fullscreen', !!document.fullscreenElement);
+    }
+
+    document.addEventListener('fullscreenchange', _updateFullscreenBtn);
 
     function switchTab(tab) {
         _currentTab = tab;
@@ -12704,7 +12735,7 @@ const Translator = (() => {
         }
     });
 
-    return { show, hide, translate, swapLang, insertResult, copyResult, openBrowser, clearInput, onInput, onOutputInput, switchTab, aiTranslate, aiWrite };
+    return { show, hide, toggleFullscreen, translate, swapLang, insertResult, copyResult, openBrowser, clearInput, onInput, onOutputInput, switchTab, aiTranslate, aiWrite };
 })();
 
 /* ═══════════════════════════════════════════════════════════

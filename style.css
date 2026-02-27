@@ -2885,8 +2885,29 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
     max-width: 940px
 }
 
-/* Deep Research 모달: 최대화 */
-#dr-modal-box.dr-modal-maximized {
+/* 번역기 모달 전체화면 */
+#translator-modal-inner.tr-fullscreen,
+#translator-modal-inner:fullscreen,
+#translator-modal-inner::-webkit-full-screen {
+    max-width: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-radius: 0
+}
+
+/* 이미지 모달 전체화면 */
+#image-modal-box:fullscreen,
+#image-modal-box::-webkit-full-screen {
+    max-width: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-radius: 0
+}
+
+#dr-modal-box.dr-modal-maximized,
+#image-modal-box.img-modal-maximized {
     width: 100vw !important;
     height: 100vh !important;
     max-width: none !important;

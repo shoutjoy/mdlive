@@ -1208,12 +1208,12 @@
 
   <!-- IMAGE MODAL -->
   <div class="ov" id="image-modal" onclick="if(event.target===this)App.hideModal('image-modal')">
-    <div class="modal img-modal-layout" id="image-modal-box" style="max-width:480px;display:flex;flex-direction:column;max-height:90vh" onclick="event.stopPropagation()">
+    <div class="modal img-modal-layout" id="image-modal-box" style="max-width:720px;display:flex;flex-direction:column;max-height:90vh" onclick="event.stopPropagation()">
       <div class="mh img-modal-drag" style="cursor:move;user-select:none;display:flex;align-items:center;justify-content:space-between">
         <span>🖼 이미지</span>
         <div style="display:flex;align-items:center;gap:6px">
           <button class="btn btn-g btn-sm" onclick="App.hideModal('image-modal');event.stopPropagation()" style="font-size:11px">닫기</button>
-          <button class="btn-ic" id="img-modal-maximize" onclick="AiImage.toggleMaximize();event.stopPropagation()" title="최대화">⛶</button>
+          <button class="btn btn-g btn-sm" id="img-modal-maximize" onclick="AiImage.toggleMaximize();event.stopPropagation()" title="전체화면" style="font-size:11px">전체화면</button>
         </div>
       </div>
       <div id="img-modal-body" style="flex:1;display:flex;min-height:0;overflow:hidden">
@@ -1799,7 +1799,11 @@
 
   <!-- 번역기 모달 -->
   <div class="ov" id="translator-modal" onclick="if(event.target===this)Translator.hide()">
-    <div class="modal" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column">
+    <div class="modal" id="translator-modal-inner" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column;position:relative">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--bg3)">
+        <button type="button" class="btn btn-g btn-sm" onclick="Translator.hide()" style="font-size:11px">닫기</button>
+        <button type="button" class="btn btn-g btn-sm" id="tr-fullscreen-btn" onclick="Translator.toggleFullscreen()" style="font-size:11px">전체화면</button>
+      </div>
       <div class="mh">
         <span>🌐 번역기</span>
         <div style="display:flex;align-items:center;gap:8px">
