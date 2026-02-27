@@ -4066,10 +4066,13 @@ const GH = (() => {
                     ? new Date(f.date).toLocaleDateString('ko', { month:'2-digit', day:'2-digit' })
                     : '';
                 const ghMeta = [ghSizeStr, ghDateStr].filter(Boolean).join(' · ');
+                const ghMetaContent = ghSizeStr && ghDateStr
+                    ? `<span class="file-item-meta-size">${ghSizeStr}</span> · <span class="file-item-meta-date">${ghDateStr}</span>`
+                    : ghSizeStr ? `<span class="file-item-meta-size">${ghSizeStr}</span>` : ghDateStr ? `<span class="file-item-meta-date">${ghDateStr}</span>` : '';
                 row.innerHTML =
                     `<span class="file-item-icon">${icon}</span>` +
                     `<span class="file-item-name">${_esc(f.name.replace(/\.[^.]+$/, ''))}</span>` +
-                    `<span class="file-item-meta" data-gh-meta="${_esc(f.path)}">${ghMeta || ghSizeStr}</span>` +
+                    `<span class="file-item-meta" data-gh-meta="${_esc(f.path)}">${ghMetaContent}</span>` +
                     `<button class="file-share-btn" title="md-viewer에 공개 Push" onclick="event.stopPropagation();GH.pushFile(this)">📤</button>` +
                     `<button class="file-move-btn" title="파일 이동" onclick="event.stopPropagation();GH.moveFile(this)">↗</button>` +
                     `<button class="file-del-btn" title="파일 삭제" onclick="event.stopPropagation();GH.confirmDelete(this)">🗑</button>`;
@@ -5075,7 +5078,9 @@ const GH = (() => {
                                 : f.size + 'B')
                         : '';
                     const ghDateStr = new Date(f.date).toLocaleDateString('ko', { month:'2-digit', day:'2-digit' });
-                    span.textContent = [ghSizeStr, ghDateStr].filter(Boolean).join(' · ');
+                    span.innerHTML = ghSizeStr && ghDateStr
+                        ? `<span class="file-item-meta-size">${ghSizeStr}</span> · <span class="file-item-meta-date">${ghDateStr}</span>`
+                        : ghSizeStr ? `<span class="file-item-meta-size">${ghSizeStr}</span>` : ghDateStr ? `<span class="file-item-meta-date">${ghDateStr}</span>` : '';
                     const row = span.closest('.file-item');
                     if (row) row.title = f.path + (ghSizeStr ? '\n크기: ' + ghSizeStr : '') + '\n수정: ' + ghDateStr;
                 }
@@ -5937,10 +5942,13 @@ const FM = (() => {
                             : f.size + 'B')
                     : '';
                 const metaStr = [sizeStr, modStr].filter(Boolean).join(' · ');
+                const metaContent = sizeStr && modStr
+                    ? `<span class="file-item-meta-size">${sizeStr}</span> · <span class="file-item-meta-date">${modStr}</span>`
+                    : sizeStr ? `<span class="file-item-meta-size">${sizeStr}</span>` : modStr ? `<span class="file-item-meta-date">${modStr}</span>` : '';
                 row.innerHTML =
                     `<span class="file-item-icon">${icon}</span>` +
                     `<span class="file-item-name">${_esc(f.name.replace(/\.[^.]+$/, ''))}</span>` +
-                    `<span class="file-item-meta">${metaStr}</span>` +
+                    `<span class="file-item-meta">${metaContent}</span>` +
                     `<button class="file-share-btn" title="mdliveData(GitHub)에 Push" onclick="event.stopPropagation();FM.pushToGH(this)" style="font-size:9px;padding:1px 4px">🐙</button>` +
                     `<button class="file-share-btn" title="md-viewer에 Push (공유)" onclick="event.stopPropagation();FM.pushToViewer(this)" style="font-size:9px;padding:1px 4px;color:#58c8f8">📤</button>` +
                     `<button class="file-move-btn" title="파일 이동" onclick="event.stopPropagation();FM.moveFile(this)">↗</button>` +

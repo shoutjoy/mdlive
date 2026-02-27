@@ -1442,7 +1442,7 @@ body {
 /* 크기 + 날짜 메타 정보 — 파일명 옆에 배치, 넘치지 않게 */
 .file-item-meta {
     font-size: 9px;
-    color: #7a9abf;               /* 청회색 — 크기/날짜 구분감 */
+    color: #7a9abf;               /* 청회색 — 날짜 기본(자식에서 덮음) */
     font-family: var(--fm);
     flex-shrink: 0;
     padding-left: 4px;
@@ -1451,7 +1451,11 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.file-item.active .file-item-meta { color: rgba(124,106,247,.7); }
+.file-item-meta-size { color: #f7a06a; }   /* 용량 — 오렌지 */
+.file-item-meta-date { color: #9ab0cf; }   /* 날짜 — 잘 보이게 */
+.file-item.active .file-item-meta,
+.file-item.active .file-item-meta-size,
+.file-item.active .file-item-meta-date { color: rgba(124,106,247,.7); }
 
 /* 사이드바가 좁을 때 순차적으로 숨김: del → move → share → meta */
 @container sidebar (max-width: 400px) {
@@ -1490,7 +1494,7 @@ body {
     background: rgba(247,106,106,.22);
 }
 
-/* 파일 이동 버튼 */
+/* 파일 이동 버튼 — 항상 표시 */
 .file-move-btn {
     flex-shrink: 0;
     background: none;
@@ -1499,17 +1503,13 @@ body {
     font-size: 11px;
     padding: 2px 4px;
     border-radius: 4px;
-    color: #6acff740;             /* 항상 옅게 보이게 */
+    color: #8ad8ff;
     transition: color .15s, background .15s;
     line-height: 1;
 }
-.file-item:hover .file-move-btn,
-.file-item.touch-sel .file-move-btn {
-    color: #6acff780;
-}
 .file-move-btn:hover {
-    color: #6acff7 !important;
-    background: rgba(106,207,247,.15);
+    color: #b0f0ff !important;
+    background: rgba(138,216,255,.2);
 }
 
 /* 폴더 삭제 버튼 */
@@ -4226,7 +4226,7 @@ kbd {
 }
 .ft-folder-body { }
 
-/* fg-add-btn (폴더 안 파일 추가 버튼) */
+/* fg-add-btn (폴더 안 파일 추가 버튼) — 항상 표시 */
 .fg-add-btn {
     background: none;
     border: none;
@@ -4237,10 +4237,9 @@ kbd {
     border-radius: 3px;
     line-height: 1;
     flex-shrink: 0;
-    opacity: 0;
+    opacity: 1;
     transition: opacity .15s, color .15s;
 }
-.ft-folder-hdr:hover .fg-add-btn { opacity: 1; }
 .fg-add-btn:hover { color: #a8ffb0 !important; text-shadow: 0 0 6px rgba(110,240,122,.5); }
 
 /* 파일 공유 버튼 — 항상 표시 (호버 시 강조) */
@@ -4396,6 +4395,8 @@ kbd {
 [data-theme=light] .file-item-ext {
     color: #484878 !important;
 }
+[data-theme=light] .file-item-meta-size { color: #c06020 !important; }
+[data-theme=light] .file-item-meta-date { color: #484878 !important; }
 
 /* ── 폴더 헤더 ── */
 [data-theme=light] .ft-folder-hdr {
@@ -4423,7 +4424,7 @@ kbd {
 /* ── 파일 삭제/이동/push 버튼 ── */
 [data-theme=light] .file-del-btn  { color: #b02020 !important; opacity: .8; }
 [data-theme=light] .file-del-btn:hover  { color: #d00000 !important; background: rgba(208,0,0,.12); opacity: 1; }
-[data-theme=light] .file-move-btn { color: #3050a0 !important; opacity: .8; }
+[data-theme=light] .file-move-btn { color: #3050a0 !important; opacity: 1; }
 [data-theme=light] .file-move-btn:hover { color: #1030c0 !important; background: rgba(20,48,192,.12); opacity: 1; }
 [data-theme=light] .file-share-btn { color: #1870b0 !important; opacity: .8; }
 [data-theme=light] .file-share-btn:hover { background: rgba(24,112,176,.12); opacity: 1; }
