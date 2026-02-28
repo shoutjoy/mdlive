@@ -10141,10 +10141,37 @@ const AiImage = (() => {
     async function generate() {
         if (_busy) return;
         const promptEl = el('aiimg-prompt');
-        const prompt = promptEl ? promptEl.value.trim() : '';
+        let prompt = promptEl ? promptEl.value.trim() : '';
         if (!prompt) { alert('프롬프트를 입력하세요.'); return; }
         const key = typeof AiApiKey !== 'undefined' ? AiApiKey.get() : '';
         if (!key) { alert('AI API 키를 설정에서 입력해 주세요.'); return; }
+        const textModelEl = el('aiimg-text-model');
+        const textModelId = textModelEl && textModelEl.value ? textModelEl.value.trim() : '';
+        if (textModelId) {
+            try {
+                const refineUrl = `https://generativelanguage.googleapis.com/v1beta/models/${textModelId}:generateContent?key=${encodeURIComponent(key)}`;
+                const refineBody = {
+                    contents: [{
+                        role: 'user',
+                        parts: [{ text: `다음 사용자 요청을 이미지 생성 AI에 전달할 수 있도록, 구체적이고 시각적으로 묘사된 단일 프롬프트로만 변환해 주세요. 다른 설명이나 접두사 없이 변환된 프롬프트 한 개만 출력하세요.\n\n사용자 요청:\n${prompt}` }]
+                    }],
+                    generationConfig: { temperature: 0.4, maxOutputTokens: 1024 }
+                };
+                const refineRes = await fetch(refineUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(refineBody),
+                    signal: AbortSignal.timeout(30000)
+                });
+                const refineData = await refineRes.json();
+                if (refineRes.ok && refineData.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    const enhanced = String(refineData.candidates[0].content.parts[0].text).trim();
+                    if (enhanced) prompt = enhanced;
+                }
+            } catch (e) {
+                console.warn('텍스트 모델 프롬프트 보강 실패, 원본 사용:', e);
+            }
+        }
         const modelId = (el('aiimg-model') && el('aiimg-model').value) || 'gemini-2.0-flash-exp-image-generation';
         _busy = true;
         _currentPrompt = prompt;
@@ -13016,7 +13043,7 @@ const App = {
         App.showModal('gh-history-modal');
         GH.loadHistory(false);
     },
-    /* ── 오늘 날짜 삽입 (Shift+Alt+D) ──────────────────── */
+    /* ── 오늘 날짜 삽입 (Shift+Alt+D): 핫키는 오늘 날짜 직접 삽입 ── */
     insertDate() {
         const ed  = el('editor');
         if (!ed) return;
@@ -13025,6 +13052,63 @@ const App = {
         const end = ed.selectionEnd;
         ed.setRangeText(dateStr, pos, end, 'end');
         US.snap(); TM.markDirty(); App.render();
+    },
+    /* ── 날짜 삽입 모달 (버튼 클릭 시): 달력에서 선택 후 삽입 ── */
+    _dateInsertCurrent: null,
+    _dateInsertShowTime: false,
+    openDatePickerModal() {
+        this._dateInsertCurrent = new Date();
+        this._dateInsertShowTime = false;
+        const chk = document.getElementById('date-insert-show-time');
+        if (chk) chk.checked = false;
+        this._dateInsertRefresh();
+        App.showModal('date-insert-modal');
+    },
+    toggleDateInsertShowTime() {
+        const chk = document.getElementById('date-insert-show-time');
+        this._dateInsertShowTime = chk ? chk.checked : !this._dateInsertShowTime;
+        this._dateInsertRefresh();
+    },
+    dateInsertAdjust(unit, delta) {
+        const d = this._dateInsertCurrent;
+        if (!d) return;
+        if (unit === 'year') { d.setFullYear(d.getFullYear() + delta); }
+        else if (unit === 'month') { d.setMonth(d.getMonth() + delta); }
+        else if (unit === 'day') { d.setDate(d.getDate() + delta); }
+        else if (unit === 'hour') { d.setHours(d.getHours() + delta); }
+        else if (unit === 'min') { d.setMinutes(d.getMinutes() + delta); }
+        this._dateInsertRefresh();
+    },
+    _dateInsertRefresh() {
+        const d = this._dateInsertCurrent;
+        if (!d) return;
+        const y = document.getElementById('date-insert-year');
+        const m = document.getElementById('date-insert-month');
+        const day = document.getElementById('date-insert-day');
+        const h = document.getElementById('date-insert-hour');
+        const min = document.getElementById('date-insert-min');
+        const preview = document.getElementById('date-insert-preview');
+        const timeRow = document.getElementById('date-insert-time-row');
+        const showTime = this._dateInsertShowTime;
+        if (timeRow) timeRow.style.display = showTime ? '' : 'none';
+        if (y) y.textContent = d.getFullYear();
+        if (m) m.textContent = d.getMonth() + 1;
+        if (day) day.textContent = d.getDate();
+        if (h) h.textContent = d.getHours();
+        if (min) min.textContent = String(d.getMinutes()).padStart(2, '0');
+        if (preview) preview.textContent = showTime ? formatDateTime(d) : (() => { const w = ['일','월','화','수','목','금','토'][d.getDay()]; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}(${w})`; })();
+    },
+    insertDateFromPicker() {
+        const ed = el('editor');
+        if (!ed) return;
+        const d = this._dateInsertCurrent || new Date();
+        const dateStr = this._dateInsertShowTime ? formatDateTime(d) : (() => { const w = ['일','월','화','수','목','금','토'][d.getDay()]; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}(${w})`; })();
+        const pos = ed.selectionStart;
+        const end = ed.selectionEnd;
+        ed.setRangeText(dateStr, pos, end, 'end');
+        ed.focus();
+        US.snap(); TM.markDirty(); App.render();
+        App.hideModal('date-insert-modal');
     },
 
     _toast(msg, duration) {

@@ -239,7 +239,7 @@
         <button class="tb tb-insert" onclick="App.showCite()" data-tooltip="인용 삽입" data-key="Ctrl+Shift+C">📖</button>
         <button class="tb tb-insert" onclick="STATS.show()" data-tooltip="APA 통계 삽입"
           data-key="Shift+Alt+9">𝑓(x)</button>
-        <button class="tb tb-insert" onclick="App.insertDate()" data-tooltip="오늘 날짜·시간 삽입 (2026-02-27(금) 오전 12:04 형식)"
+        <button class="tb tb-insert" onclick="App.openDatePickerModal()" data-tooltip="날짜 삽입 — 버튼: 달력에서 선택 / Shift+Alt+D: 오늘 날짜"
           data-key="Shift+Alt+D">📅</button>
         <button class="tb tb-insert" onclick="CharMap.show()" data-tooltip="문자표 — 특수문자 삽입 (Ctrl+Q)"
           data-key="Ctrl+Q">Ω</button>
@@ -968,6 +968,70 @@
     </div>
   </div>
 
+  <!-- 날짜 삽입 (달력 선택) 모달 -->
+  <div class="ov" id="date-insert-modal" onclick="if(event.target===this)App.hideModal('date-insert-modal')">
+    <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
+      <div class="mh">
+        <span>📅 날짜 삽입</span>
+        <button class="btn-ic" onclick="App.hideModal('date-insert-modal')">&#x2715;</button>
+      </div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:12px;color:var(--tx2);padding:8px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)" id="date-insert-preview">2026-02-28(토) 오후 3:00</div>
+        <div class="fg">
+          <label class="fl">연도</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button type="button" class="btn btn-g btn-sm" style="width:36px;padding:6px" onclick="App.dateInsertAdjust('year',-1)">−</button>
+            <span id="date-insert-year" style="min-width:48px;text-align:center;font-weight:600">2026</span>
+            <button type="button" class="btn btn-g btn-sm" style="width:36px;padding:6px" onclick="App.dateInsertAdjust('year',1)">+</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">월</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button type="button" class="btn btn-g btn-sm" style="width:36px;padding:6px" onclick="App.dateInsertAdjust('month',-1)">−</button>
+            <span id="date-insert-month" style="min-width:48px;text-align:center;font-weight:600">2</span>
+            <button type="button" class="btn btn-g btn-sm" style="width:36px;padding:6px" onclick="App.dateInsertAdjust('month',1)">+</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="fl">일</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button type="button" class="btn btn-g btn-sm" style="width:36px;padding:6px" onclick="App.dateInsertAdjust('day',-1)">−</button>
+            <span id="date-insert-day" style="min-width:48px;text-align:center;font-weight:600">28</span>
+            <button type="button" class="btn btn-g btn-sm" style="width:36px;padding:6px" onclick="App.dateInsertAdjust('day',1)">+</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--tx2)">
+            <input type="checkbox" id="date-insert-show-time" style="accent-color:var(--ac)" onchange="App.toggleDateInsertShowTime()">
+            시간보기
+          </label>
+        </div>
+        <div class="fg" id="date-insert-time-row">
+          <label class="fl">시간</label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:4px">
+              <button type="button" class="btn btn-g btn-sm" style="width:32px;padding:4px" onclick="App.dateInsertAdjust('hour',-1)">−</button>
+              <span id="date-insert-hour" style="min-width:36px;text-align:center;font-weight:600">15</span>
+              <button type="button" class="btn btn-g btn-sm" style="width:32px;padding:4px" onclick="App.dateInsertAdjust('hour',1)">+</button>
+            </div>
+            <span style="color:var(--tx3)">시</span>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button type="button" class="btn btn-g btn-sm" style="width:32px;padding:4px" onclick="App.dateInsertAdjust('min',-1)">−</button>
+              <span id="date-insert-min" style="min-width:36px;text-align:center;font-weight:600">00</span>
+              <button type="button" class="btn btn-g btn-sm" style="width:32px;padding:4px" onclick="App.dateInsertAdjust('min',1)">+</button>
+            </div>
+            <span style="color:var(--tx3)">분</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button type="button" class="btn btn-g btn-sm" onclick="App.hideModal('date-insert-modal')">취소</button>
+          <button type="button" class="btn btn-p btn-sm" onclick="App.insertDateFromPicker()">삽입</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- APA STATS MODAL -->
   <div class="ov" id="stats-modal">
     <div class="modal" style="max-width:560px">
@@ -1470,6 +1534,17 @@
               <textarea id="aiimg-prompt" class="fi" rows="4" placeholder="이미지 설명…" style="margin-top:4px;resize:vertical;min-height:80px;font-size:13px;width:100%;box-sizing:border-box"></textarea>
             </div>
             <button type="button" class="btn btn-p" onclick="AiImage.generate()" id="aiimg-generate-btn" style="font-weight:600;margin-top:8px">🖼 이미지 생성</button>
+            <div style="margin-top:8px">
+              <label style="font-size:11px;color:var(--tx3)">텍스트 모델 (프롬프트 분석)</label>
+              <select id="aiimg-text-model" class="fi" style="width:100%;margin-top:4px;padding:6px 8px;font-size:12px" title="선택 시 사용자 프롬프트를 분석·보강하여 이미지 모델에 전달">
+                <option value="">사용 안 함</option>
+                <option value="gemini-3-flash">Gemini 3 Flash</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+              </select>
+              <p style="font-size:10px;color:var(--tx3);margin-top:2px">선택 시: 언어 모델이 프롬프트를 분석해 이미지 모델용으로 보강합니다.</p>
+            </div>
             <div style="margin-top:8px;padding:6px 8px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
               <div style="font-size:11px;color:var(--tx3);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:6px">
                 <span>이미지분석결과</span>
@@ -1505,6 +1580,7 @@
               <option value="gemini-3-pro-image">Nano Banana Pro (Gemini 3 Pro Image)</option>
               <option value="gemini-3.1-flash-image">Gemini 3.1 Flash Image</option>
             </select>
+            <p style="font-size:10px;color:var(--tx3);margin-top:2px">이미지 생성 모델</p>
           </div>
           <div>
             <label style="font-size:11px;color:var(--tx3)">메뉴 type</label>
