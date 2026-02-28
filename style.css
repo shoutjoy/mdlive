@@ -650,8 +650,10 @@ body {
     opacity: 0;
     transition: opacity .12s, color .12s, background .12s;
 }
+/* 탭이 하나일 때도 닫기 버튼 항상 표시 (닫으면 빈 문서로 대체) */
+#tab-list .tab:only-of-type .tab-close { opacity: 1; }
 .tab:hover .tab-close,
-.tab.active .tab-close { opacity: 1 }
+.tab.active .tab-close { opacity: 1; }
 .tab-close:hover { color: #f76a6a !important; background: rgba(247,106,106,.15) !important; }
 
 #app-logo {
@@ -990,10 +992,10 @@ body {
     min-width: 22px;
     min-height: 22px;
     padding: 0;
-    border: none;
+    border: 2px solid var(--ac);
     border-radius: 50%;
-    background: var(--ac);
-    color: #fff;
+    background: var(--bg2);
+    color: rgba(124, 106, 247, 0.85);
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
@@ -1002,6 +1004,12 @@ body {
     justify-content: center;
     flex-shrink: 0;
     line-height: 1;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+#gh-hdr .gh-hdr-save-circle.gh-hdr-save-connected {
+    background: #1a4d2e;
+    color: #7cf09b;
+    border: 2px solid var(--ac);
 }
 #gh-hdr .gh-hdr-save-circle:hover {
     filter: brightness(1.15);

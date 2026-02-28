@@ -360,7 +360,7 @@
           <div id="gh-hdr">
             <button class="btn btn-g btn-sm" id="gh-settings-btn" onclick="GH.showSettings()"
               title="GitHub 설정">⚙ 설정</button>
-            <button type="button" id="gh-hdr-save-btn" onclick="GH.saveSettings()" title="연결 테스트 &amp; 저장"
+            <button type="button" id="gh-hdr-save-btn" onclick="event.stopPropagation();GH.handleHdrSaveClick(event)" title="연결 테스트 &amp; 저장"
               class="gh-hdr-save-circle">✓</button>
             <span id="gh-hdr-ok-msg" style="display:none;font-size:10px;color:var(--ok);font-weight:600;margin-left:2px;opacity:0;transition:opacity .25s" aria-live="polite"></span>
             <a id="gh-repo-link" href="#" target="_blank" title="GitHub 저장소 열기"

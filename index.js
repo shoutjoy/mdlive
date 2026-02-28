@@ -3229,7 +3229,6 @@ const TM = (() => {
         const list = document.getElementById('tab-list');
         if (!list) return;
         list.innerHTML = '';
-        const single = tabs.length === 1;
 
         tabs.forEach(t => {
             const div = document.createElement('div');
@@ -3247,7 +3246,7 @@ const TM = (() => {
                 (t.ghPath ? `<span class="tab-gh-indicator" title="GitHub: ${_esc(t.ghPath)}">🐙</span>` : '') +
                 `<span class="tab-title">${_esc(tabDisplayText)}</span>` +
                 `<span class="tab-dirty" title="저장되지 않은 변경사항">●</span>` +
-                (single ? '' : `<button class="tab-close" title="닫기 (Ctrl+W)">✕</button>`);
+                `<button class="tab-close" title="닫기 (Ctrl+W)">✕</button>`;
 
             /* 클릭: 전환 / 닫기 */
             div.addEventListener('click', ev => {
@@ -3321,7 +3320,6 @@ const TM = (() => {
 
     /* ── 탭 닫기 ─────────────────────────────────────── */
     function closeTab(id) {
-        if (tabs.length === 1) return;   /* 마지막 탭은 닫지 않음 */
         const tab = tabs.find(t => t.id === id);
         if (!tab) return;
         if (tab.isDirty &&
@@ -3330,6 +3328,12 @@ const TM = (() => {
         const idx    = tabs.indexOf(tab);
         const wasActive = id === activeId;
         tabs.splice(idx, 1);
+
+        if (tabs.length === 0) {
+            /* 마지막 탭을 닫은 경우: 빈 탭 하나 자동 생성 (파일은 항상 한 개 열려 있음) */
+            newTab('Untitled', '', 'md');
+            return;
+        }
 
         if (wasActive) {
             /* 오른쪽 탭 → 없으면 왼쪽 탭으로 이동 */
@@ -3802,12 +3806,56 @@ const GH = (() => {
 
     function hideSettings() { App.hideModal('gh-modal'); }
 
+    /** 헤더의 연결 테스트 버튼: 저장된 설정으로 연결 테스트만 수행 (설정 없으면 설정창 열기) */
+    async function handleHdrSaveClick(ev) {
+        if (ev) ev.stopPropagation();
+        const currentCfg = cfg || _loadCfg();
+        if (!currentCfg || !currentCfg.token || !currentCfg.repo) {
+            showSettings();
+            return;
+        }
+        const nameEl = document.getElementById('gh-repo-name');
+        if (nameEl) { nameEl.textContent = '⟳ 연결 테스트 중…'; nameEl.style.color = 'var(--tx3)'; }
+        try {
+            const info = await _apiFetch('');
+            cfg = currentCfg;
+            _setRepoUI(cfg.repo);
+            const hdrOk = document.getElementById('gh-hdr-ok-msg');
+            if (hdrOk) {
+                hdrOk.textContent = '연결성공';
+                hdrOk.style.display = 'inline';
+                hdrOk.style.opacity = '1';
+                clearTimeout(hdrOk._hideTid);
+                hdrOk._hideTid = setTimeout(() => {
+                    hdrOk.style.opacity = '0';
+                    setTimeout(() => { hdrOk.style.display = 'none'; hdrOk.textContent = ''; }, 280);
+                }, 2200);
+            }
+            refresh();
+        } catch (e) {
+            cfg = _loadCfg();
+            _setRepoUI(currentCfg.repo, 'err');
+            const saveBtn = document.getElementById('gh-hdr-save-btn');
+            if (saveBtn) saveBtn.classList.remove('gh-hdr-save-connected');
+            if (typeof App !== 'undefined' && App._toast) App._toast('✗ 연결 실패: ' + (e.message || e));
+            else alert('연결 실패: ' + (e.message || e));
+        }
+    }
+
     async function saveSettings() {
         const eid = id => document.getElementById(id);
-        const token    = eid('gh-token-input').value.trim();
-        const repo     = eid('gh-repo-input').value.trim();
-        const branch   = eid('gh-branch-input').value.trim() || 'main';
-        const basePath = eid('gh-path-input').value.trim().replace(/^\/|\/$/g, '');
+        const tokenEl = eid('gh-token-input');
+        if (!tokenEl) {
+            showSettings();
+            return;
+        }
+        const token    = tokenEl.value.trim();
+        const repoEl   = eid('gh-repo-input');
+        const repo     = (repoEl && repoEl.value ? repoEl.value : '').trim();
+        const branchEl = eid('gh-branch-input');
+        const branch   = (branchEl && branchEl.value ? branchEl.value : '') || 'main';
+        const pathEl   = eid('gh-path-input');
+        const basePath = (pathEl && pathEl.value ? pathEl.value : '').trim().replace(/^\/|\/$/g, '');
         const device   = eid('gh-device-input') ? eid('gh-device-input').value.trim() : '';
         if (device) localStorage.setItem('mdpro_device_name', device);
         else        localStorage.removeItem('mdpro_device_name');
@@ -4483,6 +4531,11 @@ const GH = (() => {
         if (refBtn)   refBtn.style.display   = connected ? '' : 'none';
         if (cloneBtn) cloneBtn.style.display  = connected ? '' : 'none';
                 if (quickBtn) quickBtn.style.display  = connected ? 'none' : '';
+        const saveBtn = document.getElementById('gh-hdr-save-btn');
+        if (saveBtn) {
+            if (connected) saveBtn.classList.add('gh-hdr-save-connected');
+            else saveBtn.classList.remove('gh-hdr-save-connected');
+        }
         if (linkEl && connected) {
             linkEl.href         = 'https://github.com/' + cfg.repo;
             linkEl.style.display = '';
@@ -4864,23 +4917,32 @@ const GH = (() => {
         const refBtn   = document.getElementById('gh-refresh-btn');
         const cloneBtn = document.getElementById('gh-clone-btn');
         const linkBtn  = document.getElementById('gh-repo-link');
+        const connected = !!cfg;
         if (nameEl) {
             if (state === 'loading') { nameEl.textContent = '⟳ 로딩 중…'; nameEl.style.color = 'var(--tx3)'; }
             else if (state === 'err') { nameEl.textContent = `⚠ ${repoName}`; nameEl.style.color = '#f76a6a'; }
-            else { nameEl.textContent = repoName + (allFiles.length ? `  (${allFiles.length}개)` : ''); nameEl.style.color = 'var(--tx2)'; }
+            else if (connected) { nameEl.textContent = repoName + (allFiles.length ? `  (${allFiles.length}개)` : ''); nameEl.style.color = 'var(--tx2)'; }
+            else { nameEl.textContent = '미연결'; nameEl.style.color = 'var(--tx3)'; }
         }
-        if (refBtn)   refBtn.style.display   = cfg ? '' : 'none';
-        if (cloneBtn) cloneBtn.style.display  = cfg ? '' : 'none';
-        if (linkBtn && cfg) {
+        if (refBtn)   refBtn.style.display   = connected ? '' : 'none';
+        if (cloneBtn) cloneBtn.style.display  = connected ? '' : 'none';
+        const saveBtn = document.getElementById('gh-hdr-save-btn');
+        if (saveBtn) {
+            if (connected) saveBtn.classList.add('gh-hdr-save-connected');
+            else saveBtn.classList.remove('gh-hdr-save-connected');
+        }
+        if (linkBtn && connected) {
             linkBtn.href = `https://github.com/${cfg.repo}`;
             linkBtn.style.display = '';
+        } else if (linkBtn) {
+            linkBtn.style.display = 'none';
         }
         /* 새파일/새폴더 버튼: 연결 시에만 표시 (sb-stats 한 줄) */
         const ghNewfileBtn = document.getElementById('gh-newfile-btn');
         const ghMkdirBtn = document.getElementById('gh-mkdir-btn');
-        if (ghNewfileBtn) ghNewfileBtn.style.display = cfg ? '' : 'none';
-        if (ghMkdirBtn) ghMkdirBtn.style.display = cfg ? '' : 'none';
-        if (cfg) {
+        if (ghNewfileBtn) ghNewfileBtn.style.display = connected ? '' : 'none';
+        if (ghMkdirBtn) ghMkdirBtn.style.display = connected ? '' : 'none';
+        if (connected) {
             _ghArUpdateBtn();
             if (_ghArEnabled) _ghStartAutoRefresh();
         } else {
@@ -4888,10 +4950,10 @@ const GH = (() => {
         }
         const sbArWrap = document.getElementById('statusbar-ar-wrap');
         const sbArSep = document.getElementById('statusbar-ar-sep');
-        if (sbArWrap) sbArWrap.style.display = cfg ? 'flex' : 'none';
-        if (sbArSep) sbArSep.style.display = cfg ? '' : 'none';
+        if (sbArWrap) sbArWrap.style.display = connected ? 'flex' : 'none';
+        if (sbArSep) sbArSep.style.display = connected ? '' : 'none';
         const ghCommitBtn = document.getElementById('gh-commit-history-btn');
-        if (ghCommitBtn) ghCommitBtn.style.display = cfg ? '' : 'none';
+        if (ghCommitBtn) ghCommitBtn.style.display = connected ? '' : 'none';
     }
 
     /* ── 커밋 히스토리 ─────────────────────────────────────
@@ -5645,7 +5707,7 @@ const GH = (() => {
     }
 
     return {
-        restore, refresh, search, showSettings, hideSettings, saveSettings,
+        restore, refresh, search, showSettings, hideSettings, saveSettings, handleHdrSaveClick,
         reloadCfg: () => { cfg = _loadCfg(); },
         saveFile, createFile, pushLocalFiles, getRemoteSHAs,
         openRepoLink, cloneRepo, renameAndCommit,
@@ -13160,7 +13222,9 @@ const DeepResearch = (() => {
     }
 
     function saveHistoryItemToFile(id) {
-        const item = _historyCache.find(x => x.id === id);
+        const item = _historyCache.find(x => x.id === id
+            
+        );
         if (!item || !item.result || !item.result.trim()) {
             alert('저장할 내용이 없습니다.');
             return;
