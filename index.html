@@ -815,8 +815,8 @@
         <button type="button" class="btn btn-g btn-sm" id="hk-line-highlight-btn" onclick="EditorLineHighlight.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
         <span style="font-size:11px;color:var(--tx3);margin-left:8px;flex-shrink:0">작성자 정보</span>
         <input type="text" id="hk-author-name" placeholder="이름" title="이름" style="font-size:11px;padding:4px 6px;min-width:100px;flex:1;max-width:140px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
-        <input type="text" id="hk-author-affiliation" placeholder="소속" title="소속" style="font-size:11px;padding:4px 6px;min-width:120px;flex:1;max-width:180px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
-        <input type="text" id="hk-author-email" placeholder="메일" title="메일" style="font-size:11px;padding:4px 6px;min-width:130px;flex:1;max-width:200px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
+        <textarea id="hk-author-affiliation" placeholder="소속" title="소속" rows="2" style="font-size:11px;padding:4px 6px;min-width:120px;flex:1;max-width:180px;min-height:2.2em;height:auto;resize:both;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box;vertical-align:middle;line-height:1.4"></textarea>
+        <textarea id="hk-author-email" placeholder="메일" title="메일" rows="1" style="font-size:11px;padding:4px 6px;min-width:130px;flex:1;max-width:200px;min-height:2em;resize:both;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box;vertical-align:middle;line-height:1.4"></textarea>
         <input type="text" id="hk-author-contact" placeholder="연락처" title="연락처" style="font-size:11px;padding:4px 6px;min-width:100px;flex:1;max-width:140px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
         <button type="button" class="btn btn-g btn-sm" onclick="AuthorInfo.saveInputs()" style="font-size:11px;flex-shrink:0">저장</button>
         <button type="button" class="btn btn-p btn-sm" onclick="AuthorInfo.insertAllIntoEditor(); App.hideHK();" style="font-size:11px;flex-shrink:0" title="작성한 작성자 정보를 에디터에 삽입">작성된 것은 문서에 삽입</button>
@@ -2131,9 +2131,9 @@ Do not provide explanations unless explicitly requested.</textarea>
   <!-- Deep Research 모달 -->
   <div class="ov" id="deep-research-modal" onclick="if(event.target===this)DeepResearch.hide()">
     <div id="dr-modal-box" class="modal dr-modal-draggable" style="max-width:960px;width:95vw;max-height:90vh;display:flex;flex-direction:column;position:relative">
-      <div class="mh dr-modal-drag" style="cursor:move;user-select:none">
+      <div class="mh dr-modal-drag" style="cursor:move;user-select:none;display:flex;align-items:center;justify-content:space-between;width:100%">
         <span>📚 Deep Research</span>
-        <div style="display:flex;align-items:center;gap:6px">
+        <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
           <button class="btn btn-g btn-sm" onclick="DeepResearch.hide();event.stopPropagation()" style="font-size:11px;padding:4px 10px">닫기</button>
           <button class="btn-ic" id="dr-maximize-btn" onclick="DeepResearch.toggleMaximize();event.stopPropagation()" title="최대화">⛶</button>
           <button class="btn-ic" onclick="DeepResearch.hide()">✕</button>
