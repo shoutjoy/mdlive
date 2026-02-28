@@ -1220,6 +1220,8 @@
           <div style="flex:0 0 auto">
             <label style="font-size:10px;color:var(--tx3)">모델</label>
             <select id="cite-ai-model" class="fi" style="width:100%;max-width:200px;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-3-flash-preview" selected>Gemini 3 Flash</option>
+              <option value="gemini-2.0-flash">Gemini 2 Flash</option>
               <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
               <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
@@ -1233,11 +1235,15 @@
                 <option value="research">연구용</option>
                 <option value="meta">메타분석·문헌고찰</option>
                 <option value="recommend">추천형</option>
+                <option value="data-survey">자료조사용</option>
+                <option value="systematic-review">체계적 문헌조사</option>
+                <option value="academic-paper">학술논문형 조사</option>
+                <option value="citation">인용정보 수집용</option>
               </select>
               <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="DeepResearch.openCitePresetTextWindow()" title="새 창에서 프롬프트 보기·편집">새창보기</button>
             </div>
             <textarea id="cite-ai-preset-text" class="fi" rows="3" placeholder="양식을 선택하면 여기에 채워집니다. 필요 시 수정하세요."
-              style="width:100%;height:70px;min-height:70px;max-height:40vh;font-size:12px;resize:both;line-height:1.5;display:block"></textarea>
+              style="width:100%;height:78px;min-height:78px;max-height:40vh;font-size:12px;resize:both;line-height:1.5;display:block"></textarea>
           </div>
           <div>
             <label style="font-size:10px;color:var(--tx3)">질문</label>
@@ -2153,6 +2159,7 @@ Do not provide explanations unless explicitly requested.</textarea>
         <button type="button" class="tr-tab active" data-tab="question" onclick="DeepResearch.switchTab('question')">질문</button>
         <button type="button" class="tr-tab" data-tab="pro-preview" onclick="DeepResearch.switchTab('pro-preview')">Deep Research Pro Preview</button>
         <button type="button" class="tr-tab" data-tab="ai-search" onclick="DeepResearch.switchTab('ai-search')">AI 검색</button>
+        <button type="button" class="tr-tab" data-tab="data-research" onclick="DeepResearch.switchTab('data-research')">자료조사</button>
       </div>
       <!-- 탭: 질문 (모델 선택) -->
       <div id="dr-panel-question" style="padding:8px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;flex-direction:column;gap:8px">
@@ -2189,6 +2196,8 @@ Do not provide explanations unless explicitly requested.</textarea>
           <div style="flex:1;min-width:140px">
             <label style="font-size:10px;color:var(--tx3)">모델</label>
             <select id="dr-ai-model" class="fi" style="width:100%;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-3-flash-preview" selected>Gemini 3 Flash</option>
+              <option value="gemini-2.0-flash">Gemini 2 Flash</option>
               <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
               <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
@@ -2203,11 +2212,15 @@ Do not provide explanations unless explicitly requested.</textarea>
               <option value="research">연구용</option>
               <option value="meta">메타분석·문헌고찰</option>
               <option value="recommend">추천형</option>
+              <option value="data-survey">자료조사용</option>
+              <option value="systematic-review">체계적 문헌조사</option>
+              <option value="academic-paper">학술논문형 조사</option>
+              <option value="citation">인용정보 수집용</option>
             </select>
             <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="DeepResearch.openPresetTextWindow()" title="새 창에서 프롬프트 보기·편집">새창보기</button>
           </div>
           <textarea id="dr-ai-preset-text" class="fi" rows="3" placeholder="양식을 선택하면 여기에 채워집니다. 필요 시 수정하세요."
-            style="width:100%;height:70px;min-height:70px;max-height:60vh;font-size:12px;resize:both;line-height:1.5;display:block"></textarea>
+            style="width:100%;height:78px;min-height:78px;max-height:60vh;font-size:12px;resize:both;line-height:1.5;display:block"></textarea>
         </div>
         <div>
           <label style="font-size:10px;color:var(--tx3)">질문</label>
@@ -2220,11 +2233,56 @@ Do not provide explanations unless explicitly requested.</textarea>
           <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="CiteAiSearchHistory.saveCurrent()" title="현재 답변을 히스토리에 저장">히스토리 저장</button>
         </div>
       </div>
+      <!-- 탭: 자료조사 (AI 검색과 동일 UI, 기본 모델 Gemini 3 Flash, 버튼 AI자료조사) -->
+      <div id="dr-panel-data-research" style="display:none;padding:8px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;flex-direction:column;gap:8px;flex:0 0 auto">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:10px;color:var(--tx3)">모델</label>
+            <select id="dr-data-model" class="fi" style="width:100%;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-3-flash-preview" selected>Gemini 3 Flash</option>
+              <option value="gemini-2.0-flash">Gemini 2 Flash</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <label style="font-size:10px;color:var(--tx3)">사전 프롬프트 (수정 가능)</label>
+            <select id="dr-data-preset" class="fi" style="width:auto;padding:4px 8px;font-size:11px" onchange="DeepResearch.applyDataResearchPreset()" title="양식 불러오기">
+              <option value="basic">기본형</option>
+              <option value="research">연구용</option>
+              <option value="meta">메타분석·문헌고찰</option>
+              <option value="recommend">추천형</option>
+              <option value="data-survey">자료조사용</option>
+              <option value="systematic-review">체계적 문헌조사</option>
+              <option value="academic-paper">학술논문형 조사</option>
+              <option value="citation">인용정보 수집용</option>
+            </select>
+            <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="DeepResearch.openDataPresetTextWindow()" title="새 창에서 프롬프트 보기·편집">새창보기</button>
+          </div>
+          <textarea id="dr-data-preset-text" class="fi" rows="3" placeholder="양식을 선택하면 여기에 채워집니다. 필요 시 수정하세요."
+            style="width:100%;height:78px;min-height:78px;max-height:60vh;font-size:12px;resize:both;line-height:1.5;display:block"></textarea>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--tx3)">질문</label>
+          <textarea id="dr-data-prompt" class="fi" rows="3" placeholder="질문을 입력하세요…"
+            style="width:100%;margin-top:4px;font-size:13px;resize:vertical;min-height:72px"></textarea>
+        </div>
+        <button class="btn btn-p" onclick="DeepResearch.runDataResearch()" style="font-size:12px;font-weight:600">🔎 AI자료조사</button>
+      </div>
       <!-- 출력 -->
       <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:200px;position:relative">
         <div style="padding:6px 12px;font-size:10px;color:var(--tx3);font-weight:600;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
           <span>답변</span>
           <div style="display:flex;gap:4px;align-items:center">
+            <label style="font-size:10px;color:var(--tx3);margin-right:2px">문체</label>
+            <select id="dr-style-tone" class="fi" style="font-size:10px;padding:2px 6px;height:24px;width:auto;min-width:100px" title="답변 문체">
+              <option value="academic">학술체(~이다)</option>
+              <option value="report">보고체(~임, ~함)</option>
+              <option value="polite">일반체(존댓말)</option>
+            </select>
             <button class="btn btn-g btn-sm" id="dr-stop-btn" onclick="DeepResearch.stopRun()" style="font-size:10px;padding:2px 8px;display:none;color:var(--er);border-color:var(--er)">⏹ 진행 중지</button>
             <button class="btn btn-g btn-sm" id="dr-thinking-btn" onclick="DeepResearch.toggleThinking()" style="font-size:10px;padding:2px 8px;display:none">💭 생각</button>
             <button class="btn btn-sm" id="dr-translate-thinking-btn" onclick="DeepResearch.openThinkingForTranslate()" title="생각 내용 번역" style="display:none;font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">생각번역</button>

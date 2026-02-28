@@ -13230,20 +13230,25 @@ const DeepResearch = (() => {
 
     function switchTab(tab) {
         _currentTab = tab;
-        const q = $('dr-panel-question'), p = $('dr-panel-pro'), a = $('dr-panel-ai-search');
+        const q = $('dr-panel-question'), p = $('dr-panel-pro'), a = $('dr-panel-ai-search'), d = $('dr-panel-data-research');
         const tabs = document.querySelectorAll('#dr-tabs .tr-tab');
         if (q) q.style.display = tab === 'question' ? 'flex' : 'none';
         if (p) p.style.display = tab === 'pro-preview' ? 'flex' : 'none';
         if (a) a.style.display = tab === 'ai-search' ? 'flex' : 'none';
+        if (d) d.style.display = tab === 'data-research' ? 'flex' : 'none';
         tabs.forEach(t => {
             const active = t.getAttribute('data-tab') === tab;
             t.classList.toggle('active', active);
         });
-        const inp = tab === 'question' ? $('dr-prompt') : tab === 'pro-preview' ? $('dr-prompt-pro') : $('dr-ai-prompt');
+        const inp = tab === 'question' ? $('dr-prompt') : tab === 'pro-preview' ? $('dr-prompt-pro') : tab === 'ai-search' ? $('dr-ai-prompt') : $('dr-data-prompt');
         if (inp) setTimeout(() => inp.focus(), 50);
         if (tab === 'ai-search') {
             const presetTa = $('dr-ai-preset-text');
             if (presetTa && !presetTa.value.trim()) applyAiSearchPreset();
+        }
+        if (tab === 'data-research') {
+            const presetTa = $('dr-data-preset-text');
+            if (presetTa && !presetTa.value.trim()) applyDataResearchPreset();
         }
     }
 
@@ -13355,8 +13360,9 @@ const DeepResearch = (() => {
         if (_busy) return;
         const inp = $('dr-prompt'), out = $('dr-output'), thinkEl = $('dr-thinking');
         const loadEl = $('dr-loading'), thinkBtn = $('dr-thinking-btn'), insBtn = $('dr-insert-btn'), stopBtn = $('dr-stop-btn');
-        const prompt = inp ? inp.value.trim() : '';
+        let prompt = inp ? inp.value.trim() : '';
         if (!prompt) { alert('질문을 입력해 주세요.'); return; }
+        prompt += _getStyleInstruction();
         const modelId = $('dr-model')?.value || 'gemini-2.5-pro';
 
         _busy = true;
@@ -13710,7 +13716,8 @@ const DeepResearch = (() => {
             .replace(/\[주제\]/g, topic || '[주제 미입력]');
         prompt += '\n\n' + _AI_SEARCH_VERIFICATION;
         if (question) prompt += '\n\n질문:\n' + question;
-        const modelId = (modelEl && modelEl.value) ? modelEl.value : 'gemini-2.5-flash';
+        prompt += _getStyleInstruction();
+        const modelId = (modelEl && modelEl.value) ? modelEl.value : 'gemini-3-flash-preview';
         out.value = '🔄 AI 검색 중...';
         try {
             const { text } = await _callApi(prompt, modelId);
@@ -13718,6 +13725,96 @@ const DeepResearch = (() => {
         } catch (e) {
             out.value = '❌ ' + (e.message || String(e));
         }
+    }
+
+    function _getStyleInstruction() {
+        const el = $('dr-style-tone');
+        if (!el || !el.value) return '';
+        const v = el.value;
+        if (v === 'academic') return '\n\n답변은 반드시 학술체(~이다)로 작성하세요.';
+        if (v === 'report') return '\n\n답변은 반드시 보고체(~임, ~함)로 작성하세요.';
+        if (v === 'polite') return '\n\n답변은 반드시 일반체(존댓말)로 작성하세요.';
+        return '';
+    }
+
+    async function runDataResearch() {
+        const presetEl = $('dr-data-preset-text');
+        const questionEl = $('dr-data-prompt');
+        const out = $('dr-output');
+        const modelEl = $('dr-data-model');
+        if (!presetEl || !out) return;
+        let prompt = (presetEl.value || '').trim();
+        const question = (questionEl && questionEl.value) ? questionEl.value.trim() : '';
+        if (!prompt) { out.value = '사전 프롬프트를 선택하거나 입력하세요.'; return; }
+        prompt = prompt
+            .replace(/\[여기에 주제 입력\]/g, question || '[주제 미입력]')
+            .replace(/\[여기에 구체적 주제 입력\]/g, question || '[주제 미입력]')
+            .replace(/\[연도 범위 입력\]/g, '[연도 범위 입력]')
+            .replace(/\[연구주제\]/g, question || '[주제 미입력]')
+            .replace(/\[주제\]/g, question || '[주제 미입력]');
+        prompt += '\n\n' + _AI_SEARCH_VERIFICATION;
+        if (question) prompt += '\n\n질문:\n' + question;
+        prompt += _getStyleInstruction();
+        const modelId = (modelEl && modelEl.value) ? modelEl.value : 'gemini-3-flash-preview';
+        out.value = '🔄 AI자료조사 중...';
+        try {
+            const { text } = await _callApi(prompt, modelId);
+            out.value = text || '(결과 없음)';
+        } catch (e) {
+            out.value = '❌ ' + (e.message || String(e));
+        }
+    }
+
+    function applyDataResearchPreset() {
+        const sel = $('dr-data-preset');
+        const ta = $('dr-data-preset-text');
+        if (!sel || !ta) return;
+        const key = sel.value || 'basic';
+        ta.value = _AI_SEARCH_PRESETS[key] || _AI_SEARCH_PRESETS.basic;
+    }
+
+    function openDataPresetTextWindow() {
+        const ta = $('dr-data-preset-text');
+        if (!ta) return;
+        window.__drDataPresetApply = function(popupWin) {
+            try {
+                const pw = popupWin.document.getElementById('pw');
+                if (pw) ta.value = pw.value;
+            } catch (e) {}
+            popupWin.close();
+        };
+        window.__drDataPresetText = function() { return ta ? ta.value : ''; };
+        _openPresetWindowWithTools('__drDataPresetApply', '__drDataPresetText');
+    }
+
+    function _openPresetWindowWithTools(applyKey, getTextKey) {
+        const w = window.open('', '_blank', 'width=720,height=520,resizable=yes,scrollbars=yes');
+        if (!w) return;
+        const applyQ = JSON.stringify(applyKey);
+        const getQ = JSON.stringify(getTextKey);
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>사전 프롬프트</title><style>'
+            + 'body{font-family:inherit;background:#1c1c26;color:#e8e8f0;margin:0;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;height:100%;}'
+            + '#pw-wrap{flex:1;min-height:0;overflow:auto;}'
+            + 'textarea{width:100%;height:100%;min-height:280px;background:#16161d;border:1px solid #2e2e42;color:#e8e8f0;padding:10px;font-size:13px;line-height:1.5;resize:both;display:block;box-sizing:border-box;}'
+            + '.btns{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;}'
+            + 'button{padding:6px 12px;cursor:pointer;border-radius:4px;font-size:12px;}'
+            + '.apply{background:#7c6af7;color:#fff;border:none;}'
+            + '.close{background:#2a2a3a;color:#9090b0;border:1px solid #2e2e42;}'
+            + '.tool{background:#3a3a4a;color:#c0c0e0;border:1px solid #2e2e42;}'
+            + '</style></head><body>'
+            + '<div id="pw-wrap"><textarea id="pw"></textarea></div>'
+            + '<div class="btns">'
+            + '<button class="tool" onclick="var t=document.getElementById(\'pw\');var s=parseInt(getComputedStyle(t).fontSize)||13;t.style.fontSize=Math.min(24,s+2)+\'px\'">확대</button>'
+            + '<button class="tool" onclick="var t=document.getElementById(\'pw\');var s=parseInt(getComputedStyle(t).fontSize)||13;t.style.fontSize=Math.max(10,s-2)+\'px\'">축소</button>'
+            + '<button class="tool" onclick="document.getElementById(\'pw-wrap\').scrollTop=0">맨 위로</button>'
+            + '<button class="tool" onclick="window.print()">인쇄</button>'
+            + '<button class="apply" onclick="opener[' + applyQ + '](window)">적용 후 닫기</button>'
+            + '<button class="close" onclick="window.close()">닫기</button>'
+            + '</div>'
+            + '<script>document.getElementById("pw").value=opener[' + getQ + ']();<\/script></body></html>'
+        );
+        w.document.close();
     }
 
     function openPresetTextWindow() {
@@ -13731,10 +13828,7 @@ const DeepResearch = (() => {
             popupWin.close();
         };
         window.__drPresetText = function() { return ta ? ta.value : ''; };
-        const w = window.open('', '_blank', 'width=720,height=480,resizable=yes,scrollbars=yes');
-        if (!w) return;
-        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>사전 프롬프트</title><style>body{font-family:inherit;background:#1c1c26;color:#e8e8f0;margin:0;padding:12px;box-sizing:border-box}textarea{width:100%;height:100%;min-height:360px;background:#16161d;border:1px solid #2e2e42;color:#e8e8f0;padding:10px;font-size:13px;line-height:1.5;resize:both}.btns{margin-top:8px;display:flex;gap:8px}button{padding:6px 12px;cursor:pointer;border-radius:4px;font-size:12px}.apply{background:#7c6af7;color:#fff;border:none}.close{background:#2a2a3a;color:#9090b0;border:1px solid #2e2e42}</style></head><body><textarea id="pw"></textarea><div class="btns"><button class="apply" onclick="opener.__drPresetApply(window)">적용 후 닫기</button><button class="close" onclick="window.close()">닫기</button></div><script>document.getElementById("pw").value=opener.__drPresetText();</script></body></html>');
-        w.document.close();
+        _openPresetWindowWithTools('__drPresetApply', '__drPresetText');
     }
 
     function applyCiteAiSearchPreset() {
@@ -13756,10 +13850,7 @@ const DeepResearch = (() => {
             popupWin.close();
         };
         window.__citePresetText = function() { return ta ? ta.value : ''; };
-        const w = window.open('', '_blank', 'width=720,height=480,resizable=yes,scrollbars=yes');
-        if (!w) return;
-        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>사전 프롬프트</title><style>body{font-family:inherit;background:#1c1c26;color:#e8e8f0;margin:0;padding:12px;box-sizing:border-box}textarea{width:100%;height:100%;min-height:360px;background:#16161d;border:1px solid #2e2e42;color:#e8e8f0;padding:10px;font-size:13px;line-height:1.5;resize:both}.btns{margin-top:8px;display:flex;gap:8px}button{padding:6px 12px;cursor:pointer;border-radius:4px;font-size:12px}.apply{background:#7c6af7;color:#fff;border:none}.close{background:#2a2a3a;color:#9090b0;border:1px solid #2e2e42}</style></head><body><textarea id="pw"></textarea><div class="btns"><button class="apply" onclick="opener.__citePresetApply(window)">적용 후 닫기</button><button class="close" onclick="window.close()">닫기</button></div><script>document.getElementById("pw").value=opener.__citePresetText();</script></body></html>');
-        w.document.close();
+        _openPresetWindowWithTools('__citePresetApply', '__citePresetText');
     }
 
     async function runCiteAiSearchFromModal() {
@@ -13778,7 +13869,8 @@ const DeepResearch = (() => {
             .replace(/\[주제\]/g, '[주제 미입력]');
         prompt += '\n\n' + _AI_SEARCH_VERIFICATION;
         if (question) prompt += '\n\n질문:\n' + question;
-        const modelId = (modelEl && modelEl.value) ? modelEl.value : 'gemini-2.5-flash';
+        prompt += _getStyleInstruction();
+        const modelId = (modelEl && modelEl.value) ? modelEl.value : 'gemini-3-flash-preview';
         out.value = '🔄 AI 검색 중...';
         try {
             const { text } = await _callApi(prompt, modelId);
@@ -13920,7 +14012,231 @@ Requirements:
 - Specify statistical method.
 - Separate Korean and international studies.
 - Provide 2–3 sentence structured summary.
-- Do not fabricate citations.`
+- Do not fabricate citations.`,
+        'data-survey': `You are a doctoral-level academic research assistant specializing in theoretical and conceptual analysis.
+
+Task:
+Conduct a structured theoretical literature investigation on the following topic:
+
+[여기에 주제 입력]
+
+Purpose:
+This task is NOT for building a research model.
+This task is for:
+- Identifying core concepts
+- Clarifying theoretical definitions
+- Tracing conceptual evolution
+- Collecting authoritative citations
+
+Search Conditions:
+- Publication years: [연도 범위 입력]
+- Include foundational classical works and recent theoretical developments.
+- Only include real, peer-reviewed journal articles or academic books.
+- Do NOT fabricate citations.
+- If bibliographic information is uncertain, clearly state uncertainty.
+- Prioritize SSCI/SCIE/ESCI/Scopus-indexed journals when possible.
+
+Required Output Structure:
+
+I. Conceptual Definitions
+- Provide multiple academic definitions.
+- Compare differences in definition across scholars.
+- Identify definitional debates if they exist.
+- Clarify boundary conditions of the concept.
+
+II. Theoretical Foundations
+- Identify major theoretical frameworks underpinning the concept.
+- Explain how each theory conceptualizes the construct.
+- Indicate theoretical evolution over time.
+- Distinguish normative, functional, and strategic perspectives where relevant.
+
+III. Conceptual Structure
+- Identify core dimensions or components.
+- Indicate measurement traditions if applicable.
+- Clarify conceptual overlaps with related constructs.
+
+IV. Intellectual Genealogy
+- Identify key scholars.
+- Identify seminal works.
+- Indicate how the concept has shifted historically.
+
+V. Reference List
+- Format strictly in APA 7th edition.
+- Include DOI when available.
+- Indicate journal indexing status (SSCI/SCIE/ESCI/Scopus if known).
+- Separate domestic (Korean) and international literature if applicable.
+
+Formatting Rules:
+- Use formal academic tone.
+- Avoid narrative summary.
+- Structure analytically.
+- Ensure terminological consistency.
+- Do not generate fictional sources.
+
+Explicitly distinguish between dictionary-style definitions and theory-based academic definitions.
+Indicate which definitions are most frequently cited in SSCI literature.
+Highlight conceptual ambiguities.`,
+        'systematic-review': `You are a doctoral-level academic research assistant specializing in systematic literature review.
+
+Task:
+Conduct a structured literature review on the following topic:
+
+[여기에 구체적 주제 입력]
+
+Search Scope:
+- Publication years: [연도 범위 입력]
+- Include only real, peer-reviewed journal articles or academic books.
+- Do NOT fabricate citations.
+- If bibliographic details are uncertain, explicitly state uncertainty.
+- Prioritize SSCI/SCIE/ESCI/Scopus-indexed journals when possible.
+- Include both foundational classical theories and recent developments (post-2015).
+
+Search Requirements:
+- Identify major theoretical frameworks.
+- Identify dominant research methodologies.
+- Identify key dependent and independent variables used in prior studies.
+- Highlight areas of consensus and debate.
+- Identify research gaps.
+
+Output Structure:
+
+I. Theoretical Trends
+- Major theoretical frameworks
+- Evolution of key concepts
+- Competing perspectives
+
+II. Methodological Trends
+- Dominant research designs (SEM, multilevel modeling, regression, meta-analysis, experimental, qualitative)
+- Sample characteristics
+- Measurement approaches
+
+III. Empirical Findings Synthesis
+- Consistent findings
+- Contradictory findings
+- Boundary conditions
+
+IV. Research Gaps and Future Directions
+- Theoretical gaps
+- Methodological limitations
+- Underexplored variables
+- Suggestions for advanced modeling
+
+V. Reference List
+- APA 7th edition format
+- Include DOI when available
+- Indicate journal indexing status (if known)
+- Separate domestic and international studies if applicable
+
+Formatting Rules:
+- Use formal academic tone.
+- Avoid narrative storytelling.
+- Structure analytically.
+- Maintain conceptual precision.
+
+Explicitly identify under-theorized areas.
+Distinguish between statistical significance and theoretical contribution.
+Indicate where longitudinal or multilevel modeling is needed.`,
+        'academic-paper': `You are a doctoral-level academic research assistant specializing in education, organizational theory, and management research.
+
+Task:
+Produce three structured outputs on the following topic:
+
+[여기에 구체적 주제 입력]
+(e.g., Educational Industry Consulting and Organizational Outcomes)
+
+The output must include:
+
+------------------------------------------------------------
+1. Conceptual and Theoretical Synthesis Sample
+------------------------------------------------------------
+
+Requirements:
+- Define all key constructs clearly and academically.
+- Compare competing definitions if they exist.
+- Explain conceptual evolution over time.
+- Identify theoretical linkages among constructs.
+- Explicitly state theoretical foundations (e.g., systems theory, social exchange theory, human capital theory, organizational commitment theory).
+- Maintain conceptual precision and terminological consistency.
+- Avoid descriptive narration; structure analytically.
+
+------------------------------------------------------------
+2. Research Model Design Sample
+------------------------------------------------------------
+
+Requirements:
+- Propose a logically grounded research model.
+- Clearly identify:
+  • Independent variables
+  • Mediators (if applicable)
+  • Dependent variables
+  • Control variables (if relevant)
+- Provide theoretical justification for each hypothesized path.
+- Present 3–5 example hypotheses.
+- Suggest appropriate methodology (e.g., SEM, multilevel modeling, mediation analysis).
+- If possible, describe the conceptual framework in text-based diagram form.
+- Indicate potential measurement scales if known.
+
+------------------------------------------------------------
+3. Empirical Evidence Review Sample (with APA references)
+------------------------------------------------------------
+
+Search Conditions:
+- Publication years: [연도 범위 입력]
+- Include only real, peer-reviewed journal articles or academic books.
+- No fabricated citations.
+- If bibliographic details are uncertain, explicitly state uncertainty.
+- Prioritize SSCI/SCIE/ESCI/Scopus-indexed journals when possible.
+- Include both classical foundational studies and recent developments (post-2015).
+
+Output Requirements:
+- Separate domestic (Korean) and international studies if applicable.
+- For each cited study, briefly summarize:
+  • Research purpose
+  • Methodology
+  • Key findings
+- Format all references strictly in APA 7th edition.
+- Include DOI when available.
+- Indicate journal indexing status (if known).
+
+------------------------------------------------------------
+Formatting Rules:
+------------------------------------------------------------
+- Use formal academic tone.
+- Ensure conceptual rigor.
+- Maintain theoretical coherence.
+- Do not generate fictional sources.
+- Structure output using Roman numerals (I, II, III).
+
+Prioritize conceptual and theoretical analysis over descriptive summaries.
+Explicitly distinguish between normative, functional, and strategic perspectives.
+Clarify differences between business consulting and educational consulting where relevant.`,
+        citation: `You are an academic citation assistant.
+
+Task:
+Search for real, verifiable, peer-reviewed journal articles on:
+
+[여기에 주제 입력]
+
+Search Conditions:
+- Publication years: [연도 범위 입력]
+- Only include existing journal articles.
+- Do NOT fabricate citations.
+- If uncertain, clearly state uncertainty.
+
+Output Requirements:
+1. Format strictly in APA 7th edition.
+2. Include DOI when available.
+3. Indicate journal indexing status (SSCI/SCIE/ESCI/Scopus if known).
+4. Separate domestic and international studies.
+5. Provide 2–3 sentence structured summary for each:
+   - Research purpose
+   - Methodology
+   - Key findings
+6. Focus on theoretical and empirical contributions.
+
+Formatting Rules:
+- Do not include commentary.
+- Only provide structured citation results.`
     };
 
     const _AI_SEARCH_VERIFICATION = `Before presenting results, verify that each article exists in recognized academic databases (Google Scholar, Crossref, Web of Science, Scopus, or official journal websites).
@@ -13940,7 +14256,7 @@ If verification is not possible, do not include the citation.`;
         if (typeof CM !== 'undefined' && CM.tab) setTimeout(() => CM.tab('ai-search'), 50);
     }
 
-    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, copyThinking, openResultInNewWindow, openThinkingInNewWindow, openResultForTranslate, openThinkingForTranslate, thinkingTranslateGoogle, thinkingTranslateResultNewWindow, thinkingTranslateBothNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile, closeThinkingIncludeModal, confirmThinkingInclude, runCiteAiSearch, openCiteAiSearch, applyAiSearchPreset, openPresetTextWindow, applyCiteAiSearchPreset, openCitePresetTextWindow, runCiteAiSearchFromModal, insertFromCiteModal, insertToNewFileFromCiteModal, copyResultFromCiteModal, openResultInNewWindowFromCiteModal, openResultForTranslateFromCiteModal };
+    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, copyThinking, openResultInNewWindow, openThinkingInNewWindow, openResultForTranslate, openThinkingForTranslate, thinkingTranslateGoogle, thinkingTranslateResultNewWindow, thinkingTranslateBothNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile, closeThinkingIncludeModal, confirmThinkingInclude, runCiteAiSearch, openCiteAiSearch, applyAiSearchPreset, openPresetTextWindow, applyCiteAiSearchPreset, openCitePresetTextWindow, runCiteAiSearchFromModal, insertFromCiteModal, insertToNewFileFromCiteModal, copyResultFromCiteModal, openResultInNewWindowFromCiteModal, openResultForTranslateFromCiteModal, runDataResearch, applyDataResearchPreset, openDataPresetTextWindow };
 })();
 window.DeepResearch = DeepResearch;
 
