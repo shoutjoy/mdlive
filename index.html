@@ -82,7 +82,8 @@
         <button class="btn btn-sm btn-settings" onclick="App.showHK()" data-tooltip="단축키 목록 &amp; 설정 (Alt+?)" data-key="Alt+?" title="설정">⚙ 설정</button>
         <button class="btn btn-sm btn-tmpl" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
         <button class="btn btn-sm btn-research" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)"
-          data-key="Ctrl+Shift+R">🔬 Research</button>
+          data-key="Ctrl+Shift+R" title="Research Mode">🔬</button>
+        <button class="btn btn-sm" onclick="window.open('https://jh-park9.imgbb.com/','_blank')" data-tooltip="ImgBB — 이미지 호스팅 (새 창)" title="ImgBB">🖼 IMG</button>
         <button class="btn btn-sm" onclick="DeepResearch.show()" data-tooltip="Deep Research (AI 질문)"
           style="background:linear-gradient(135deg,#1a2a40 0%,#1e3558 100%);color:#6ac8f7;border:1px solid rgba(106,200,247,.35);font-weight:600">📚 Deep Research</button>
         <button class="btn btn-sm btn-ref" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용"
@@ -230,6 +231,8 @@
         <button class="tb tb-insert" onclick="ED.insertNbsp()" data-tooltip="불연속 공백 &amp;nbsp; 삽입"
           data-key="Ctrl+Shift+Space">⎵</button>
         <button class="tb tb-insert" onclick="App.showImg()" data-tooltip="이미지">🖼</button>
+        <button class="tb tb-insert" onclick="App.makeImageLink()" data-tooltip="이미지 링크 만들기 (선택한 URL → HTML img)" data-key="Alt+I">🖼 링크</button>
+        <button class="tb tb-insert" onclick="App.openSelectionAsLink()" data-tooltip="선택한 텍스트를 HTML 하이퍼링크로 새창 열기 (Shift+Alt+I)" data-key="Shift+Alt+I">🔗 새창</button>
         <button class="tb tb-insert" onclick="App.showLink()" data-tooltip="링크 (새 탭)">🔗</button>
         <button class="tb tb-insert" onclick="ED.footnote()" data-tooltip="각주">†</button>
         <button class="tb tb-insert" onclick="ED.math()" data-tooltip="수식(LaTeX)">∑</button>
@@ -813,6 +816,8 @@
       <div id="hk-line-highlight-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
         <span style="font-size:11px;color:var(--tx2);flex-shrink:0">에디터 현재 줄 하이라이트</span>
         <button type="button" class="btn btn-g btn-sm" id="hk-line-highlight-btn" onclick="EditorLineHighlight.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
+        <span style="font-size:11px;color:var(--tx3);margin-left:12px;flex-shrink:0">괄호·따옴표 자동쌍 ( ) [ ] &quot; &apos;</span>
+        <button type="button" class="btn btn-g btn-sm" id="hk-auto-pair-btn" onclick="EditorAutoPair.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
         <span style="font-size:11px;color:var(--tx3);margin-left:8px;flex-shrink:0">작성자 정보</span>
         <input type="text" id="hk-author-name" placeholder="이름" title="이름" style="font-size:11px;padding:4px 6px;min-width:100px;flex:1;max-width:140px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
         <textarea id="hk-author-affiliation" placeholder="소속" title="소속" rows="2" style="font-size:11px;padding:4px 6px;min-width:120px;flex:1;max-width:180px;min-height:2.2em;height:auto;resize:both;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box;vertical-align:middle;line-height:1.4"></textarea>
@@ -1341,6 +1346,7 @@
       <div class="mh img-modal-drag" style="cursor:move;user-select:none;display:flex;align-items:center;justify-content:space-between">
         <span>🖼 이미지</span>
         <div style="display:flex;align-items:center;gap:6px">
+          <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="ImgCrop.openForInsert()" id="img-insert-crop-btn" disabled title="크롭">✂ 크롭</button>
           <button class="btn btn-g btn-sm" onclick="App.hideModal('image-modal');event.stopPropagation()" style="font-size:11px">닫기</button>
           <button class="btn btn-g btn-sm" id="img-modal-maximize" onclick="AiImage.toggleMaximize();event.stopPropagation()" title="전체화면" style="font-size:11px">전체화면</button>
         </div>
@@ -1356,13 +1362,20 @@
               <div id="img-drop-text" style="font-size:12px;color:var(--tx2)">🖼 클릭 또는 드래그</div>
               <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMG.fileSelected(event)">
             </div>
-            <div style="margin-top:8px;font-size:11px;color:var(--tx3)">또는 URL</div>
-            <input class="fi" id="img-url" type="text" placeholder="https://..." style="margin-top:4px;padding:6px 8px;font-size:12px">
-            <div id="img-preview-wrap" style="display:none;margin-top:8px;text-align:center">
-              <img id="img-preview" style="max-width:100%;max-height:120px;border-radius:4px;border:1px solid var(--bd)">
+            <div class="fg" style="margin-top:10px">
+              <label class="fl">Md_image</label>
+              <input class="fi" id="img-url" type="text" placeholder="https://... 또는 data:image/..." style="margin-top:4px;padding:6px 8px;font-size:12px">
             </div>
-            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="ImgCrop.openForInsert()" id="img-insert-crop-btn" disabled>✂ 크롭</button>
+            <div class="fg" style="margin-top:10px">
+              <label class="fl">HTML_image</label>
+              <input class="fi" id="img-html-url" type="text" placeholder="링크" style="margin-top:4px;padding:6px 8px;font-size:12px;width:100%">
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <input class="fi" id="img-html-width" type="text" placeholder="width" style="flex:1;padding:6px 8px;font-size:12px">
+                <input class="fi" id="img-html-height" type="text" placeholder="height" style="flex:1;padding:6px 8px;font-size:12px">
+              </div>
+              <button type="button" class="btn btn-g btn-sm" style="margin-top:6px;font-size:11px" onclick="ImgInsert.insertHtmlImage()">HTML 이미지 삽입</button>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
             </div>
             <div class="fg" style="margin-top:10px">
               <label class="fl">Alt 텍스트</label>
@@ -1371,6 +1384,22 @@
             <div style="margin-top:10px;display:flex;gap:6px">
               <button class="btn btn-p btn-sm" onclick="ED.image()" style="font-size:11px">문서에 삽입</button>
               <button class="btn btn-g btn-sm" style="font-size:11px" onclick="ImgInsert.insertToNewFile()">+ 새파일</button>
+            </div>
+            <div class="fg" style="margin-top:14px;border-top:1px solid var(--bd);padding-top:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+                <label class="fl" style="margin-bottom:0">링크 삽입 (코드 입력)</label>
+                <button type="button" class="btn-ic" onclick="var el=document.getElementById('img-code-input'); if(el){ el.value=''; if(typeof _showImgpv==='function') _showImgpv(''); }" title="코드 입력 지우기" style="font-size:12px;padding:2px 6px;color:var(--tx3)">✕</button>
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+                <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="ImgInsert.setCodeExample(1)">1. HTML이미지</button>
+                <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="ImgInsert.setCodeExample(2)">2. 원본링크</button>
+                <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="ImgInsert.setCodeExample(3)">3. 중간크기</button>
+                <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="ImgInsert.setCodeExample(4)">4. 섬네일</button>
+              </div>
+              <div style="position:relative;width:100%">
+                <textarea id="img-code-input" class="fi" placeholder="HTML 코드 붙여넣기 → 오른쪽에 미리보기" style="min-height:80px;height:100px;max-height:200px;resize:vertical;padding:6px 8px;padding-right:28px;font-size:11px;font-family:monospace;width:100%;box-sizing:border-box"></textarea>
+                <button type="button" class="btn-ic" onclick="var el=document.getElementById('img-code-input'); if(el){ el.value=''; if(typeof _showImgpv==='function') _showImgpv(''); }" title="코드 입력 지우기" style="position:absolute;top:6px;right:6px;font-size:12px;padding:2px 6px;color:var(--tx3);z-index:2;background:var(--bg3);border:1px solid var(--bd);border-radius:4px">✕</button>
+              </div>
             </div>
           </div>
           <div id="aiimg-history-panel" style="display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0">
@@ -1382,7 +1411,10 @@
           </div>
         </div>
         <div id="img-center" style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--bd)">
-          <div id="img-center-insert" style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:13px;padding:20px">이미지를 업로드하거나 AI 이미지 탭에서 생성하세요.</div>
+          <div id="imgpv" style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:auto;background:var(--bg2)">
+            <div id="imgpv-placeholder" style="color:var(--tx3);font-size:13px;text-align:center">이미지를 업로드하거나 URL을 입력하세요.</div>
+            <img id="imgpv-preview" alt="" style="max-width:100%;max-height:100%;object-fit:contain;display:none">
+          </div>
           <div id="img-center-ai" style="display:none;flex:1;flex-direction:column;overflow:hidden">
             <div style="padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--bd);flex-shrink:0">
               <button type="button" class="btn btn-p btn-sm" onclick="AiImage.setResultAsSeed()">결과를 시드로 설정</button>
@@ -1433,6 +1465,11 @@
               <button type="button" class="btn btn-g btn-sm aiimg-fix-btn" style="font-size:11px" onclick="AiImage.applyPreset('person')" title="인물 고정">인물 고정</button>
               <button type="button" class="btn btn-g btn-sm aiimg-fix-btn" style="font-size:11px" onclick="AiImage.applyPreset('outfit')" title="복장 고정">복장 고정</button>
             </div>
+            <div style="margin-top:8px">
+              <label style="font-size:11px;color:var(--tx3)">프롬프트</label>
+              <textarea id="aiimg-prompt" class="fi" rows="4" placeholder="이미지 설명…" style="margin-top:4px;resize:vertical;min-height:80px;font-size:13px;width:100%;box-sizing:border-box"></textarea>
+            </div>
+            <button type="button" class="btn btn-p" onclick="AiImage.generate()" id="aiimg-generate-btn" style="font-weight:600;margin-top:8px">🖼 이미지 생성</button>
             <div style="margin-top:8px;padding:6px 8px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
               <div style="font-size:11px;color:var(--tx3);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:6px">
                 <span>이미지분석결과</span>
@@ -1489,11 +1526,6 @@
               <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="AiImage.applyPreset('story')">스토리</button>
             </div>
           </div>
-          <div>
-            <label style="font-size:11px;color:var(--tx3)">프롬프트</label>
-            <textarea id="aiimg-prompt" class="fi" rows="4" placeholder="이미지 설명…" style="margin-top:4px;resize:vertical;min-height:80px;font-size:13px"></textarea>
-          </div>
-          <button type="button" class="btn btn-p" onclick="AiImage.generate()" id="aiimg-generate-btn" style="font-weight:600">🖼 이미지 생성</button>
           <div style="margin-top:10px;padding:8px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
             <label style="font-size:11px;color:var(--tx3)">Virtual try-on 이미지</label>
             <p id="aiimg-virtual-tryon-desc" style="font-size:10px;color:var(--tx3);margin:4px 0 6px">이미지가 없는 경우 참고하지 않습니다.</p>
@@ -2291,6 +2323,7 @@ Do not provide explanations unless explicitly requested.</textarea>
             <button class="btn btn-sm" onclick="DeepResearch.openResultForTranslate()" title="결과 번역" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과번역</button>
             <button class="btn btn-sm" onclick="DeepResearch.openResultInNewWindow()" title="새 창에서 마크다운 적용 결과 보기" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과새창</button>
             <button class="btn btn-sm" onclick="DeepResearch.copyResult()" title="결과 복사" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과복사</button>
+            <button class="btn-ic" onclick="DeepResearch.clearOutput()" title="답변 지우기" style="font-size:12px;padding:2px 6px;color:var(--tx3)">✕</button>
           </div>
         </div>
         <div id="dr-loading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:5;align-items:center;justify-content:center;color:#fff;font-size:13px;gap:10px;flex-direction:column">

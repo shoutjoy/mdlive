@@ -1018,6 +1018,13 @@ body {
     filter: brightness(0.9);
 }
 
+/* 라이트 모드: 연결 시 주황색 */
+[data-theme=light] #gh-hdr .gh-hdr-save-circle.gh-hdr-save-connected {
+    background: #e87500;
+    color: #fff;
+    border: 2px solid #c45a00;
+}
+
 #gh-search {
     padding: 5px 8px;
     border-bottom: 1px solid var(--bd);
@@ -4375,12 +4382,15 @@ kbd {
 
 /* ── sb-stats (공개설정·새파일·새폴더) 라이트모드 ── */
 [data-theme=light] #sb-stats {
+    background: #f7f5ff;
     border-top-color: #d0c8f0;
-    color: #1a1a2e;
+    color: #0a0a18;
+    font-weight: 600;
 }
 [data-theme=light] #sb-stats *,
 [data-theme=light] #sb-stats button {
-    color: #1a1a2e !important;
+    color: #0a0a18 !important;
+    font-weight: 600;
 }
 [data-theme=light] #sb-stats button[onclick="PVShare.openModal()"] {
     background: rgba(88,200,248,.2) !important;
@@ -4389,7 +4399,8 @@ kbd {
 }
 [data-theme=light] #sb-stats .fm-act-icon,
 [data-theme=light] #sb-stats .fm-act-label {
-    color: #1a1a2e !important;
+    color: #0a0a18 !important;
+    font-weight: 600;
 }
 
 /* ── 사이드바 전체 기본 텍스트 ── */
@@ -4520,8 +4531,8 @@ kbd {
 
 /* ── 하단 통계 바 (단어/자/페이지) ── */
 [data-theme=light] #sb-stats {
-    background: #000000 !important;
-    border-top: 1px solid #eeeaf8;
+    background: #f7f5ff !important;
+    border-top-color: #d0c8f0;
     color: #1a1a2e !important;
 }
 [data-theme=light] #doc-stats-bar,
@@ -4614,6 +4625,12 @@ kbd {
 [data-theme=light] .modal-box,
 [data-theme=light] .modal { background: #fdfcff; border-color: #c0b8e8; }
 [data-theme=light] .modal-hdr { background: #eeeaf8; border-bottom: 1px solid #d0c8f0; color: #1a0a60; }
+
+/* ── 저장 방법 선택 모달: 본문·버튼 글씨 가독성 ── */
+[data-theme=light] #save-modal .modal > div:nth-child(2),
+[data-theme=light] #save-modal .modal > div:nth-child(2) * { color: #1a1a2e !important; }
+[data-theme=light] #save-modal .modal > div:nth-child(2) > button:nth-child(7),
+[data-theme=light] #save-modal .modal > div:nth-child(2) > button:nth-child(7) * { color: #0a5070 !important; }
 
 /* ── TOC 목차 ── */
 [data-theme=light] #toc-list a          { color: #1a1250 !important; }

@@ -1,15 +1,98 @@
 /* ═══════════════════════════════════════════════════════════
-   UNDO STACK
+   UNDO STACK (IndexedDB 저장 + 검증)
 ═══════════════════════════════════════════════════════════ */
 const US = (() => {
-    const MAX = 500; let st = [], ptr = -1;
-    const snap = () => { const e = el('editor'); push(e.value, [e.selectionStart, e.selectionEnd]) };
-    function push(v, s) { st = st.slice(0, ptr + 1); st.push({ v, s }); if (st.length > MAX) st.shift(); else ptr++ }
-    function undo() { if (ptr <= 0) return; ptr--; const s = st[ptr]; el('editor').value = s.v; el('editor').setSelectionRange(s.s[0], s.s[1]); App.render() }
-    function redo() { if (ptr >= st.length - 1) return; ptr++; const s = st[ptr]; el('editor').value = s.v; el('editor').setSelectionRange(s.s[0], s.s[1]); App.render() }
-    /* 탭 전환 시 TM이 호출하는 undo 상태 백업/복원 API */
-    function _getState() { return { stack: [...st], ptr }; }
-    function _setState(newStack, newPtr) { st = [...(newStack || [])]; ptr = typeof newPtr === 'number' ? newPtr : st.length - 1; }
+    const MAX = 500;
+    const DB_NAME = 'mdpro_undo_db';
+    const STORE = 'undo';
+    let st = [];
+    let ptr = -1;
+    let _persistTimer = null;
+
+    function _currentTabId() {
+        try { return (typeof TM !== 'undefined' && TM.getActive && TM.getActive()) ? TM.getActive().id : 'default'; } catch (e) { return 'default'; }
+    }
+
+    function _validEntry(e) {
+        return e && typeof e.v === 'string' && Array.isArray(e.s) && e.s.length >= 2 && typeof e.s[0] === 'number' && typeof e.s[1] === 'number';
+    }
+
+    function _persist() {
+        const id = _currentTabId();
+        const payload = { stack: st.map(x => _validEntry(x) ? x : { v: '', s: [0, 0] }), ptr };
+        try {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => { req.result.createObjectStore(STORE, { keyPath: 'id' }); };
+            req.onsuccess = () => {
+                const db = req.result;
+                const tx = db.transaction(STORE, 'readwrite');
+                const store = tx.objectStore(STORE);
+                store.put({ id, ...payload });
+                db.close();
+            };
+        } catch (err) { /* ignore */ }
+    }
+
+    function _schedulePersist() {
+        if (_persistTimer) clearTimeout(_persistTimer);
+        _persistTimer = setTimeout(() => { _persist(); _persistTimer = null; }, 100);
+    }
+
+    function push(v, s) {
+        if (typeof v !== 'string' || !Array.isArray(s) || s.length < 2) return;
+        st = st.slice(0, ptr + 1);
+        st.push({ v, s: [s[0], s[1]] });
+        if (st.length > MAX) st.shift();
+        else ptr++;
+        _schedulePersist();
+    }
+
+    const snap = () => {
+        const e = el('editor');
+        if (!e) return;
+        push(e.value, [e.selectionStart, e.selectionEnd]);
+    };
+
+    function undo() {
+        if (ptr <= 0) return;
+        ptr--;
+        const entry = st[ptr];
+        if (!_validEntry(entry)) return;
+        const ed = el('editor');
+        if (!ed) return;
+        ed.value = entry.v;
+        ed.setSelectionRange(entry.s[0], entry.s[1]);
+        if (typeof App !== 'undefined' && App.render) App.render();
+        _schedulePersist();
+    }
+
+    function redo() {
+        if (ptr >= st.length - 1) return;
+        ptr++;
+        const entry = st[ptr];
+        if (!_validEntry(entry)) { ptr--; return; }
+        const ed = el('editor');
+        if (!ed) return;
+        ed.value = entry.v;
+        ed.setSelectionRange(entry.s[0], entry.s[1]);
+        if (typeof App !== 'undefined' && App.render) App.render();
+        _schedulePersist();
+    }
+
+    function _getState() {
+        const stack = st.filter(_validEntry).map(e => ({ v: e.v, s: [e.s[0], e.s[1]] }));
+        const p = Math.max(-1, Math.min(ptr, stack.length - 1));
+        return { stack, ptr: p };
+    }
+
+    function _setState(newStack, newPtr) {
+        const arr = Array.isArray(newStack) ? newStack : [];
+        st = arr.filter(_validEntry).map(e => ({ v: String(e.v), s: [Number(e.s[0])||0, Number(e.s[1])||0] }));
+        if (st.length === 0) st.push({ v: '', s: [0, 0] });
+        ptr = typeof newPtr === 'number' && newPtr >= -1 && newPtr < st.length ? newPtr : st.length - 1;
+        _schedulePersist();
+    }
+
     return { snap, undo, redo, _getState, _setState };
 })();
 
@@ -555,40 +638,97 @@ const AiApiKey = (() => {
   return { save, load, get, toggleShow };
 })();
 
-/* Scholar API Key (SerpAPI) — Google Scholar 검색용, localStorage 저장 */
+/* Scholar API Key (SerpAPI) — Google Scholar 검색용, 암호화 저장 */
 const ScholarApiKey = (() => {
-  const STORAGE_KEY = 'mdpro_scholar_apikey';
+  const STORAGE_KEY = 'mdpro_scholar_apikey_enc';
+  const LEGACY_KEY = 'mdpro_scholar_apikey';
+  const APP_SECRET = 'mdpro_scholar_enc_v1_fixed_secret';
   const API_KEY_RE = /api_key\s*:\s*["']([^"']+)["']/;
 
-  function save() {
+  function b64enc(u8) { return btoa(String.fromCharCode(...u8)); }
+  function b64dec(s) { return new Uint8Array(atob(s).split('').map(c => c.charCodeAt(0))); }
+
+  async function _deriveKey() {
+    const enc = new TextEncoder();
+    const km = await crypto.subtle.importKey('raw', enc.encode(APP_SECRET), 'PBKDF2', false, ['deriveKey']);
+    const salt = enc.encode('mdpro_scholar_salt_v1');
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+      km,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+  }
+
+  async function _encrypt(plaintext) {
+    const key = await _deriveKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      new TextEncoder().encode(plaintext)
+    );
+    return { iv: b64enc(iv), data: b64enc(new Uint8Array(ct)) };
+  }
+
+  async function _decrypt(payload) {
+    if (!payload || !payload.iv || !payload.data) return '';
+    const key = await _deriveKey();
+    const iv = b64dec(payload.iv);
+    const data = b64dec(payload.data);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+    return new TextDecoder().decode(pt);
+  }
+
+  async function save() {
     const inp = document.getElementById('scholar_apikey');
     if (!inp) return;
     const val = (inp.value || '').trim();
     try {
       if (val) {
-        localStorage.setItem(STORAGE_KEY, val);
+        const enc = await _encrypt(val);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(enc));
+        try { localStorage.removeItem(LEGACY_KEY); } catch (e) {}
         inp.classList.add('apikey-saved');
       } else {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(LEGACY_KEY);
         inp.classList.remove('apikey-saved');
       }
     } catch (e) { console.warn('ScholarApiKey save failed:', e); }
   }
-  function load() {
+
+  async function load() {
     const inp = document.getElementById('scholar_apikey');
     if (!inp) return;
     try {
-      const v = localStorage.getItem(STORAGE_KEY);
-      if (v) {
-        inp.value = v;
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const payload = JSON.parse(raw);
+          const plain = await _decrypt(payload);
+          inp.value = plain;
+          inp.classList.add('apikey-saved');
+          return;
+        } catch (e) { /* not encrypted */ }
+      }
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy) {
+        inp.value = legacy;
         inp.classList.add('apikey-saved');
+        localStorage.removeItem(LEGACY_KEY);
+        const enc = await _encrypt(legacy);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(enc));
       }
     } catch (e) { console.warn('ScholarApiKey load failed:', e); }
   }
+
   function get() {
     const inp = document.getElementById('scholar_apikey');
     return inp ? (inp.value || '').trim() : '';
   }
+
   function toggleShow() {
     const inp = document.getElementById('scholar_apikey');
     const btn = document.getElementById('scholar-apikey-btn-show');
@@ -9222,9 +9362,7 @@ const IMG = (() => {
             const dataUrl = ev.target.result;
             el('img-url').value = dataUrl;
             if (!el('img-alt').value) el('img-alt').value = file.name.replace(/\.[^.]+$/, '');
-            // Show preview
-            el('img-preview').src = dataUrl;
-            el('img-preview-wrap').style.display = 'block';
+            _showImgpv(dataUrl);
             el('img-drop-text').textContent = '✓ ' + file.name + ' (' + Math.round(file.size / 1024) + 'KB)';
             el('img-drop-text').style.color = 'var(--ok)';
             const cropBtn = document.getElementById('img-insert-crop-btn');
@@ -9235,10 +9373,46 @@ const IMG = (() => {
     return { dragOver, dragLeave, drop, fileSelected };
 })();
 
+function _showImgpv(src) {
+    const ph = document.getElementById('imgpv-placeholder');
+    const img = document.getElementById('imgpv-preview');
+    if (!img) return;
+    if (src && (src.startsWith('data:image') || src.startsWith('http'))) {
+        img.src = src;
+        img.style.display = 'block';
+        if (ph) ph.style.display = 'none';
+    } else {
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        if (ph) ph.style.display = 'block';
+    }
+}
+function _bindImgUrlToImgpv() {
+    const urlEl = document.getElementById('img-url');
+    if (!urlEl || urlEl._imgpvBound) return;
+    urlEl._imgpvBound = true;
+    urlEl.addEventListener('input', () => _showImgpv(urlEl.value.trim()));
+    urlEl.addEventListener('change', () => _showImgpv(urlEl.value.trim()));
+}
+function _parseImgCodeToPreview() {
+    const ta = document.getElementById('img-code-input');
+    if (!ta || !ta.value.trim()) return;
+    const html = ta.value.trim();
+    const m = html.match(/<img[^>]+src\s*=\s*["']([^"']+)["']/i);
+    if (m && m[1]) _showImgpv(m[1]);
+}
+function _bindImgCodeToPreview() {
+    const ta = document.getElementById('img-code-input');
+    if (!ta || ta._imgCodeBound) return;
+    ta._imgCodeBound = true;
+    ta.addEventListener('input', _parseImgCodeToPreview);
+    ta.addEventListener('change', _parseImgCodeToPreview);
+}
+
 const ImgCrop = {
     openForInsert() {
         const urlEl = document.getElementById('img-url');
-        const previewEl = document.getElementById('img-preview');
+        const previewEl = document.getElementById('imgpv-preview');
         const src = (urlEl && urlEl.value && urlEl.value.trim()) || (previewEl && previewEl.src);
         if (!src || (!src.startsWith('data:') && !src.startsWith('http'))) {
             alert('먼저 이미지를 업로드하거나 URL을 입력하세요.');
@@ -9263,6 +9437,34 @@ const ImgInsert = {
         const title = '이미지-' + new Date().toISOString().slice(0, 10);
         if (typeof TM !== 'undefined' && TM.newTab) TM.newTab(title, `![${alt}](${url})`, 'md');
         if (url.startsWith('data:image') && typeof ImgStore !== 'undefined') ImgStore.save(url, alt);
+    },
+    _codeExamples: [
+        '<img src="https://i.ibb.co/vCn4MwWK/pro-render-1771925609150.png" alt="pro render 1771925609150" border="0">',
+        '<a href="https://ibb.co/spY9Xm4M"><img src="https://i.ibb.co/2043pnrf/pro-render-1771925609150.png" alt="pro-render-1771925609150" border="0"></a>',
+        '<a href="https://ibb.co/spY9Xm4M"><img src="https://i.ibb.co/2043pnrf/pro-render-1771925609150.png" alt="pro-render-1771925609150" border="0"></a>',
+        '<a href="https://ibb.co/spY9Xm4M"><img src="https://i.ibb.co/spY9Xm4M/pro-render-1771925609150.png" alt="pro-render-1771925609150" border="0"></a>'
+    ],
+    setCodeExample(n) {
+        const ta = document.getElementById('img-code-input');
+        if (ta && this._codeExamples[n - 1]) ta.value = this._codeExamples[n - 1];
+        _parseImgCodeToPreview();
+    },
+    insertHtmlImage() {
+        const url = document.getElementById('img-html-url')?.value?.trim();
+        const w = document.getElementById('img-html-width')?.value?.trim();
+        const h = document.getElementById('img-html-height')?.value?.trim();
+        if (!url) { alert('링크를 입력하세요.'); return; }
+        let tag = '<img src="' + url.replace(/"/g, '&quot;') + '" alt="" border="0"';
+        if (w) tag += ' width="' + w.replace(/"/g, '&quot;') + '"';
+        if (h) tag += ' height="' + h.replace(/"/g, '&quot;') + '"';
+        tag += '>';
+        const ed = document.getElementById('editor');
+        if (!ed) return;
+        const pos = ed.selectionEnd;
+        const v = ed.value;
+        ed.value = v.slice(0, pos) + tag + v.slice(pos);
+        ed.setSelectionRange(pos + tag.length, pos + tag.length);
+        if (typeof App !== 'undefined') App.render();
     }
 };
 
@@ -9385,7 +9587,7 @@ const AiImage = (() => {
     function switchTab(tab) {
         const insertPanel = el('img-insert-panel');
         const historyPanel = el('aiimg-history-panel');
-        const centerInsert = el('img-center-insert');
+        const centerInsert = el('imgpv');
         const centerAi = el('img-center-ai');
         const rightSidebar = el('img-right-sidebar');
         const box = el('image-modal-box');
@@ -9869,11 +10071,8 @@ const AiImage = (() => {
             if (window._imgCropTarget === 'insert') {
                 window._imgCropTarget = null;
                 const urlEl = el('img-url');
-                const preview = el('img-preview');
-                const wrap = el('img-preview-wrap');
                 if (urlEl) urlEl.value = ev.data.dataUrl;
-                if (preview) { preview.src = ev.data.dataUrl; preview.style.display = 'block'; }
-                if (wrap) wrap.style.display = 'block';
+                _showImgpv(ev.data.dataUrl);
                 return;
             }
             if (_virtualTryOnExtractedDataUrl && ev.data.dataUrl === _virtualTryOnExtractedDataUrl) {
@@ -10958,6 +11157,77 @@ const EditorLineHighlight = (() => {
 })();
 
 /* ═══════════════════════════════════════════════════════════
+   EDITOR AUTO PAIR — ( ) [ ] " " ' ' 자동쌍 & 선택 시 감싸기
+═══════════════════════════════════════════════════════════ */
+const EditorAutoPair = (() => {
+    const STORAGE_KEY = 'mdpro_editor_auto_pair';
+    const PAIRS = { '(': ')', '[': ']', '"': '"', "'": "'", '{': '}', '<': '>' };
+
+    function isEnabled() {
+        try { return localStorage.getItem(STORAGE_KEY) !== 'off'; } catch (e) { return true; }
+    }
+
+    function updateUI() {
+        const enabled = isEnabled();
+        const btn = document.getElementById('hk-auto-pair-btn');
+        if (btn) btn.textContent = enabled ? 'ON' : 'OFF';
+    }
+
+    function toggle() {
+        let enabled = isEnabled();
+        enabled = !enabled;
+        try { localStorage.setItem(STORAGE_KEY, enabled ? 'on' : 'off'); } catch (e) {}
+        updateUI();
+    }
+
+    /** 에디터에서 ( [ " ' 입력 시 처리. 처리했으면 true, 아니면 false */
+    function handleKey(e) {
+        if (!e.key || e.key.length !== 1) return false;
+        const open = e.key;
+        const close = PAIRS[open];
+        if (close === undefined) return false;
+        if (e.ctrlKey || e.metaKey || e.altKey) return false;
+        if (!isEnabled()) return false;
+
+        const edi = document.getElementById('editor');
+        if (!edi || document.activeElement !== edi) return false;
+
+        const ss = edi.selectionStart;
+        const se = edi.selectionEnd;
+        const val = edi.value;
+
+        if (ss !== se) {
+            /* 선택 영역 wrap: "텍스트" → "텍스트" */
+            e.preventDefault();
+            const sel = val.substring(ss, se);
+            edi.value = val.substring(0, ss) + open + sel + close + val.substring(se);
+            edi.setSelectionRange(ss + 1 + sel.length, ss + 1 + sel.length);
+            edi.focus();
+            if (typeof US !== 'undefined') US.snap();
+            if (typeof TM !== 'undefined') TM.markDirty();
+            if (typeof App !== 'undefined' && App.render) App.render();
+            return true;
+        }
+
+        /* 커서만 있을 때: 자동쌍 ( ) [ ] " " ' ' */
+        e.preventDefault();
+        edi.value = val.substring(0, ss) + open + close + val.substring(se);
+        edi.setSelectionRange(ss + 1, ss + 1);
+        edi.focus();
+        if (typeof US !== 'undefined') US.snap();
+        if (typeof TM !== 'undefined') TM.markDirty();
+        if (typeof App !== 'undefined' && App.render) App.render();
+        return true;
+    }
+
+    function init() {
+        updateUI();
+    }
+
+    return { handleKey, isEnabled, toggle, init, updateUI };
+})();
+
+/* ═══════════════════════════════════════════════════════════
    AUTHOR INFO — 이름/소속/메일/연락처 저장 및 Shift+Alt+A 삽입
 ═══════════════════════════════════════════════════════════ */
 const AuthorInfo = (() => {
@@ -11511,7 +11781,6 @@ const HK = (() => {
         'app.stats':        () => STATS.show(),
         'app.translator':   () => Translator.show(),
         'app.fmtPanel':     () => FP.show(),
-        'app.lineNum':      () => LN.toggle(),
         'app.previewWin':   () => PW.open(),
         'app.previewPPT':   () => PW.openSlide(),
         'app.researchMode': () => App.toggleRM(),
@@ -11552,6 +11821,8 @@ const HK = (() => {
         'tab.prev':         () => { const tabs=TM.getAll(); const i=tabs.findIndex(t=>t.id===TM.getActive()?.id); if(i>0) TM.switchTab(tabs[i-1].id); },
         'tab.next':         () => { const tabs=TM.getAll(); const i=tabs.findIndex(t=>t.id===TM.getActive()?.id); if(i<tabs.length-1) TM.switchTab(tabs[i+1].id); },
         'app.insertDate':   () => App.insertDate(),
+        'app.makeImageLink': () => App.makeImageLink(),
+        'app.openSelectionAsLink': () => App.openSelectionAsLink(),
         'app.insertAuthorInfo': () => { if (typeof AuthorInfo !== 'undefined') AuthorInfo.insertIntoEditor(); },
         'app.charMap':      () => CharMap.show(),
         'app.syncToggle':   () => SS.toggle(),
@@ -11623,12 +11894,13 @@ const HK = (() => {
             section: '삽입 / 도구', items: [
                 { desc: '오늘 날짜 삽입', keys: 'Shift + Alt + D', action: 'app.insertDate' },
                 { desc: '작성자 정보 삽입', keys: 'Shift + Alt + A', action: 'app.insertAuthorInfo' },
+                { desc: '이미지 링크 만들기', keys: 'Alt + I', action: 'app.makeImageLink' },
+                { desc: '선택 텍스트 → 하이퍼링크 새창', keys: 'Shift + Alt + I', action: 'app.openSelectionAsLink' },
                 { desc: '인용 삽입', keys: 'Ctrl + Shift + C', action: 'app.cite' },
                 { desc: '각주 삽입', keys: 'Shift + Alt + N', action: 'ed.footnote' },
                 { desc: 'APA 통계 삽입', keys: 'Shift + Alt + 9', action: 'app.stats' },
                 { desc: '번역기', keys: 'Shift + Alt + G', action: 'app.translator' },
                 { desc: '서식 패널 (크기·색·형광펜)', keys: 'Alt + L', action: 'app.fmtPanel' },
-                { desc: '줄번호 ON/OFF', keys: 'Ctrl + Alt + I', action: 'app.lineNum' },
                 { desc: '새창 미리보기', keys: 'Ctrl + Shift + P', action: 'app.previewWin' },
                 { desc: '슬라이드 모드로 새창 열기', keys: 'Ctrl + Shift + T', action: 'app.previewPPT' },
                 { desc: '저장 다이얼로그', keys: 'Ctrl + S', action: 'app.save' },
@@ -11944,6 +12216,7 @@ const HK = (() => {
                 render();
                 el('hk-overlay').classList.add('vis');
                 try { if (typeof EditorLineHighlight !== 'undefined') EditorLineHighlight.updateUI(); } catch (e) { console.warn('EditorLineHighlight.updateUI:', e); }
+                try { if (typeof EditorAutoPair !== 'undefined') EditorAutoPair.updateUI(); } catch (e) { console.warn('EditorAutoPair.updateUI:', e); }
                 try { if (typeof AuthorInfo !== 'undefined') AuthorInfo.loadToPanel(); } catch (e) { console.warn('AuthorInfo.loadToPanel:', e); }
             } catch (err) {
                 console.error('HK.open:', err);
@@ -12027,6 +12300,9 @@ function handleKey(e) {
     const edi = el('editor');
     const inEd = document.activeElement === edi;
     const k = hkKey(e);
+
+    /* ── 괄호·따옴표 자동쌍 & 선택 감싸기: ( [ " ' (설정 ON일 때만) ── */
+    if (inEd && typeof EditorAutoPair !== 'undefined' && EditorAutoPair.handleKey(e)) return;
 
     /* ── Ctrl+G: 앱 잠금 (브라우저 Find 다음 찾기보다 우선) ── */
     if ((e.ctrlKey || e.metaKey) && e.key && e.key.toLowerCase() === 'g') {
@@ -12138,6 +12414,13 @@ function handleKey(e) {
         return;
     }
 
+    /* ── Alt+I: 이미지 링크 만들기 (선택 URL → HTML img) ── */
+    if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        if (typeof App !== 'undefined' && App.makeImageLink) App.makeImageLink();
+        return;
+    }
+
     const dispatch = HK.getDispatch();
     const fn = dispatch[k];
     if (!fn) return;
@@ -12201,6 +12484,7 @@ const App = {
     init() {
         TM.init(); CM.load(); initTooltip(); SS.init(); FS.update(); LN.init(); EZ.init();
         if (typeof EditorLineHighlight !== 'undefined') EditorLineHighlight.init();
+        if (typeof EditorAutoPair !== 'undefined') EditorAutoPair.init();
         SB.init();  /* 저장된 소스 탭(로컬/GitHub) 복원 */
         /* 테마 복원: 전체 / 에디터 / PV 각각 */
         try {
@@ -12425,12 +12709,86 @@ const App = {
     showLink() { el('link-modal').classList.add('vis'); setTimeout(() => el('link-text').focus(), 50) },
     showImg() {
         // reset drop zone
-        el('img-drop-text').textContent = '🖼 이미지를 드래그하거나 클릭해서 선택';
+        el('img-drop-text').textContent = '🖼 클릭 또는 드래그';
         el('img-drop-text').style.color = '';
-        el('img-preview-wrap').style.display = 'none';
         el('img-dropzone').style.borderColor = ''; el('img-dropzone').style.background = '';
         if (typeof AiImage !== 'undefined') AiImage.switchTab('insert');
+        _showImgpv(el('img-url') ? el('img-url').value.trim() : '');
+        _bindImgUrlToImgpv();
+        _bindImgCodeToPreview();
         el('image-modal').classList.add('vis'); setTimeout(() => el('img-alt').focus(), 50);
+    },
+    makeImageLink() {
+        const ed = el('editor');
+        if (!ed) return;
+        const s = ed.selectionStart, e = ed.selectionEnd;
+        let url = (ed.value.slice(s, e) || '').trim();
+        if (!url) {
+            alert('URL을 선택한 뒤 Alt+I를 누르거나 🖼 링크 버튼을 누르세요.');
+            return;
+        }
+        if (!/^https?:\/\//i.test(url) && !/^data:image\//i.test(url)) {
+            alert('선택한 내용이 URL이 아닙니다.\nhttps://... 또는 data:image/... 형식을 선택해 주세요.');
+            return;
+        }
+        const isImageUrl = /^data:image\//i.test(url) || /\.(jpe?g|png|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(url);
+        let tag;
+        if (isImageUrl) {
+            const width = '500';
+            const esc = url.replace(/"/g, '&quot;');
+            tag = '<img src="' + esc + '" border="0" width="' + width + '">';
+        } else {
+            const label = prompt('링크 표시 텍스트 (비우면 URL 그대로 표시):', '');
+            if (label === null) return;
+            const text = label.trim() !== '' ? label.trim() : url;
+            const escHref = url.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+            const escText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            tag = '<a href="' + escHref + '">' + escText + '</a>';
+        }
+        if (typeof ED !== 'undefined' && typeof ED.ins === 'function') {
+            ED.ins(ed, s, e, tag);
+        } else {
+            ed.setRangeText(tag, s, e, 'end');
+        }
+        if (typeof US !== 'undefined' && US.snap) US.snap();
+        if (typeof TM !== 'undefined' && TM.markDirty) TM.markDirty();
+        if (typeof App !== 'undefined' && App.render) App.render();
+    },
+    openSelectionAsLink() {
+        const ed = el('editor');
+        if (!ed) return;
+        const s = ed.selectionStart, e = ed.selectionEnd;
+        const text = (ed.value.slice(s, e) || '').trim();
+        if (!text) {
+            alert('링크로 넣을 URL 또는 텍스트를 선택한 뒤 Shift+Alt+I를 누르거나 🔗 새창 버튼을 누르세요.');
+            return;
+        }
+        let href, label;
+        if (/^https?:\/\//i.test(text)) {
+            href = text;
+            const input = prompt('링크 표시 텍스트 (비우면 URL 그대로 표시):', '');
+            if (input === null) return;
+            label = input.trim() !== '' ? input.trim() : text;
+        } else {
+            const urlInput = prompt('링크 URL:', text);
+            if (urlInput === null) return;
+            href = (urlInput || '').trim() || text;
+            const textInput = prompt('링크 표시 텍스트 (비우면 URL 표시):', text);
+            if (textInput === null) return;
+            label = (textInput || '').trim() !== '' ? textInput.trim() : href;
+        }
+        const escHref = href.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+        const escLabel = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const tag = '<a href="' + escHref + '" target="_blank" rel="noopener">' + escLabel + '</a>';
+        if (typeof ED !== 'undefined' && typeof ED.ins === 'function') {
+            ED.ins(ed, s, e, tag);
+        } else {
+            ed.setRangeText(tag, s, e, 'end');
+        }
+        ed.focus();
+        if (typeof US !== 'undefined' && US.snap) US.snap();
+        if (typeof TM !== 'undefined' && TM.markDirty) TM.markDirty();
+        if (typeof App !== 'undefined' && App.render) App.render();
     },
     showCite() { CM.open(); el('cite-modal').classList.add('vis') },
     showStats() { STATS.show() },
@@ -12879,7 +13237,7 @@ $$
 window.addEventListener('DOMContentLoaded', () => {
     App.init();
     AiApiKey.load().catch(() => {});
-    ScholarApiKey.load();
+    ScholarApiKey.load().catch(() => {});
     ScholarApiKey.initPasteExtract();
     /* 전역 날짜·시간 라이브 갱신 (잠금 버튼 앞 표시) */
     const dtEl = el('app-datetime');
@@ -13633,6 +13991,14 @@ const DeepResearch = (() => {
         navigator.clipboard.writeText(txt).then(() => alert('복사되었습니다.')).catch(() => {});
     }
 
+    function clearOutput() {
+        const out = $('dr-output');
+        if (out) out.value = '';
+        _result = '';
+        const insBtn = $('dr-insert-btn');
+        if (insBtn) insBtn.disabled = true;
+    }
+
     function copyThinking() {
         const el = $('dr-thinking');
         const txt = el ? el.value.trim() : _thinking || '';
@@ -14320,7 +14686,7 @@ If verification is not possible, do not include the citation.`;
         if (typeof CM !== 'undefined' && CM.tab) setTimeout(() => CM.tab('ai-search'), 50);
     }
 
-    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, copyThinking, openResultInNewWindow, openThinkingInNewWindow, openResultForTranslate, openThinkingForTranslate, thinkingTranslateGoogle, thinkingTranslateResultNewWindow, thinkingTranslateBothNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile, closeThinkingIncludeModal, confirmThinkingInclude, runCiteAiSearch, openCiteAiSearch, applyAiSearchPreset, openPresetTextWindow, applyCiteAiSearchPreset, openCitePresetTextWindow, runCiteAiSearchFromModal, insertFromCiteModal, insertToNewFileFromCiteModal, copyResultFromCiteModal, openResultInNewWindowFromCiteModal, openResultForTranslateFromCiteModal, runDataResearch, applyDataResearchPreset, openDataPresetTextWindow };
+    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, copyThinking, clearOutput, openResultInNewWindow, openThinkingInNewWindow, openResultForTranslate, openThinkingForTranslate, thinkingTranslateGoogle, thinkingTranslateResultNewWindow, thinkingTranslateBothNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile, closeThinkingIncludeModal, confirmThinkingInclude, runCiteAiSearch, openCiteAiSearch, applyAiSearchPreset, openPresetTextWindow, applyCiteAiSearchPreset, openCitePresetTextWindow, runCiteAiSearchFromModal, insertFromCiteModal, insertToNewFileFromCiteModal, copyResultFromCiteModal, openResultInNewWindowFromCiteModal, openResultForTranslateFromCiteModal, runDataResearch, applyDataResearchPreset, openDataPresetTextWindow };
 })();
 window.DeepResearch = DeepResearch;
 
