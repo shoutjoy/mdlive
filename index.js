@@ -515,11 +515,13 @@ const AiApiKey = (() => {
     if (!val) {
       try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
       inp.value = '';
+      inp.classList.remove('apikey-saved');
       return;
     }
     try {
       const enc = await _encrypt(val);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(enc));
+      inp.classList.add('apikey-saved');
     } catch(e) { console.warn('AiApiKey save failed:', e); }
   }
 
@@ -532,6 +534,7 @@ const AiApiKey = (() => {
       const payload = JSON.parse(raw);
       const plain = await _decrypt(payload);
       inp.value = plain;
+      inp.classList.add('apikey-saved');
     } catch(e) { console.warn('AiApiKey load failed:', e); }
   }
 
@@ -540,7 +543,114 @@ const AiApiKey = (() => {
     return inp ? (inp.value || '').trim() : '';
   }
 
-  return { save, load, get };
+  function toggleShow() {
+    const inp = document.getElementById('ai_apikey');
+    const btn = document.getElementById('ai-apikey-btn-show');
+    if (!inp || !btn) return;
+    const isPass = inp.type === 'password';
+    inp.type = isPass ? 'text' : 'password';
+    btn.textContent = isPass ? '🙈 숨기기' : '👁 키보기';
+  }
+
+  return { save, load, get, toggleShow };
+})();
+
+/* Scholar API Key (SerpAPI) — Google Scholar 검색용, localStorage 저장 */
+const ScholarApiKey = (() => {
+  const STORAGE_KEY = 'mdpro_scholar_apikey';
+  const API_KEY_RE = /api_key\s*:\s*["']([^"']+)["']/;
+
+  function save() {
+    const inp = document.getElementById('scholar_apikey');
+    if (!inp) return;
+    const val = (inp.value || '').trim();
+    try {
+      if (val) {
+        localStorage.setItem(STORAGE_KEY, val);
+        inp.classList.add('apikey-saved');
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+        inp.classList.remove('apikey-saved');
+      }
+    } catch (e) { console.warn('ScholarApiKey save failed:', e); }
+  }
+  function load() {
+    const inp = document.getElementById('scholar_apikey');
+    if (!inp) return;
+    try {
+      const v = localStorage.getItem(STORAGE_KEY);
+      if (v) {
+        inp.value = v;
+        inp.classList.add('apikey-saved');
+      }
+    } catch (e) { console.warn('ScholarApiKey load failed:', e); }
+  }
+  function get() {
+    const inp = document.getElementById('scholar_apikey');
+    return inp ? (inp.value || '').trim() : '';
+  }
+  function toggleShow() {
+    const inp = document.getElementById('scholar_apikey');
+    const btn = document.getElementById('scholar-apikey-btn-show');
+    if (!inp || !btn) return;
+    const isPass = inp.type === 'password';
+    inp.type = isPass ? 'text' : 'password';
+    btn.textContent = isPass ? '🙈 숨기기' : '👁 키보기';
+  }
+  /** 붙여넣은 코드에서 api_key 추출 (getJson({ api_key: "..." }) 등) */
+  function extractFromPaste(text) {
+    if (!text || typeof text !== 'string') return null;
+    const m = text.match(API_KEY_RE);
+    return m ? m[1].trim() : null;
+  }
+  /** #scholar_code_paste 텍스트에서 키 추출 후 위 Scholar API Key 입력란에 넣기 */
+  function extractFromPasteBox() {
+    const box = document.getElementById('scholar_code_paste');
+    const inp = document.getElementById('scholar_apikey');
+    const feedback = document.getElementById('scholar-extract-feedback');
+    if (!box || !inp) return false;
+    const key = extractFromPaste(box.value);
+    if (key) {
+      inp.value = key;
+      inp.classList.add('apikey-saved');
+      if (feedback) {
+        feedback.style.display = 'inline';
+        feedback.textContent = '✓ api_key 추출됨';
+        feedback.style.color = 'var(--ok)';
+        clearTimeout(feedback._hide);
+        feedback._hide = setTimeout(() => { feedback.style.display = 'none'; }, 2500);
+      }
+      return true;
+    }
+    if (feedback) {
+      feedback.style.display = 'inline';
+      feedback.textContent = 'api_key를 찾을 수 없음';
+      feedback.style.color = 'var(--er)';
+      clearTimeout(feedback._hide);
+      feedback._hide = setTimeout(() => { feedback.style.display = 'none'; }, 2500);
+    }
+    return false;
+  }
+  function initPasteExtract() {
+    const inp = document.getElementById('scholar_apikey');
+    if (!inp) return;
+    inp.addEventListener('paste', (e) => {
+      const pasted = (e.clipboardData && e.clipboardData.getData('text')) || '';
+      const key = extractFromPaste(pasted);
+      if (key) {
+        e.preventDefault();
+        inp.value = key;
+        inp.classList.add('apikey-saved');
+      }
+    });
+    const pasteBox = document.getElementById('scholar_code_paste');
+    if (pasteBox) {
+      pasteBox.addEventListener('paste', () => {
+        setTimeout(() => extractFromPasteBox(), 10);
+      });
+    }
+  }
+  return { save, load, get, toggleShow, extractFromPaste, extractFromPasteBox, initPasteExtract };
 })();
 
 function mdRender(md, showFootnotes) {
@@ -3185,6 +3295,12 @@ const TM = (() => {
         persist();
         App.render();
         el('editor') && el('editor').focus();
+        /* 활성 탭이 GitHub 파일이면 폴더 뷰를 GitHub로, 로컬 파일이면 로컬로 자동 전환 */
+        if (typeof SB !== 'undefined' && SB.currentSource) {
+            const wantSource = tab.ghPath ? 'github' : 'local';
+            if (SB.currentSource() !== wantSource) SB.switchSource(wantSource);
+        }
+        if (typeof GH !== 'undefined' && GH.syncHighlightFromActiveTab) GH.syncHighlightFromActiveTab();
     }
 
     /* ── 새 탭 ───────────────────────────────────────── */
@@ -3720,6 +3836,18 @@ const GH = (() => {
             _setStatus('ok', `✓ 연결 성공 — ${info.full_name}  (${info.visibility})`);
             _saveCfg(cfg);
             _setRepoUI(cfg.repo);
+            /* #gh-hdr에 연결성공 메시지 표시 후 사라지게 */
+            const hdrOk = document.getElementById('gh-hdr-ok-msg');
+            if (hdrOk) {
+                hdrOk.textContent = '연결성공';
+                hdrOk.style.display = 'inline';
+                hdrOk.style.opacity = '1';
+                clearTimeout(hdrOk._hideTid);
+                hdrOk._hideTid = setTimeout(() => {
+                    hdrOk.style.opacity = '0';
+                    setTimeout(() => { hdrOk.style.display = 'none'; hdrOk.textContent = ''; }, 280);
+                }, 2200);
+            }
             /* 즉시 파일 목록 로드 */
             setTimeout(() => {
                 hideSettings();
@@ -4053,6 +4181,7 @@ const GH = (() => {
             node.files.forEach(f => {
                 const row  = document.createElement('div');
                 row.className = 'file-item' + (f.path === activeFile ? ' active' : '');
+                row.dataset.ghPath = f.path;
                 row.style.paddingLeft = (18 + indent) + 'px';
                 const icon = f.ext === 'html' ? '🌐' : f.ext === 'txt' ? '📄' : '📝';
                 const ghSizeStr = f.size != null
@@ -4192,11 +4321,29 @@ const GH = (() => {
         });
     }
 
+    /* ── gh-list에서 해당 path 하이라이트 및 스크롤 (탭 선택 또는 파일 클릭 시) ── */
+    function _highlightFileInList(path) {
+        const list = document.getElementById('gh-list');
+        if (!list) return;
+        list.querySelectorAll('.file-item').forEach(el => {
+            el.classList.toggle('active', el.dataset.ghPath === path);
+        });
+        const activeRow = list.querySelector('.file-item.active');
+        if (activeRow) activeRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    /* ── 활성 탭에 맞춰 gh-list 하이라이트 동기화 (탭 선택 시 호출) ── */
+    function syncHighlightFromActiveTab() {
+        const tab = typeof TM !== 'undefined' ? TM.getActive() : null;
+        const path = tab && tab.ghPath ? tab.ghPath : null;
+        activeFile = path;
+        _highlightFileInList(path);
+    }
+
     /* ── 파일 열기 ────────────────────────────────────── */
     async function _openFile(f) {
         activeFile = f.path;
-        document.querySelectorAll('#gh-list .file-item').forEach(el =>
-            el.classList.toggle('active', el.title === f.path));
+        _highlightFileInList(f.path);
 
         /* 세션 캐시 확인 */
         if (_fileContentCache[f.path]) {
@@ -5508,6 +5655,7 @@ const GH = (() => {
         createNewFile, createNewFolder, _createFileInFolder,
         confirmDelete, confirmDeleteFolder, moveFile, pushFile,
         toggleFoldAll, toggleAutoRefresh, showArIntervalSetting,
+        syncHighlightFromActiveTab,
         get cfg() { return cfg; },
     };
 })();
@@ -7280,12 +7428,147 @@ const CM = (() => {
         ed.value = ed.value.substring(0, pos) + block + ed.value.substring(pos); App.render(); US.snap(); App.hideModal('cite-modal');
     }
 
-    function downloadLib() {
+    function downloadLibTxt() {
         let content = `# 참고문헌 목록 (${new Date().toLocaleDateString()})\n\n`;
         content += `## APA 7\n\n`; refs.forEach((r, i) => { content += `${i + 1}. ${r.full}\n` });
         content += `\n## MLA 9\n\n`; refs.forEach((r, i) => { content += `${i + 1}. ${r.mla || toMLA(r)}\n` });
         content += `\n## Chicago (Author-Date)\n\n`; refs.forEach((r, i) => { content += `${i + 1}. ${r.chicago || toChicago(r)}\n` });
         dlBlob(content, 'references.txt', 'text/plain;charset=utf-8');
+    }
+
+    /** APA 7 → Markdown (references.md): 학술지/볼륨 기울임, 문장형 대문자, en dash, DOI만, 빈 줄 구분 */
+    function toAPA7MD(ref) {
+        const line = (ref.full || '').replace(/\*/g, '').trim();
+        const ym = line.match(/\((\d{4}[a-z]?)\)/);
+        const year = ym ? ym[1] : '';
+        const doiMatch = line.match(/(?:https:\/\/doi\.org\/|doi:)\s*([^\s.,]+)/i);
+        const doi = doiMatch ? 'https://doi.org/' + doiMatch[1].replace(/^https:\/\/doi\.org\//i, '') : '';
+        const beforeDoi = doi ? line.substring(0, line.search(/(?:https:\/\/doi\.org\/|doi:)/i)).trim() : line;
+        const main = beforeDoi.replace(/\*/g, '').trim();
+        const authorPart = main.substring(0, main.indexOf('(')).trim().replace(/\.\s*$/, '');
+        const afterYear = main.substring(main.indexOf(')') + 1).trim();
+        const titleMatch = afterYear.match(/^\.?\s*(.+?)\s*\.\s*(.+)$/);
+        const title = titleMatch ? titleMatch[1].trim() : afterYear;
+        const tail = titleMatch ? titleMatch[2].trim() : '';
+        const journalMatch = tail.match(/^([^,]+),\s*(\d+)\s*\(\s*(\d+)\s*\)\s*,\s*(?:pp\.\s*)?([\d\s–\-]+)/);
+        let journal = '', vol = '', issue = '', pages = '';
+        if (journalMatch) {
+            journal = journalMatch[1].trim();
+            vol = journalMatch[2];
+            issue = journalMatch[3];
+            pages = journalMatch[4].replace(/\s*[-–]\s*/, '–').trim();
+        } else {
+            const simple = tail.match(/^([^,]+),\s*(\d+)\s*\(\s*(\d+)\s*\)/);
+            if (simple) {
+                journal = simple[1].trim();
+                vol = simple[2];
+                issue = simple[3];
+            } else {
+                journal = tail;
+            }
+        }
+        const sentenceCase = (s) => {
+            if (!s || /[가-힣]/.test(s)) return s;
+            return s.toLowerCase().replace(/(^\s*\w|\.\s*\w|!\s*\w|\?\s*\w)/g, m => m.toUpperCase());
+        };
+        const outTitle = sentenceCase(title);
+        const outJournal = journal ? `*${journal}*` : '';
+        const outVol = vol ? `*${vol}*` : '';
+        const outIssue = issue ? `(${issue})` : '';
+        const pagePart = pages ? `, ${pages}` : '';
+        const doiPart = doi ? `. ${doi}` : '';
+        return `${authorPart}. (${year}). ${outTitle}. ${outJournal}${outJournal && (outVol || outIssue) ? ', ' : ''}${outVol}${outIssue}${pagePart}.${doiPart}`;
+    }
+
+    function downloadLibMd() {
+        const sorted = [...refs].sort((a, b) => {
+            const sa = (a.author || a.key || '').toLowerCase();
+            const sb = (b.author || b.key || '').toLowerCase();
+            return sa.localeCompare(sb);
+        });
+        const lines = sorted.map(r => toAPA7MD(r)).filter(Boolean);
+        const content = '# References\n\n' + lines.join('\n\n') + '\n';
+        dlBlob(content, 'references.md', 'text/markdown;charset=utf-8');
+    }
+
+    function loadLibFromMd() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.md,text/markdown,text/plain';
+        input.onchange = (ev) => {
+            const file = ev.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = (e.target.result || '').trim();
+                const blocks = text.split(/\n\s*\n+/).map(s => s.replace(/\*/g, '').trim()).filter(s => s.length > 10 && !/^#\s*References?\s*$/i.test(s));
+                let added = 0;
+                blocks.forEach(block => {
+                    const p = parseAPA(block);
+                    if (p && !refs.find(r => r.full === p.full)) {
+                        p.mla = toMLA(p);
+                        p.chicago = toChicago(p);
+                        refs.push(p);
+                        added++;
+                    }
+                });
+                save();
+                renderLib();
+                renderList(el('cite-search')?.value || '');
+                if (added > 0 && typeof App !== 'undefined' && App._toast) App._toast(`✓ ${added}건 불러옴 (총 ${refs.length}건)`);
+            };
+            reader.readAsText(file, 'utf-8');
+            input.value = '';
+        };
+        input.click();
+    }
+
+    function downloadLib() {
+        downloadLibTxt();
+    }
+
+    function openLibInNewWindow() {
+        if (!refs.length) {
+            if (typeof App !== 'undefined' && App._toast) App._toast('저장된 참고문헌이 없습니다.');
+            return;
+        }
+        const sorted = [...refs].sort((a, b) => {
+            const sa = (a.author || a.key || '').toLowerCase();
+            const sb = (b.author || b.key || '').toLowerCase();
+            return sa.localeCompare(sb);
+        });
+        const lines = sorted.map(r => toAPA7MD(r)).filter(Boolean);
+        const md = '# References\n\n' + lines.join('\n\n') + '\n';
+        let html;
+        try {
+            html = typeof mdRender === 'function' ? mdRender(md, true) : (typeof marked !== 'undefined' ? marked.parse(md) : md.replace(/\n/g, '<br>'));
+        } catch (e) {
+            html = '<p style="color:var(--er)">' + (e.message || '렌더 오류') + '</p>';
+        }
+        html = (html || '').replace(/<\/script>/gi, '<\\/script>');
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        const w = window.open('', '_blank', 'width=800,height=700,scrollbars=yes,resizable=yes');
+        if (!w) {
+            alert('팝업이 차단되었을 수 있습니다.');
+            return;
+        }
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>참고문헌 목록</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body style="margin:0;background:var(--bg1);display:flex;flex-direction:column;min-height:100vh;font-family:inherit">' +
+            '<div style="flex-shrink:0;padding:8px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;background:var(--bg3);flex-wrap:wrap">' +
+            '<button type="button" onclick="var p=document.getElementById(\'lib-pv-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.min(24,s+2)+\'px\';var L=document.getElementById(\'lib-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx);font-size:12px">확대</button>' +
+            '<button type="button" onclick="var p=document.getElementById(\'lib-pv-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.max(10,s-2)+\'px\';var L=document.getElementById(\'lib-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx);font-size:12px">축소</button>' +
+            '<span id="lib-zoom-label" style="font-size:11px;color:var(--tx3);min-width:40px">100%</span>' +
+            '<button type="button" onclick="var ta=document.getElementById(\'lib-pv-md-src\');if(ta){navigator.clipboard.writeText(ta.value).then(function(){var t=document.getElementById(\'lib-copy-msg\');if(t){t.textContent=\'✓ 양식 포함 복사됨\';setTimeout(function(){t.textContent=\'\';},2000)}})}" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx);font-size:12px">양식포함복사</button>' +
+            '<span id="lib-copy-msg" style="font-size:11px;color:var(--ok)"></span>' +
+            '</div>' +
+            '<textarea id="lib-pv-md-src" style="display:none"></textarea>' +
+            '<div id="lib-pv-content" style="flex:1;min-height:0;overflow:auto;padding:20px;font-size:13px;line-height:1.7">' +
+            '<div class="preview-page" style="max-width:720px;margin:0 auto">' + html + '</div></div></body></html>'
+        );
+        w.document.close();
+        const ta = w.document.getElementById('lib-pv-md-src');
+        if (ta) ta.value = md;
     }
 
     function renderManualList() {
@@ -7315,13 +7598,24 @@ const CM = (() => {
         dlBlob(content, 'manual-references.txt', 'text/plain;charset=utf-8');
     }
     function tab(name) {
-        const names = ['add', 'cite', 'convert', 'lib', 'manual', 'search'];
-        document.querySelectorAll('#cite-modal .tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+        const names = ['add', 'cite', 'convert', 'lib', 'manual', 'search', 'ai-search'];
+        document.querySelectorAll('#cite-modal .tr-tab').forEach(t => t.classList.toggle('active', t.getAttribute('data-tab') === name));
         names.forEach(n => { const p = el(`cp-${n}`); if (p) p.classList.toggle('active', n === name); });
-        if (name === 'cite') { renderList(el('cite-search')?.value || ''); el('cite-ins-btn').style.display = 'none'; }
+        const footer = document.getElementById('cite-ai-search-footer');
+        const insBtn = el('cite-ins-btn');
+        if (name === 'ai-search') {
+            if (footer) footer.style.display = 'flex';
+            if (insBtn) insBtn.style.display = 'none';
+            if (typeof DeepResearch !== 'undefined') DeepResearch.applyCiteAiSearchPreset();
+            setTimeout(() => { el('cite-ai-prompt')?.focus(); if (typeof CiteAiSearchHistory !== 'undefined') CiteAiSearchHistory.renderList(); }, 80);
+        } else {
+            if (footer) footer.style.display = 'none';
+            if (insBtn) insBtn.style.display = '';
+        }
+        if (name === 'cite') { renderList(el('cite-search')?.value || ''); if (insBtn) insBtn.style.display = 'none'; }
         if (name === 'lib') renderLib();
         if (name === 'manual') renderManualList();
-        if (name === 'search') setTimeout(() => el('ref-q')?.focus(), 80);
+        if (name === 'search') { RefSearch.syncAiPromptVisibility(); setTimeout(() => el('ref-q')?.focus(), 80); }
     }
 
     // RefSearch 에서 단일 APA 문자열을 직접 추가하는 공개 메서드
@@ -7333,7 +7627,179 @@ const CM = (() => {
 
     function open() { load(); renderList(''); renderLib(); el('cite-ins-btn').style.display = 'none' }
 
-    return { load, setSep, parse, loadFile, filter, toggle, getSel, upd, selAll, clrSel, insert, del, clearAll, insertRefSection, downloadLib, renderManualList, delManual, clearManual, insertRefSectionFromManual, downloadManual, convertStyle, copyConverted, insertConverted, tab, open, addRaw };
+    return { load, setSep, parse, loadFile, filter, toggle, getSel, upd, selAll, clrSel, insert, del, clearAll, insertRefSection, downloadLib, downloadLibTxt, downloadLibMd, loadLibFromMd, openLibInNewWindow, renderManualList, delManual, clearManual, insertRefSectionFromManual, downloadManual, convertStyle, copyConverted, insertConverted, tab, open, addRaw };
+})();
+
+/* 참고문헌 모달 최대화 (앱 내 전체화면) */
+const CiteModal = {
+    toggleMaximize() {
+        const box = document.getElementById('cite-modal-box');
+        const btn = document.getElementById('cite-modal-maximize-btn');
+        if (!box) return;
+        const on = box.classList.toggle('cite-modal-maximized');
+        if (btn) { btn.title = on ? '원래 크기' : '최대화'; btn.textContent = on ? '⤢' : '⛶'; }
+    }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   CiteAISearch — cite-modal 전용 AI 참고문헌 검색 (Gemini)
+═══════════════════════════════════════════════════════════ */
+const CiteAISearch = (() => {
+    async function callGemini(prompt) {
+        const key = typeof AiApiKey !== 'undefined' ? AiApiKey.get() : '';
+        if (!key) throw new Error('AI API 키를 설정에서 입력·저장해 주세요.');
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`;
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.3, maxOutputTokens: 4096 }
+            }),
+            signal: AbortSignal.timeout(60000)
+        });
+        if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(err.error?.message || `HTTP ${r.status}`);
+        }
+        const d = await r.json();
+        const parts = d.candidates?.[0]?.content?.parts || [];
+        return parts.map(p => (p.text || '').trim()).filter(Boolean).join('\n').trim();
+    }
+
+    function run() {
+        const inp = document.getElementById('cite-ai-prompt');
+        const status = document.getElementById('cite-ai-status');
+        const resultBox = document.getElementById('cite-ai-result');
+        const placeholder = document.getElementById('cite-ai-placeholder');
+        if (!inp || !resultBox) return;
+        const q = (inp.value || '').trim();
+        if (!q) {
+            if (status) status.textContent = '검색할 주제를 입력하세요.';
+            return;
+        }
+        const prompt = `List 5 to 10 academic references in APA 7 format for the following topic. Output only the reference list, one reference per line. No numbering, no extra explanation.\n\nTopic: ${q}`;
+        if (status) status.textContent = '🔄 AI 검색 중...';
+        if (placeholder) placeholder.style.display = 'none';
+        resultBox.innerHTML = '<div class="cite-empty" style="padding:16px">⏳ 생성 중...</div>';
+        callGemini(prompt).then(text => {
+            const lines = text.split(/\n/).map(s => s.trim()).filter(s => s.length > 5);
+            if (status) status.textContent = lines.length ? `✅ ${lines.length}건 제안` : '제안된 참고문헌이 없습니다.';
+            if (lines.length === 0) {
+                resultBox.innerHTML = '<div class="cite-empty" id="cite-ai-placeholder">제안된 참고문헌이 없습니다. 프롬프트를 바꿔 다시 시도하세요.</div>';
+                return;
+            }
+            resultBox.innerHTML = lines.map((line, i) => {
+                const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                return `<div class="ref-card" style="margin-bottom:8px">
+  <div class="ref-card-apa" style="font-size:12px">${escaped}</div>
+  <div class="ref-card-btns" style="margin-top:4px">
+    <button type="button" class="btn btn-p btn-sm" onclick="CiteAISearch.addLine(${i})">+ 참고문헌에 추가</button>
+  </div>
+</div>`;
+            }).join('');
+            resultBox._lines = lines;
+        }).catch(e => {
+            if (status) status.textContent = `❌ ${e.message}`;
+            resultBox.innerHTML = `<div class="cite-empty" id="cite-ai-placeholder">오류: ${e.message}</div>`;
+        });
+    }
+
+    function addLine(i) {
+        const box = document.getElementById('cite-ai-result');
+        const line = box._lines?.[i];
+        if (!line || typeof CM === 'undefined') return;
+        CM.addRaw(line);
+        const btns = box.querySelectorAll('.ref-card')[i]?.querySelectorAll('button');
+        if (btns?.[0]) { btns[0].textContent = '✔ 추가됨'; btns[0].disabled = true; btns[0].style.opacity = '.6'; }
+    }
+
+    return { run, addLine };
+})();
+
+/* AI 검색 결과 히스토리 — Deep Research AI 검색 결과 저장, cite-modal에서 목록 표시 */
+const CiteAiSearchHistory = (() => {
+    const STORAGE_KEY = 'mdpro_cite_ai_search_history';
+    const LIST_EL_ID = 'cite-ai-history-list';
+
+    function getList() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+    }
+    function setList(arr) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch (e) {}
+    }
+    function saveCurrent() {
+        const out = document.getElementById('dr-output');
+        const q = document.getElementById('dr-ai-prompt');
+        if (!out) return;
+        const result = (out.value || '').trim();
+        if (!result) return;
+        const title = (q && q.value) ? q.value.trim().slice(0, 50) : ('AI검색 ' + new Date().toLocaleString('ko-KR'));
+        const list = getList();
+        const item = { id: 'aih-' + Date.now(), title, result, createdAt: Date.now() };
+        list.unshift(item);
+        setList(list.slice(0, 100));
+        renderList();
+    }
+    function saveCurrentFromCiteModal() {
+        const out = document.getElementById('cite-ai-out');
+        const q = document.getElementById('cite-ai-prompt');
+        if (!out) return;
+        const result = (out.value || '').trim();
+        if (!result) return;
+        const title = (q && q.value) ? q.value.trim().slice(0, 50) : ('AI검색 ' + new Date().toLocaleString('ko-KR'));
+        const list = getList();
+        const item = { id: 'aih-' + Date.now(), title, result, createdAt: Date.now() };
+        list.unshift(item);
+        setList(list.slice(0, 100));
+        renderList();
+    }
+    function loadItem(id) {
+        const list = getList();
+        const item = list.find(x => x.id === id);
+        if (!item) return;
+        const citeModal = document.getElementById('cite-modal');
+        const cpAiSearch = document.getElementById('cp-ai-search');
+        const isCiteAiSearchActive = citeModal && citeModal.classList.contains('vis') && cpAiSearch && cpAiSearch.classList.contains('active');
+        if (isCiteAiSearchActive) {
+            const out = document.getElementById('cite-ai-out');
+            if (out) out.value = item.result;
+            return;
+        }
+        if (typeof DeepResearch !== 'undefined') {
+            DeepResearch.show();
+            DeepResearch.switchTab('ai-search');
+            const out = document.getElementById('dr-output');
+            if (out) out.value = item.result;
+        }
+    }
+    function deleteItem(id) {
+        setList(getList().filter(x => x.id !== id));
+        renderList();
+    }
+    function clearAll() {
+        setList([]);
+        renderList();
+    }
+    function renderList() {
+        const el = document.getElementById(LIST_EL_ID);
+        if (!el) return;
+        const list = getList();
+        if (!list.length) {
+            el.innerHTML = '<div class="cite-empty" style="font-size:11px;color:var(--tx3);padding:12px">' + (el.getAttribute('data-empty') || '저장된 항목이 없습니다.') + '</div>';
+            return;
+        }
+        el.innerHTML = list.map(item => {
+            const d = new Date(item.createdAt);
+            const dateStr = d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+            const titleEsc = (item.title || '제목 없음').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return '<div class="ref-card" style="margin-bottom:6px;padding:6px 8px;"><div style="font-size:11px;color:var(--tx);margin-bottom:4px">' + titleEsc + '</div><div style="font-size:10px;color:var(--tx3);margin-bottom:4px">' + dateStr + '</div><div style="display:flex;gap:4px"><button type="button" class="btn btn-p btn-sm" style="font-size:10px" onclick="CiteAiSearchHistory.loadItem(\'' + item.id + '\')">불러오기</button><button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="CiteAiSearchHistory.deleteItem(\'' + item.id + '\')">삭제</button></div></div>';
+        }).join('');
+    }
+    return { getList, saveCurrent, saveCurrentFromCiteModal, loadItem, deleteItem, clearAll, renderList };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -7817,8 +8283,167 @@ const Scholar = (() => {
     let recent = [];
     let currentTab = 'google';
 
+    const APA_GUIDE_MD = `# 📘 APA 7판 참고문헌 작성 가이드 (학술연구자용 정리본)
+
+본 문서는 학술논문 작성 시 참고문헌을 **APA 7판(American Psychological Association, 7th ed.)** 기준에 따라 정확하게 작성하기 위한 규칙을 정리한 연구자용 가이드이다.
+한국어 논문과 영어 논문이 혼재된 경우에도 동일한 원칙이 적용되며, 언어에 따른 세부 차이만 존재한다.
+
+---
+
+# 1️⃣ APA 7판의 기본 원칙
+
+APA 7판 참고문헌 작성의 핵심 원칙은 다음과 같다.
+
+1. 모든 참고문헌은 저자 성 기준 알파벳순으로 배열한다.
+2. 한글 논문과 영문 논문을 구분하지 않고 동일한 규칙을 적용한다.
+3. 학술지명과 권(volume)은 반드시 이탤릭체로 표기한다.
+4. 논문 제목은 문장형(sentence case)으로 작성한다.
+5. DOI가 있는 경우 반드시 https://doi.org/ 형식으로 표기한다.
+6. 각 참고문헌 사이에는 한 줄 공백을 둔다.
+
+---
+
+# 2️⃣ 학술지 논문의 기본 형식
+
+## 🔹 기본 구조
+
+저자. (연도). 논문 제목. *학술지명, 권*(호), 페이지. DOI
+
+---
+
+# 3️⃣ 저자 표기 규칙
+
+## ① 한국어 저자
+
+- 성과 이름을 그대로 작성한다.
+- 이니셜로 변환하지 않는다.
+- 쉼표로 저자를 구분한다.
+
+예시
+전희원, 김영화.
+
+---
+
+## ② 영어 저자
+
+- 성, 이름 이니셜 순으로 표기한다.
+- 이름은 이니셜로 축약한다.
+- 저자가 20명 이하이면 모두 표기한다.
+- 21명 이상이면 19명까지 표기 후 … 마지막 저자를 표기한다.
+
+예시
+Henrich, W. L., Smith, J. A., & Brown, R. T.
+
+---
+
+# 4️⃣ 연도 표기
+
+- 반드시 괄호 안에 작성한다.
+- 괄호 뒤에는 마침표를 찍는다.
+
+형식
+(2007).
+
+---
+
+# 5️⃣ 논문 제목 작성 규칙
+
+## ① 한국어 논문 제목
+
+- 원문 그대로 작성한다.
+- 따옴표를 사용하지 않는다.
+- 별도 대소문자 변경을 하지 않는다.
+
+## ② 영어 논문 제목
+
+- 문장형(sentence case) 적용
+- 첫 단어와 고유명사만 대문자로 작성한다.
+- 나머지는 소문자로 작성한다.
+
+예시
+Analgesics and the kidney: Summary and recommendations to the scientific advisory board of the National Kidney Foundation.
+
+---
+
+# 6️⃣ 학술지명 및 권·호 표기
+
+## 🔹 이탤릭 적용 대상
+
+- 학술지명
+- 권(volume)
+
+## 🔹 일반체 유지
+
+- 호(issue)
+- 페이지
+
+예시
+*American Journal of Kidney Diseases, 27*(1), 162–165.
+
+또는
+
+*관광연구, 22*(2), 285–307.
+
+---
+
+# 7️⃣ 페이지 표기
+
+- 시작 페이지와 끝 페이지 사이에는 en dash(–) 사용
+- 하이픈(-)이 아니라 en dash 사용
+
+예시
+285–307.
+
+---
+
+# 8️⃣ DOI 표기
+
+- 반드시 URL 형식 사용
+- doi: 또는 DOI: 사용하지 않음
+- http:// 대신 https:// 사용
+
+형식
+https://doi.org/10.xxxxx
+
+---
+
+# 9️⃣ 한국어 논문과 영어 논문의 차이 요약
+
+| 구분 | 한국어 논문 | 영어 논문 |
+|------|-------------|-----------|
+| 저자명 | 한글 원형 유지 | 성 + 이니셜 |
+| 제목 | 원문 유지 | sentence case |
+| 학술지명 | 원문 유지 | Title Case |
+| 이탤릭 | 적용 | 적용 |
+| DOI | 동일 | 동일 |
+
+---
+
+# 🔟 예시 정리
+
+전희원, 김영화. (2007). 호텔종사원의 집단응집력과 자긍심이 조직몰입, 직무만족 및 직무성과에 미치는 영향. *관광연구, 22*(2), 285–307.
+
+HEE, K. S., Lim, R. J., 이은희. (2019). 중소병원 간호사의 간호근무환경과 조직몰입 간의 관계: 수간호사 신뢰의 조절효과. *Asia-Pacific Journal of Multimedia Services Convergent with Art, Humanities and Sociology, 9*(9), 437–449. https://doi.org/10.35873/ajmahs.2019.9.9.038
+
+Henrich, W. L., et al. (1996). Analgesics and the kidney: Summary and recommendations to the scientific advisory board of the National Kidney Foundation from an ad hoc committee of the National Kidney Foundation. *American Journal of Kidney Diseases, 27*(1), 162–165. https://doi.org/10.1016/s0272-6386(96)90046-3
+
+---
+
+# 📌 최종 정리
+
+APA 7판은 언어에 따라 다른 형식을 요구하는 것이 아니다.
+동일한 구조 안에서 저자 표기 방식과 제목 대소문자 규칙만 언어 특성에 맞게 달라질 뿐이다.
+한국어 학술지 역시 반드시 이탤릭을 적용하는 것이 원칙이다.
+
+---
+
+본 문서는 연구자용 참고문헌 작성 표준 안내서로 활용할 수 있다.
+`;
+
+    /** localStorage에서 최근 검색어 목록(RK) 복원. 없거나 오류 시 빈 배열 */
     function load() { try { recent = JSON.parse(localStorage.getItem(RK) || '[]') } catch (e) { recent = [] } }
 
+    /** 현재 선택된 탭(Google/Yonsei/RISS/KCI/DBpia/IEEE/ScienceDirect)에 맞춰 UI 전환 및 해당 검색 패널 포커스 */
     function tab(name) {
         currentTab = name;
         document.querySelectorAll('#scholar-modal .tab-row .tab').forEach(t => t.classList.remove('active'));
@@ -7833,6 +8458,7 @@ const Scholar = (() => {
         }, 50);
     }
 
+    /** Scholar 검색 모달 표시, 최근 검색어 렌더, 현재 탭으로 초기화 후 검색 입력란에 포커스 */
     function show() {
         load(); renderRecent(); el('scholar-modal').classList.add('vis');
         tab(currentTab);
@@ -7842,6 +8468,7 @@ const Scholar = (() => {
         }, 80);
     }
 
+    /** 현재 탭에 해당하는 검색어 입력란의 값을 반환 (Google/Yonsei/RISS 등 탭별 입력소스) */
     function getQ() {
         switch (currentTab) {
             case 'google': return el('scholar-q')?.value?.trim() || '';
@@ -7855,6 +8482,7 @@ const Scholar = (() => {
         }
     }
 
+    /** 현재 탭의 검색 조건으로 외부 검색 사이트 URL 생성 (Google Scholar, RISS, KCI, DBpia, IEEE 등). KCI는 blob URL(자동제출 폼) 반환 */
     function buildUrl() {
         const enc = (s) => encodeURIComponent((s || '').trim());
         switch (currentTab) {
@@ -7926,6 +8554,7 @@ const Scholar = (() => {
         }
     }
 
+    /** buildUrl()로 만든 URL로 새 창을 열어 검색 실행. Google Scholar일 때는 검색어를 최근 검색 목록에 추가 */
     function search() {
         const url = buildUrl();
         if (!url) {
@@ -7951,14 +8580,34 @@ const Scholar = (() => {
         }
     }
 
+    /** 최근 검색어 목록(recent)을 #scholar-recent 영역에 칩 형태로 렌더. 클릭 시 useRecent 호출, ✕ 시 removeRecent */
     function renderRecent() {
         const wrap = el('scholar-recent-wrap');
         const div = el('scholar-recent');
-        if (!recent.length) { wrap.style.display = 'none'; return }
+        if (!wrap || !div) return;
         wrap.style.display = 'block';
-        div.innerHTML = recent.map(r => `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg5);border:1px solid var(--bd);border-radius:var(--r);padding:2px 8px;font-size:11px;cursor:pointer;color:var(--tx2)" onclick="Scholar.useRecent('${String(r).replace(/'/g, "\\'")}')">🕐 ${r}</span>`).join('');
+        if (!recent.length) {
+            div.innerHTML = '<span style="font-size:11px;color:var(--tx3)">최근 검색어가 없습니다. Google Scholar 등에서 검색하면 여기에 표시됩니다.</span>';
+            return;
+        }
+        const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const escapeJs = (s) => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+        div.innerHTML = recent.map((r, i) => {
+            const esc = escapeJs(r);
+            const safe = escapeHtml(r);
+            return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg5);border:1px solid var(--bd);border-radius:var(--r);padding:2px 6px 2px 8px;font-size:11px;color:var(--tx2)"><span style="cursor:pointer" onclick="Scholar.useRecent('${esc}')">🕐 ${safe}</span><button type="button" onclick="event.stopPropagation();Scholar.removeRecent(${i})" style="background:none;border:none;cursor:pointer;padding:0 2px;font-size:12px;color:var(--tx3);line-height:1" title="이 검색어 지우기">✕</button></span>`;
+        }).join('');
     }
 
+    /** 최근 검색어 목록에서 지정 인덱스 항목 제거 후 localStorage 저장 및 renderRecent 갱신 */
+    function removeRecent(index) {
+        if (index < 0 || index >= recent.length) return;
+        recent.splice(index, 1);
+        try { localStorage.setItem(RK, JSON.stringify(recent)) } catch (e) { }
+        renderRecent();
+    }
+
+    /** 최근 검색어(q)를 모든 탭의 검색 입력란에 동일하게 넣고 search() 실행 (한 번에 동일 검색어로 검색) */
     function useRecent(q) {
         el('scholar-q').value = q;
         el('scholar-yonsei-q').value = q;
@@ -7970,6 +8619,7 @@ const Scholar = (() => {
         search();
     }
 
+    /** 모든 검색 입력란 및 최근 검색 목록 초기화, localStorage의 최근 검색어 삭제 후 현재 탭 입력란에 포커스 */
     function clear() {
         el('scholar-q').value = '';
         el('scholar-yonsei-q').value = '';
@@ -7990,7 +8640,33 @@ const Scholar = (() => {
         if (inp) inp.focus();
     }
 
-    return { show, search, useRecent, clear, tab };
+    /** APA 7판 참고문헌 작성 가이드(APA_GUIDE_MD)를 마크다운 렌더 후 새 창에 표시. 확대/축소 버튼 제공 */
+    function openApaGuide() {
+        let html;
+        try {
+            html = typeof mdRender === 'function' ? mdRender(APA_GUIDE_MD, true) : (typeof marked !== 'undefined' ? marked.parse(APA_GUIDE_MD) : APA_GUIDE_MD.replace(/\n/g, '<br>'));
+        } catch (e) {
+            html = '<p style="color:var(--er)">' + (e.message || '렌더 오류') + '</p>';
+        }
+        html = (html || '').replace(/<\/script>/gi, '<\\/script>');
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        const w = window.open('', '_blank', 'width=800,height=700,scrollbars=yes,resizable=yes');
+        if (!w) { alert('팝업이 차단되었을 수 있습니다.'); return; }
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>APA 7판 참고문헌 작성 가이드</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body style="margin:0;background:var(--bg1);display:flex;flex-direction:column;min-height:100vh;font-family:inherit">' +
+            '<div style="flex-shrink:0;padding:8px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;background:var(--bg3);flex-wrap:wrap">' +
+            '<button type="button" onclick="var p=document.getElementById(\'apa-guide-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.min(24,s+2)+\'px\';var L=document.getElementById(\'apa-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx);font-size:12px">확대</button>' +
+            '<button type="button" onclick="var p=document.getElementById(\'apa-guide-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.max(10,s-2)+\'px\';var L=document.getElementById(\'apa-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx);font-size:12px">축소</button>' +
+            '<span id="apa-zoom-label" style="font-size:11px;color:var(--tx3);min-width:40px">100%</span>' +
+            '</div>' +
+            '<div id="apa-guide-content" style="flex:1;min-height:0;overflow:auto;padding:20px;font-size:13px;line-height:1.7">' +
+            '<div class="preview-page" style="max-width:720px;margin:0 auto">' + html + '</div></div></body></html>'
+        );
+        w.document.close();
+    }
+
+    return { show, search, useRecent, removeRecent, clear, tab, openApaGuide };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -8104,6 +8780,7 @@ const RefSearch = (() => {
 
     /* ── APA 포맷터 ── */
     function toAPA(w) {
+        if (w._src === 'scholar' && w.full) return w.full;
         // 저자
         let authors = '';
         if (w._src === 'openalex') {
@@ -8199,6 +8876,50 @@ const RefSearch = (() => {
         });
     }
 
+    /* ── SerpAPI Google Scholar ── */
+    async function searchScholarSerpApi(q, year) {
+        const apiKey = typeof ScholarApiKey !== 'undefined' ? ScholarApiKey.get() : '';
+        if (!apiKey) throw new Error('Scholar API 키가 없습니다. 설정에서 SerpAPI 키를 입력·저장하세요.');
+        let url = `https://serpapi.com/search.json?engine=google_scholar&q=${encodeURIComponent(q)}&api_key=${encodeURIComponent(apiKey)}&hl=ko`;
+        if (year) url += `&as_ylo=${year}`;
+        let res;
+        try {
+            res = await fetch(url);
+        } catch (e) {
+            if (e && (e.message === 'Failed to fetch' || e.name === 'TypeError')) {
+                try {
+                    res = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+                } catch (e2) {
+                    throw new Error('CORS로 차단되었습니다. 로컬 서버(npx serve 등)로 실행하거나 잠시 후 다시 시도하세요.');
+                }
+            } else throw e;
+        }
+        if (res.status === 429) throw new Error('SerpAPI 요청 한도 초과(429). 잠시 후 다시 시도하세요.');
+        if (!res.ok) throw new Error('Google Scholar 검색 응답 오류');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error || 'SerpAPI 오류');
+        const results = data.organic_results || [];
+        return results.map(r => {
+            const summary = (r.publication_info && r.publication_info.summary) || '';
+            const yearMatch = summary.match(/\b(19|20)\d{2}\b/);
+            const _year = yearMatch ? yearMatch[0] : '';
+            let doi = '';
+            const doiMatch = (r.link || '').match(/doi\.org\/([^\s?#]+)/) || (r.snippet || '').match(/10\.\d{4}\/[^\s]+/);
+            if (doiMatch) doi = doiMatch[1] || doiMatch[0];
+            const full = `${r.title || ''}. ${summary}. ${r.link || ''}`.trim();
+            return {
+                _src: 'scholar',
+                _title: r.title || '',
+                _year,
+                _journal: summary,
+                _url: r.link || '',
+                full,
+                DOI: doi,
+                author: []
+            };
+        });
+    }
+
     /* ── 렌더링 ── */
     function renderCards(items) {
         const box = el('ref-results');
@@ -8210,7 +8931,8 @@ const RefSearch = (() => {
             const apa = toAPA(w);
             const doi = w.DOI || w._doi || '';
             const oa = w._oa ? '<span class="ref-tag" style="color:var(--ok);border-color:var(--ok)">OA</span>' : '';
-            const src = w._src === 'openalex' ? '<span class="ref-tag">OpenAlex</span>' : '<span class="ref-tag">CrossRef</span>';
+            const src = w._src === 'scholar' ? '<span class="ref-tag">Scholar</span>' : w._src === 'openalex' ? '<span class="ref-tag">OpenAlex</span>' : '<span class="ref-tag">CrossRef</span>';
+            const linkBtn = w._url && !(w.DOI || w._doi) ? `<a href="${w._url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" class="btn btn-g btn-sm">원문 ↗</a>` : '';
             return `<div class="ref-card">
   <div class="ref-card-title">${w._title || '제목 없음'}</div>
   <div class="ref-card-meta">
@@ -8222,6 +8944,7 @@ const RefSearch = (() => {
     <button class="btn btn-p btn-sm" onclick="RefSearch.addToLib(${i})">+ 참고문헌에 추가</button>
     <button class="btn btn-g btn-sm" onclick="RefSearch.copyAPA(${i})">📋 APA 복사</button>
     ${doi ? `<a href="https://doi.org/${doi}" target="_blank" rel="noopener" class="btn btn-g btn-sm">DOI ↗</a>` : ''}
+    ${linkBtn}
   </div>
 </div>`;
         }).join('');
@@ -8233,10 +8956,14 @@ const RefSearch = (() => {
     /* ── 검색 실행 ── */
     async function search() {
         if (_loading) return;
-        const q = el('ref-q').value.trim();
-        const year = el('ref-year').value;
         const db = el('ref-db').value;
-        if (!q) { el('ref-q').focus(); return }
+        if (db === 'ai') syncAiPromptWithSearch();
+        const q = db === 'ai' ? (el('ref-ai-prompt')?.value.trim() || el('ref-q').value.trim()) : el('ref-q').value.trim();
+        const year = el('ref-year').value;
+        if (!q) {
+            if (db === 'ai') el('ref-ai-prompt')?.focus(); else el('ref-q').focus();
+            return;
+        }
 
         _loading = true;
         const status = el('ref-status');
@@ -8246,15 +8973,34 @@ const RefSearch = (() => {
 
         try {
             let items;
-            if (db === 'openalex') items = await searchOpenAlex(q, year);
-            else items = await searchCrossRef(q, year);
-            status.textContent = `✅ ${items.length}건 검색됨 (${db === 'openalex' ? 'OpenAlex' : 'CrossRef'}) · "${q}"`;
+            if (db === 'openalex') {
+                items = await searchOpenAlex(q, year);
+                status.textContent = `✅ ${items.length}건 검색됨 (OpenAlex) · "${q}"`;
+            } else {
+                items = await searchCrossRef(q, year);
+                status.textContent = `✅ ${items.length}건 검색됨 (CrossRef) · "${q}"`;
+            }
             renderCards(items);
         } catch (e) {
             status.textContent = `❌ 오류: ${e.message}`;
             box.innerHTML = `<div class="cite-empty">검색 실패: ${e.message}<br><span style="font-size:10px">네트워크를 확인하거나 Scholar ↗를 사용해주세요.</span></div>`;
         }
         _loading = false;
+    }
+
+    function syncAiPromptWithSearch() {
+        const qEl = el('ref-q'), pEl = el('ref-ai-prompt');
+        if (qEl && pEl) pEl.value = qEl.value;
+    }
+
+    function syncAiPromptVisibility() {
+        const wrap = document.getElementById('ref-ai-prompt-wrap');
+        const dbEl = document.getElementById('ref-db');
+        if (wrap && dbEl) {
+            const isAi = dbEl.value === 'ai';
+            wrap.style.display = isAi ? 'block' : 'none';
+            if (isAi) syncAiPromptWithSearch();
+        }
     }
 
     function addToLib(i) {
@@ -8286,8 +9032,28 @@ const RefSearch = (() => {
         window.open(url, '_blank');
     }
 
-    return { search, addToLib, copyAPA, openScholar };
+    return { search, addToLib, copyAPA, openScholar, syncAiPromptVisibility, syncAiPromptWithSearch };
 })();
+
+    // ref-db 변경 시 AI 프롬프트 영역 표시/숨김 + AI 모드에서 검색어↔프롬프트 동기화
+    (function initRefDbAi() {
+        const dbEl = document.getElementById('ref-db');
+        const qEl = document.getElementById('ref-q');
+        const promptEl = document.getElementById('ref-ai-prompt');
+        if (dbEl) dbEl.addEventListener('change', () => RefSearch.syncAiPromptVisibility());
+        function syncIfAi() {
+            if (dbEl && dbEl.value === 'ai' && qEl && promptEl) {
+                qEl.value = promptEl.value;
+            }
+        }
+        function syncFromSearch() {
+            if (dbEl && dbEl.value === 'ai' && qEl && promptEl) {
+                promptEl.value = qEl.value;
+            }
+        }
+        if (qEl) qEl.addEventListener('input', syncFromSearch);
+        if (promptEl) promptEl.addEventListener('input', syncIfAi);
+    })();
 
 /* ═══════════════════════════════════════════════════════════
    COLOR PICKER
@@ -10126,7 +10892,145 @@ const EditorLineHighlight = (() => {
         if (enabled) updateHighlight();
     }
 
-    return { toggle, init, updateHighlight, isEnabled };
+    return { toggle, init, updateHighlight, isEnabled, updateUI };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   AUTHOR INFO — 이름/소속/메일/연락처 저장 및 Shift+Alt+A 삽입
+═══════════════════════════════════════════════════════════ */
+const AuthorInfo = (() => {
+    const STORAGE_KEY = 'mdpro_author_info';
+    const INSERT_KEY = 'mdpro_author_insert';
+    const DEFAULT_INSERT = { name: true, affiliation: false, email: false, contact: false };
+
+    function load() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : { name: '', affiliation: '', email: '', contact: '' };
+        } catch (e) { return { name: '', affiliation: '', email: '', contact: '' }; }
+    }
+
+    function loadInsert() {
+        try {
+            const raw = localStorage.getItem(INSERT_KEY);
+            return raw ? JSON.parse(raw) : { ...DEFAULT_INSERT };
+        } catch (e) { return { ...DEFAULT_INSERT }; }
+    }
+
+    function saveInputs() {
+        const name = document.getElementById('hk-author-name');
+        const affiliation = document.getElementById('hk-author-affiliation');
+        const email = document.getElementById('hk-author-email');
+        const contact = document.getElementById('hk-author-contact');
+        if (!name) return;
+        const data = {
+            name: (name.value || '').trim(),
+            affiliation: (affiliation && affiliation.value ? affiliation.value : '').trim(),
+            email: (email && email.value ? email.value : '').trim(),
+            contact: (contact && contact.value ? contact.value : '').trim()
+        };
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+        saveInsertFromCheckboxes();
+    }
+
+    function saveInsertFromCheckboxes() {
+        const chkName = document.getElementById('hk-insert-name');
+        const chkAff = document.getElementById('hk-insert-affiliation');
+        const chkEmail = document.getElementById('hk-insert-email');
+        const chkContact = document.getElementById('hk-insert-contact');
+        if (!chkName) return;
+        const data = {
+            name: !!chkName.checked,
+            affiliation: !!(chkAff && chkAff.checked),
+            email: !!(chkEmail && chkEmail.checked),
+            contact: !!(chkContact && chkContact.checked)
+        };
+        try { localStorage.setItem(INSERT_KEY, JSON.stringify(data)); } catch (e) {}
+    }
+
+    function loadToPanel() {
+        const data = load();
+        const nameEl = document.getElementById('hk-author-name');
+        const affEl = document.getElementById('hk-author-affiliation');
+        const emailEl = document.getElementById('hk-author-email');
+        const contactEl = document.getElementById('hk-author-contact');
+        if (nameEl) nameEl.value = data.name || '';
+        if (affEl) affEl.value = data.affiliation || '';
+        if (emailEl) emailEl.value = data.email || '';
+        if (contactEl) contactEl.value = data.contact || '';
+
+        const ins = loadInsert();
+        const chkName = document.getElementById('hk-insert-name');
+        const chkAff = document.getElementById('hk-insert-affiliation');
+        const chkEmail = document.getElementById('hk-insert-email');
+        const chkContact = document.getElementById('hk-insert-contact');
+        if (chkName) chkName.checked = ins.name;
+        if (chkAff) chkAff.checked = ins.affiliation;
+        if (chkEmail) chkEmail.checked = ins.email;
+        if (chkContact) chkContact.checked = ins.contact;
+
+        [chkName, chkAff, chkEmail, chkContact].forEach(el => {
+            if (el) el.removeEventListener('change', saveInsertFromCheckboxes);
+            if (el) el.addEventListener('change', saveInsertFromCheckboxes);
+        });
+    }
+
+    function getTextToInsert() {
+        const data = load();
+        const ins = loadInsert();
+        const lines = [];
+        if (ins.name && data.name) lines.push(data.name);
+        if (ins.affiliation && data.affiliation) lines.push(data.affiliation);
+        if (ins.email && data.email) lines.push(data.email);
+        if (ins.contact && data.contact) lines.push(data.contact);
+        return lines.join('\n');
+    }
+
+    /** 패널 입력란에서 작성된 항목만 모두 모아서 삽입 (체크박스 무시) */
+    function getAllWrittenText() {
+        const nameEl = document.getElementById('hk-author-name');
+        const affEl = document.getElementById('hk-author-affiliation');
+        const emailEl = document.getElementById('hk-author-email');
+        const contactEl = document.getElementById('hk-author-contact');
+        const lines = [];
+        if (nameEl && (nameEl.value || '').trim()) lines.push((nameEl.value || '').trim());
+        if (affEl && (affEl.value || '').trim()) lines.push((affEl.value || '').trim());
+        if (emailEl && (emailEl.value || '').trim()) lines.push((emailEl.value || '').trim());
+        if (contactEl && (contactEl.value || '').trim()) lines.push((contactEl.value || '').trim());
+        return lines.join('\n');
+    }
+
+    function insertIntoEditor() {
+        const ed = document.getElementById('editor');
+        if (!ed) return;
+        const text = getTextToInsert();
+        if (!text) return;
+        const s = ed.selectionStart, e = ed.selectionEnd;
+        const val = ed.value;
+        ed.value = val.substring(0, s) + text + val.substring(e);
+        ed.setSelectionRange(s + text.length, s + text.length);
+        ed.focus();
+        if (typeof US !== 'undefined') US.snap();
+        if (typeof TM !== 'undefined') TM.markDirty();
+        if (typeof App !== 'undefined' && App.render) App.render();
+    }
+
+    function insertAllIntoEditor() {
+        const ed = document.getElementById('editor');
+        if (!ed) return;
+        const text = getAllWrittenText();
+        if (!text) return;
+        const s = ed.selectionStart, e = ed.selectionEnd;
+        const val = ed.value;
+        ed.value = val.substring(0, s) + text + val.substring(e);
+        ed.setSelectionRange(s + text.length, s + text.length);
+        ed.focus();
+        if (typeof US !== 'undefined') US.snap();
+        if (typeof TM !== 'undefined') TM.markDirty();
+        if (typeof App !== 'undefined' && App.render) App.render();
+    }
+
+    return { load, loadInsert, saveInputs, loadToPanel, getTextToInsert, getAllWrittenText, insertIntoEditor, insertAllIntoEditor };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -10586,6 +11490,9 @@ const HK = (() => {
         'tab.prev':         () => { const tabs=TM.getAll(); const i=tabs.findIndex(t=>t.id===TM.getActive()?.id); if(i>0) TM.switchTab(tabs[i-1].id); },
         'tab.next':         () => { const tabs=TM.getAll(); const i=tabs.findIndex(t=>t.id===TM.getActive()?.id); if(i<tabs.length-1) TM.switchTab(tabs[i+1].id); },
         'app.insertDate':   () => App.insertDate(),
+        'app.insertAuthorInfo': () => { if (typeof AuthorInfo !== 'undefined') AuthorInfo.insertIntoEditor(); },
+        'app.charMap':      () => CharMap.show(),
+        'app.syncToggle':   () => SS.toggle(),
         'app.ghCommit':     () => { const t=TM.getActive(); if(t&&t.ghPath) App._openGHSaveModal(t); },
         'app.pullGH':       () => FM.pullFromGitHub(),
         'app.pushGH':       () => FM.syncToGitHub(),
@@ -10630,7 +11537,7 @@ const HK = (() => {
         },
         {
             section: '레이아웃 / 정렬', items: [
-                { desc: '왼쪽 정렬', keys: 'Ctrl + Shift + L', action: 'ed.alignLeft' },
+                { desc: '왼쪽 정렬', keys: 'Shift + Alt + L', action: 'ed.alignLeft' },
                 { desc: '가운데 정렬', keys: 'Shift + Alt + C', action: 'ed.alignCenter' },
                 { desc: '오른쪽 정렬', keys: 'Shift + Alt + R', action: 'ed.alignRight' },
                 { desc: 'Split 보기', keys: 'Alt + 1', action: 'view.split' },
@@ -10652,7 +11559,8 @@ const HK = (() => {
         },
         {
             section: '삽입 / 도구', items: [
-                { desc: '오늘 날짜 삽입', keys: 'Ctrl + Shift + D', action: 'app.insertDate' },
+                { desc: '오늘 날짜 삽입', keys: 'Shift + Alt + D', action: 'app.insertDate' },
+                { desc: '작성자 정보 삽입', keys: 'Shift + Alt + A', action: 'app.insertAuthorInfo' },
                 { desc: '인용 삽입', keys: 'Ctrl + Shift + C', action: 'app.cite' },
                 { desc: '각주 삽입', keys: 'Shift + Alt + N', action: 'ed.footnote' },
                 { desc: 'APA 통계 삽입', keys: 'Shift + Alt + 9', action: 'app.stats' },
@@ -10667,6 +11575,8 @@ const HK = (() => {
                 { desc: 'Scholar 검색', keys: 'Ctrl + Shift + G', action: 'app.scholar' },
                 { desc: 'AI PPT (ScholarSlide)', keys: 'Ctrl + Shift + L', action: 'app.aiPPT' },
                 { desc: '단축키 목록 & 설정', keys: 'Alt + ?', action: 'app.hotkeys' },
+                { desc: '문자표 (특수문자)', keys: 'Ctrl + Q', action: 'app.charMap' },
+                { desc: '에디터-PV 스크롤 동기화', keys: 'Shift + Alt + M', action: 'app.syncToggle' },
                 { desc: '앱 잠금', keys: 'Ctrl + G', action: 'app.lock' },
                 { desc: '새 탭', keys: 'Ctrl + N', action: 'tab.new' },
                 { desc: '파일 열기', keys: 'Ctrl + O', action: 'tab.open' },
@@ -10972,6 +11882,7 @@ const HK = (() => {
                 render();
                 el('hk-overlay').classList.add('vis');
                 try { if (typeof EditorLineHighlight !== 'undefined') EditorLineHighlight.updateUI(); } catch (e) { console.warn('EditorLineHighlight.updateUI:', e); }
+                try { if (typeof AuthorInfo !== 'undefined') AuthorInfo.loadToPanel(); } catch (e) { console.warn('AuthorInfo.loadToPanel:', e); }
             } catch (err) {
                 console.error('HK.open:', err);
                 const ov = el('hk-overlay');
@@ -11685,7 +12596,7 @@ const App = {
         App.showModal('gh-history-modal');
         GH.loadHistory(false);
     },
-    /* ── 오늘 날짜 삽입 (Ctrl+Shift+D) ──────────────────── */
+    /* ── 오늘 날짜 삽입 (Shift+Alt+D) ──────────────────── */
     insertDate() {
         const ed  = el('editor');
         if (!ed) return;
@@ -11709,6 +12620,10 @@ const App = {
         if (id === 'image-modal') {
             const box = el('image-modal-box');
             if (box) box.classList.remove('img-modal-maximized');
+        }
+        if (id === 'cite-modal') {
+            const box = document.getElementById('cite-modal-box');
+            if (box) box.classList.remove('cite-modal-maximized');
         }
         el(id).classList.remove('vis');
     },
@@ -11902,6 +12817,8 @@ $$
 window.addEventListener('DOMContentLoaded', () => {
     App.init();
     AiApiKey.load().catch(() => {});
+    ScholarApiKey.load();
+    ScholarApiKey.initPasteExtract();
     /* 전역 날짜·시간 라이브 갱신 (잠금 버튼 앞 표시) */
     const dtEl = el('app-datetime');
     if (dtEl) {
@@ -11918,11 +12835,13 @@ window.addEventListener('DOMContentLoaded', () => {
         GH.checkNewCommits().catch(() => {});
         GH.loadDeviceActivity().catch(() => {});
     }).catch(e => console.warn('GH restore failed:', e));
-    /* 문자표 단축키 */
+    /* 문자표 단축키 및 Shift+Alt 단축키 */
     document.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'q') { e.preventDefault(); CharMap.show(); }
         if (e.shiftKey && e.altKey && (e.key === 'g' || e.key === 'G')) { e.preventDefault(); Translator.show(); }
         if (e.shiftKey && e.altKey && (e.key === 'm' || e.key === 'M')) { e.preventDefault(); SS.toggle(); }
+        if (e.shiftKey && e.altKey && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); if (typeof AuthorInfo !== 'undefined') AuthorInfo.insertIntoEditor(); }
+        if (e.shiftKey && e.altKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); App.insertDate(); }
     });
 
     /* ── gh-save-modal 리사이즈 드래그 ─────────────────── */
@@ -12006,8 +12925,31 @@ const DeepResearch = (() => {
             const t = db.transaction(STORE_NAME, 'readonly');
             const store = t.objectStore(STORE_NAME);
             const req = store.getAll();
-            req.onsuccess = () => resolve(req.result || []);
+            req.onsuccess = () => {
+                const raw = req.result || [];
+                resolve(raw.filter(r => r.id !== '_historyOrder'));
+            };
             req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function _getOrder() {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readonly');
+            const req = t.objectStore(STORE_NAME).get('_historyOrder');
+            req.onsuccess = () => resolve(Array.isArray(req.result?.order) ? req.result.order : []);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function _setOrder(orderIds) {
+        const db = await _openDB();
+        return new Promise((resolve, reject) => {
+            const t = db.transaction(STORE_NAME, 'readwrite');
+            t.objectStore(STORE_NAME).put({ id: '_historyOrder', order: orderIds });
+            t.oncomplete = () => resolve();
+            t.onerror = () => reject(t.error);
         });
     }
 
@@ -12040,7 +12982,6 @@ const DeepResearch = (() => {
             list.setAttribute('data-empty', '질문 후 여기에 히스토리가 저장됩니다.');
             return;
         }
-        items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         items.forEach(item => {
             const row = document.createElement('div');
             row.className = 'dr-history-item';
@@ -12080,7 +13021,18 @@ const DeepResearch = (() => {
 
     async function loadHistory() {
         try {
-            _historyCache = await _getAll();
+            const items = await _getAll();
+            const orderIds = await _getOrder();
+            const byId = new Map(items.map(it => [it.id, it]));
+            const ordered = [];
+            for (const id of orderIds) {
+                if (byId.has(id)) {
+                    ordered.push(byId.get(id));
+                    byId.delete(id);
+                }
+            }
+            const rest = [...byId.values()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            _historyCache = ordered.concat(rest);
         } catch (_) {
             _historyCache = [];
         }
@@ -12112,9 +13064,17 @@ const DeepResearch = (() => {
         _thinking = item.thinking || '';
         if (thinkEl) {
             thinkEl.value = item.thinking || '';
-            thinkEl.style.display = item.thinking ? 'flex' : 'none';
+            const wrap = $('dr-thinking-wrap');
+            if (wrap) wrap.style.display = item.thinking ? 'flex' : 'none';
+            if (thinkEl) thinkEl.style.display = item.thinking ? 'flex' : 'none';
         }
         if (thinkBtn) thinkBtn.style.display = item.thinking ? '' : 'none';
+        const copyThinkBtn = document.getElementById('dr-copy-thinking-btn');
+        if (copyThinkBtn) copyThinkBtn.style.display = item.thinking ? '' : 'none';
+        const translateThinkBtn = document.getElementById('dr-translate-thinking-btn');
+        if (translateThinkBtn) translateThinkBtn.style.display = item.thinking ? '' : 'none';
+        const openThinkBtn = document.getElementById('dr-open-thinking-btn');
+        if (openThinkBtn) openThinkBtn.style.display = item.thinking ? '' : 'none';
         if (insBtn) insBtn.disabled = !(item.result && item.result.length > 0);
         if (modelSel && item.modelId) {
             modelSel.value = item.modelId;
@@ -12138,7 +13098,10 @@ const DeepResearch = (() => {
 
     function deleteHistory(id) {
         if (!confirm('이 히스토리를 삭제할까요?')) return;
-        _delete(id).then(() => {
+        _delete(id).then(async () => {
+            const orderIds = await _getOrder();
+            const next = orderIds.filter(x => x !== id);
+            await _setOrder(next);
             _historyCache = _historyCache.filter(x => x.id !== id);
             filterHistory(_historySearch);
         }).catch(() => alert('삭제 실패'));
@@ -12202,8 +13165,34 @@ const DeepResearch = (() => {
             alert('저장할 내용이 없습니다.');
             return;
         }
+        const hasThinking = !!(item.thinking && item.thinking.trim());
+        if (hasThinking) {
+            _pendingThinkingMode = 'save';
+            _pendingSaveId = id;
+            const chk = document.getElementById('dr-thinking-include-chk');
+            const label = document.getElementById('dr-thinking-include-label');
+            const btn = document.getElementById('dr-thinking-include-confirm-btn');
+            const title = document.getElementById('dr-thinking-modal-title');
+            if (chk) chk.checked = false;
+            if (label) label.textContent = '생각 포함하여 저장';
+            if (btn) btn.textContent = '저장';
+            if (title) title.textContent = '저장 시 생각 포함';
+            const modal = document.getElementById('dr-thinking-include-modal');
+            if (modal) { modal.style.display = 'flex'; }
+        } else {
+            _doSaveHistoryItem(id, false);
+        }
+    }
+
+    function _doSaveHistoryItem(id, includeThinking) {
+        const item = _historyCache.find(x => x.id === id);
+        if (!item || !item.result || !item.result.trim()) return;
+        let content = item.result.trim();
+        if (includeThinking && item.thinking && item.thinking.trim()) {
+            content += '\n\n--- 생각 ---\n' + item.thinking.trim();
+        }
         const name = _drSafeFilename(item.title);
-        const blob = new Blob([item.result.trim()], { type: 'text/markdown;charset=utf-8' });
+        const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = name;
@@ -12211,18 +13200,51 @@ const DeepResearch = (() => {
         URL.revokeObjectURL(a.href);
     }
 
+    let _pendingThinkingMode = null;
+    let _pendingSaveId = null;
+
+    function openThinkingIncludeModal(mode, id) {
+        _pendingThinkingMode = mode;
+        _pendingSaveId = id || null;
+    }
+
+    function closeThinkingIncludeModal() {
+        const modal = document.getElementById('dr-thinking-include-modal');
+        if (modal) modal.style.display = 'none';
+        _pendingThinkingMode = null;
+        _pendingSaveId = null;
+    }
+
+    function confirmThinkingInclude() {
+        const chk = document.getElementById('dr-thinking-include-chk');
+        const include = chk ? chk.checked : false;
+        if (_pendingThinkingMode === 'save' && _pendingSaveId) {
+            _doSaveHistoryItem(_pendingSaveId, include);
+        } else if (_pendingThinkingMode === 'insert') {
+            _doInsert(include);
+        } else if (_pendingThinkingMode === 'newfile') {
+            _doInsertToNewFile(include);
+        }
+        closeThinkingIncludeModal();
+    }
+
     function switchTab(tab) {
         _currentTab = tab;
-        const q = $('dr-panel-question'), p = $('dr-panel-pro');
+        const q = $('dr-panel-question'), p = $('dr-panel-pro'), a = $('dr-panel-ai-search');
         const tabs = document.querySelectorAll('#dr-tabs .tr-tab');
         if (q) q.style.display = tab === 'question' ? 'flex' : 'none';
         if (p) p.style.display = tab === 'pro-preview' ? 'flex' : 'none';
+        if (a) a.style.display = tab === 'ai-search' ? 'flex' : 'none';
         tabs.forEach(t => {
             const active = t.getAttribute('data-tab') === tab;
             t.classList.toggle('active', active);
         });
-        const inp = tab === 'question' ? $('dr-prompt') : $('dr-prompt-pro');
+        const inp = tab === 'question' ? $('dr-prompt') : tab === 'pro-preview' ? $('dr-prompt-pro') : $('dr-ai-prompt');
         if (inp) setTimeout(() => inp.focus(), 50);
+        if (tab === 'ai-search') {
+            const presetTa = $('dr-ai-preset-text');
+            if (presetTa && !presetTa.value.trim()) applyAiSearchPreset();
+        }
     }
 
     function _initDraggable() {
@@ -12344,7 +13366,15 @@ const DeepResearch = (() => {
         if (stopBtn) stopBtn.style.display = '';
         if (out) out.value = '답변 생성 중…';
         if (thinkEl) { thinkEl.value = ''; thinkEl.style.display = 'none'; }
+        const drThinkingWrap = $('dr-thinking-wrap');
+        if (drThinkingWrap) drThinkingWrap.style.display = 'none';
         if (thinkBtn) thinkBtn.style.display = 'none';
+        const copyThinkBtn0 = document.getElementById('dr-copy-thinking-btn');
+        if (copyThinkBtn0) copyThinkBtn0.style.display = 'none';
+        const translateThinkBtn0 = document.getElementById('dr-translate-thinking-btn');
+        if (translateThinkBtn0) translateThinkBtn0.style.display = 'none';
+        const openThinkBtn0 = document.getElementById('dr-open-thinking-btn');
+        if (openThinkBtn0) openThinkBtn0.style.display = 'none';
         if (insBtn) insBtn.disabled = true;
 
         try {
@@ -12353,7 +13383,16 @@ const DeepResearch = (() => {
             _thinking = thoughts;
             if (out) out.value = text || '(결과 없음)';
             if (thinkEl) thinkEl.value = thoughts;
+            const drWrap = $('dr-thinking-wrap');
+            if (drWrap) drWrap.style.display = thoughts ? 'flex' : 'none';
+            if (thinkEl) thinkEl.style.display = thoughts ? 'flex' : 'none';
             if (thinkBtn) thinkBtn.style.display = thoughts ? '' : 'none';
+            const copyThinkBtn = document.getElementById('dr-copy-thinking-btn');
+            if (copyThinkBtn) copyThinkBtn.style.display = thoughts ? '' : 'none';
+            const translateThinkBtn = document.getElementById('dr-translate-thinking-btn');
+            if (translateThinkBtn) translateThinkBtn.style.display = thoughts ? '' : 'none';
+            const openThinkBtn = document.getElementById('dr-open-thinking-btn');
+            if (openThinkBtn) openThinkBtn.style.display = thoughts ? '' : 'none';
             if (insBtn) insBtn.disabled = !text;
             const title = prompt.slice(0, 50).trim() + (prompt.length > 50 ? '…' : '');
             const record = {
@@ -12366,6 +13405,9 @@ const DeepResearch = (() => {
                 createdAt: Date.now()
             };
             await _add(record);
+            const orderIds = await _getOrder();
+            orderIds.unshift(record.id);
+            await _setOrder(orderIds);
             _historyCache.unshift(record);
             filterHistory(_historySearch);
         } catch (e) {
@@ -12377,6 +13419,14 @@ const DeepResearch = (() => {
                 if (out) out.value = '⚠ ' + (e.message || String(e));
             }
             if (thinkBtn) thinkBtn.style.display = 'none';
+            const wrapErr = $('dr-thinking-wrap');
+            if (wrapErr) wrapErr.style.display = 'none';
+            const copyThinkBtnErr = document.getElementById('dr-copy-thinking-btn');
+            if (copyThinkBtnErr) copyThinkBtnErr.style.display = 'none';
+            const translateThinkBtnErr = document.getElementById('dr-translate-thinking-btn');
+            if (translateThinkBtnErr) translateThinkBtnErr.style.display = 'none';
+            const openThinkBtnErr = document.getElementById('dr-open-thinking-btn');
+            if (openThinkBtnErr) openThinkBtnErr.style.display = 'none';
             if (insBtn) insBtn.disabled = true;
         } finally {
             _busy = false;
@@ -12397,10 +13447,11 @@ const DeepResearch = (() => {
     }
 
     function toggleThinking() {
-        const thinkEl = $('dr-thinking'), btn = $('dr-thinking-btn');
-        if (!thinkEl || !btn) return;
-        const show = thinkEl.style.display !== 'flex';
-        thinkEl.style.display = show ? 'flex' : 'none';
+        const wrap = $('dr-thinking-wrap'), thinkEl = $('dr-thinking'), btn = $('dr-thinking-btn');
+        if (!wrap || !btn) return;
+        const show = wrap.style.display !== 'flex';
+        wrap.style.display = show ? 'flex' : 'none';
+        if (thinkEl) thinkEl.style.display = show ? 'flex' : 'none';
         btn.textContent = show ? '💭 생각 숨기기' : '💭 생각';
     }
 
@@ -12422,6 +13473,32 @@ const DeepResearch = (() => {
             alert('탭 기능을 사용할 수 없습니다.');
             return;
         }
+        const hasThinking = !!(_thinking && _thinking.trim());
+        if (hasThinking) {
+            _pendingThinkingMode = 'newfile';
+            _pendingSaveId = null;
+            const chk = document.getElementById('dr-thinking-include-chk');
+            const label = document.getElementById('dr-thinking-include-label');
+            const btn = document.getElementById('dr-thinking-include-confirm-btn');
+            const title = document.getElementById('dr-thinking-modal-title');
+            if (chk) chk.checked = false;
+            if (label) label.textContent = '생각 포함하여 새 파일로 삽입';
+            if (btn) btn.textContent = '새 파일로 삽입';
+            if (title) title.textContent = '새 파일로 삽입 시 생각 포함';
+            const modal = document.getElementById('dr-thinking-include-modal');
+            if (modal) modal.style.display = 'flex';
+        } else {
+            _doInsertToNewFile(false);
+        }
+    }
+
+    function _doInsertToNewFile(includeThinking) {
+        const out = $('dr-output');
+        let txt = out ? out.value.trim() : _result;
+        if (!txt) return;
+        if (includeThinking && _thinking && _thinking.trim()) {
+            txt = txt + '\n\n--- 생각 ---\n' + _thinking.trim();
+        }
         const hintEl = $('dr-insert-hint');
         const customName = hintEl && hintEl.value ? hintEl.value.trim() : '';
         const name = customName !== '' ? customName.replace(/\.md$/i, '') : _drFixedFilename();
@@ -12442,6 +13519,32 @@ const DeepResearch = (() => {
         const txt = out ? out.value.trim() : _result;
         if (!txt) return;
 
+        const hasThinking = !!(_thinking && _thinking.trim());
+        if (hasThinking) {
+            _pendingThinkingMode = 'insert';
+            _pendingSaveId = null;
+            const chk = document.getElementById('dr-thinking-include-chk');
+            const label = document.getElementById('dr-thinking-include-label');
+            const btn = document.getElementById('dr-thinking-include-confirm-btn');
+            const title = document.getElementById('dr-thinking-modal-title');
+            if (chk) chk.checked = false;
+            if (label) label.textContent = '생각 포함하여 삽입';
+            if (btn) btn.textContent = '삽입';
+            if (title) title.textContent = '삽입 시 생각 포함';
+            const modal = document.getElementById('dr-thinking-include-modal');
+            if (modal) modal.style.display = 'flex';
+        } else {
+            _doInsert(false);
+        }
+    }
+
+    function _doInsert(includeThinking) {
+        const out = $('dr-output');
+        let txt = out ? out.value.trim() : _result;
+        if (!txt) return;
+        if (includeThinking && _thinking && _thinking.trim()) {
+            txt = txt + '\n\n--- 생각 ---\n' + _thinking.trim();
+        }
         const ed = $('editor');
         if (!ed) return;
         const s = ed.selectionStart, e2 = ed.selectionEnd;
@@ -12458,6 +13561,104 @@ const DeepResearch = (() => {
         const txt = out ? out.value.trim() : _result;
         if (!txt) return;
         navigator.clipboard.writeText(txt).then(() => alert('복사되었습니다.')).catch(() => {});
+    }
+
+    function copyThinking() {
+        const el = $('dr-thinking');
+        const txt = el ? el.value.trim() : _thinking || '';
+        if (!txt) {
+            alert('복사할 생각 내용이 없습니다.');
+            return;
+        }
+        navigator.clipboard.writeText(txt).then(() => alert('생각 내용이 복사되었습니다.')).catch(() => {});
+    }
+
+    function openThinkingInNewWindow() {
+        const el = $('dr-thinking');
+        const txt = el ? el.value.trim() : _thinking || '';
+        if (!txt) {
+            alert('표시할 생각 내용이 없습니다.');
+            return;
+        }
+        let html;
+        try {
+            html = typeof mdRender === 'function' ? mdRender(txt, true) : (typeof marked !== 'undefined' ? marked.parse(txt) : txt.replace(/\n/g, '<br>'));
+        } catch (e) {
+            html = '<p style="color:red">' + (e.message || '렌더 오류') + '</p>';
+        }
+        html = (html || '').replace(/<\/script>/gi, '<\\/script>');
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        const w = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+        if (!w) { alert('팝업이 차단되었을 수 있습니다.'); return; }
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>생각 미리보기</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body class="dr-pv-window" style="margin:0;background:var(--bg1)">' +
+            '<div id="preview-container" class="preview-container" style="position:absolute;inset:0;overflow:auto;padding:24px;box-sizing:border-box">' +
+            '<div class="preview-page" data-page="1">' + html + '</div></div></body></html>'
+        );
+        w.document.close();
+    }
+
+    function openResultForTranslate() {
+        const out = $('dr-output');
+        const txt = out ? out.value.trim() : _result;
+        if (!txt) { alert('번역할 결과가 없습니다.'); return; }
+        hide();
+        if (typeof Translator !== 'undefined') Translator.show(txt);
+    }
+
+    function openThinkingForTranslate() {
+        const el = $('dr-thinking');
+        const txt = el ? el.value.trim() : _thinking || '';
+        if (!txt) { alert('번역할 생각 내용이 없습니다.'); return; }
+        hide();
+        if (typeof Translator !== 'undefined') Translator.show(txt);
+    }
+
+    /** 텍스트가 주로 한국어면 ko→en, 아니면 en→ko. (en/ko 간단용) */
+    function _drDetectEnKo(text) {
+        if (!text || !text.length) return { sl: 'en', tl: 'ko' };
+        let koCount = 0;
+        for (let i = 0; i < text.length; i++) {
+            const c = text.charCodeAt(i);
+            if ((c >= 0xAC00 && c <= 0xD7A3) || (c >= 0x1100 && c <= 0x11FF) || (c >= 0x3130 && c <= 0x318F)) koCount++;
+        }
+        const ratio = koCount / text.length;
+        return ratio > 0.15 ? { sl: 'ko', tl: 'en' } : { sl: 'en', tl: 'ko' };
+    }
+
+    /** #dr-thinking 안 툴바: 구글번역기 (en↔ko). 구글 스크래핑 없이 탭만 연다. */
+    function thinkingTranslateGoogle() {
+        const el = $('dr-thinking');
+        const txt = el ? el.value.trim() : _thinking || '';
+        if (!txt) { alert('생각 내용이 없습니다.'); return; }
+        if (typeof Translator === 'undefined') return;
+        const { sl, tl } = _drDetectEnKo(txt);
+        Translator.openBrowserWithText(txt, sl, tl);
+    }
+
+    /** #dr-thinking 안 툴바: 구글 스크래핑으로 번역 후 번역만 새창 (en↔ko). */
+    function thinkingTranslateResultNewWindow() {
+        const el = $('dr-thinking');
+        const txt = el ? el.value.trim() : _thinking || '';
+        if (!txt) { alert('생각 내용이 없습니다.'); return; }
+        if (typeof Translator === 'undefined') return;
+        const { sl, tl } = _drDetectEnKo(txt);
+        Translator.translateText(txt, sl, tl)
+            .then(trans => Translator.openTranslationInNewWindowWithText(trans))
+            .catch(e => alert('번역 실패: ' + (e.message || e)));
+    }
+
+    /** #dr-thinking 안 툴바: 구글 스크래핑으로 번역 후 원문+번역 새창 (en↔ko). */
+    function thinkingTranslateBothNewWindow() {
+        const el = $('dr-thinking');
+        const txt = el ? el.value.trim() : _thinking || '';
+        if (!txt) { alert('생각 내용이 없습니다.'); return; }
+        if (typeof Translator === 'undefined') return;
+        const { sl, tl } = _drDetectEnKo(txt);
+        Translator.translateText(txt, sl, tl)
+            .then(trans => Translator.openOriginalAndTranslationInNewWindowWithText(txt, trans))
+            .catch(e => alert('번역 실패: ' + (e.message || e)));
     }
 
     function openResultInNewWindow() {
@@ -12489,7 +13690,257 @@ const DeepResearch = (() => {
         w.document.close();
     }
 
-    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, openResultInNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile };
+    async function runCiteAiSearch() {
+        const presetEl = $('dr-ai-preset-text');
+        const topicEl = $('dr-ai-topic');
+        const yearsEl = $('dr-ai-years');
+        const questionEl = $('dr-ai-prompt');
+        const out = $('dr-output');
+        const modelEl = $('dr-ai-model');
+        if (!presetEl || !out) return;
+        let prompt = (presetEl.value || '').trim();
+        const topic = (topicEl && topicEl.value) ? topicEl.value.trim() : '';
+        const years = (yearsEl && yearsEl.value) ? yearsEl.value.trim() : '';
+        const question = (questionEl && questionEl.value) ? questionEl.value.trim() : '';
+        if (!prompt) { out.value = '사전 프롬프트를 선택하거나 입력하세요.'; return; }
+        prompt = prompt
+            .replace(/\[여기에 주제 입력\]/g, topic || '[주제 미입력]')
+            .replace(/\[연도 범위 입력\]/g, years || '[연도 미입력]')
+            .replace(/\[연구주제\]/g, topic || '[주제 미입력]')
+            .replace(/\[주제\]/g, topic || '[주제 미입력]');
+        prompt += '\n\n' + _AI_SEARCH_VERIFICATION;
+        if (question) prompt += '\n\n질문:\n' + question;
+        const modelId = (modelEl && modelEl.value) ? modelEl.value : 'gemini-2.5-flash';
+        out.value = '🔄 AI 검색 중...';
+        try {
+            const { text } = await _callApi(prompt, modelId);
+            out.value = text || '(결과 없음)';
+        } catch (e) {
+            out.value = '❌ ' + (e.message || String(e));
+        }
+    }
+
+    function openPresetTextWindow() {
+        const ta = $('dr-ai-preset-text');
+        if (!ta) return;
+        window.__drPresetApply = function(popupWin) {
+            try {
+                const pw = popupWin.document.getElementById('pw');
+                if (pw) ta.value = pw.value;
+            } catch (e) {}
+            popupWin.close();
+        };
+        window.__drPresetText = function() { return ta ? ta.value : ''; };
+        const w = window.open('', '_blank', 'width=720,height=480,resizable=yes,scrollbars=yes');
+        if (!w) return;
+        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>사전 프롬프트</title><style>body{font-family:inherit;background:#1c1c26;color:#e8e8f0;margin:0;padding:12px;box-sizing:border-box}textarea{width:100%;height:100%;min-height:360px;background:#16161d;border:1px solid #2e2e42;color:#e8e8f0;padding:10px;font-size:13px;line-height:1.5;resize:both}.btns{margin-top:8px;display:flex;gap:8px}button{padding:6px 12px;cursor:pointer;border-radius:4px;font-size:12px}.apply{background:#7c6af7;color:#fff;border:none}.close{background:#2a2a3a;color:#9090b0;border:1px solid #2e2e42}</style></head><body><textarea id="pw"></textarea><div class="btns"><button class="apply" onclick="opener.__drPresetApply(window)">적용 후 닫기</button><button class="close" onclick="window.close()">닫기</button></div><script>document.getElementById("pw").value=opener.__drPresetText();</script></body></html>');
+        w.document.close();
+    }
+
+    function applyCiteAiSearchPreset() {
+        const sel = document.getElementById('cite-ai-preset');
+        const ta = document.getElementById('cite-ai-preset-text');
+        if (!sel || !ta) return;
+        const key = sel.value || 'basic';
+        ta.value = _AI_SEARCH_PRESETS[key] || _AI_SEARCH_PRESETS.basic;
+    }
+
+    function openCitePresetTextWindow() {
+        const ta = document.getElementById('cite-ai-preset-text');
+        if (!ta) return;
+        window.__citePresetApply = function(popupWin) {
+            try {
+                const pw = popupWin.document.getElementById('pw');
+                if (pw) ta.value = pw.value;
+            } catch (e) {}
+            popupWin.close();
+        };
+        window.__citePresetText = function() { return ta ? ta.value : ''; };
+        const w = window.open('', '_blank', 'width=720,height=480,resizable=yes,scrollbars=yes');
+        if (!w) return;
+        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>사전 프롬프트</title><style>body{font-family:inherit;background:#1c1c26;color:#e8e8f0;margin:0;padding:12px;box-sizing:border-box}textarea{width:100%;height:100%;min-height:360px;background:#16161d;border:1px solid #2e2e42;color:#e8e8f0;padding:10px;font-size:13px;line-height:1.5;resize:both}.btns{margin-top:8px;display:flex;gap:8px}button{padding:6px 12px;cursor:pointer;border-radius:4px;font-size:12px}.apply{background:#7c6af7;color:#fff;border:none}.close{background:#2a2a3a;color:#9090b0;border:1px solid #2e2e42}</style></head><body><textarea id="pw"></textarea><div class="btns"><button class="apply" onclick="opener.__citePresetApply(window)">적용 후 닫기</button><button class="close" onclick="window.close()">닫기</button></div><script>document.getElementById("pw").value=opener.__citePresetText();</script></body></html>');
+        w.document.close();
+    }
+
+    async function runCiteAiSearchFromModal() {
+        const presetEl = document.getElementById('cite-ai-preset-text');
+        const questionEl = document.getElementById('cite-ai-prompt');
+        const out = document.getElementById('cite-ai-out');
+        const modelEl = document.getElementById('cite-ai-model');
+        if (!presetEl || !out) return;
+        let prompt = (presetEl.value || '').trim();
+        const question = (questionEl && questionEl.value) ? questionEl.value.trim() : '';
+        if (!prompt) { out.value = '사전 프롬프트를 선택하거나 입력하세요.'; return; }
+        prompt = prompt
+            .replace(/\[여기에 주제 입력\]/g, '[주제 미입력]')
+            .replace(/\[연도 범위 입력\]/g, '[연도 미입력]')
+            .replace(/\[연구주제\]/g, '[주제 미입력]')
+            .replace(/\[주제\]/g, '[주제 미입력]');
+        prompt += '\n\n' + _AI_SEARCH_VERIFICATION;
+        if (question) prompt += '\n\n질문:\n' + question;
+        const modelId = (modelEl && modelEl.value) ? modelEl.value : 'gemini-2.5-flash';
+        out.value = '🔄 AI 검색 중...';
+        try {
+            const { text } = await _callApi(prompt, modelId);
+            out.value = text || '(결과 없음)';
+        } catch (e) {
+            out.value = '❌ ' + (e.message || String(e));
+        }
+    }
+
+    function _getCiteModalOutText() {
+        const out = document.getElementById('cite-ai-out');
+        return out ? out.value.trim() : '';
+    }
+
+    function insertFromCiteModal() {
+        const txt = _getCiteModalOutText();
+        if (!txt) { alert('삽입할 답변이 없습니다.'); return; }
+        const ed = document.getElementById('editor');
+        if (!ed) return;
+        const s = ed.selectionStart, e2 = ed.selectionEnd;
+        ed.setRangeText(txt, s, e2, 'end');
+        ed.focus();
+        if (typeof US !== 'undefined') US.snap();
+        if (typeof TM !== 'undefined') TM.markDirty();
+        if (typeof App !== 'undefined') App.render();
+        if (typeof App !== 'undefined') App.hideModal('cite-modal');
+    }
+
+    function insertToNewFileFromCiteModal() {
+        const txt = _getCiteModalOutText();
+        if (!txt) { alert('삽입할 답변이 없습니다.'); return; }
+        if (typeof TM === 'undefined') { alert('탭 기능을 사용할 수 없습니다.'); return; }
+        const hintEl = document.getElementById('cite-ai-insert-hint');
+        const customName = hintEl && hintEl.value ? hintEl.value.trim() : '';
+        const name = customName || _drFixedFilename();
+        TM.newTab(name, txt);
+        if (hintEl) hintEl.value = '';
+        if (typeof App !== 'undefined') App.hideModal('cite-modal');
+    }
+
+    function copyResultFromCiteModal() {
+        const txt = _getCiteModalOutText();
+        if (!txt) { alert('복사할 결과가 없습니다.'); return; }
+        navigator.clipboard.writeText(txt).then(() => alert('복사되었습니다.')).catch(() => {});
+    }
+
+    function openResultInNewWindowFromCiteModal() {
+        const txt = _getCiteModalOutText();
+        if (!txt) { alert('표시할 답변이 없습니다.'); return; }
+        let html;
+        try {
+            html = typeof mdRender === 'function' ? mdRender(txt, true) : (typeof marked !== 'undefined' ? marked.parse(txt) : txt.replace(/\n/g, '<br>'));
+        } catch (e) {
+            html = '<p style="color:red">' + (e.message || '렌더 오류') + '</p>';
+        }
+        html = (html || '').replace(/<\/script>/gi, '<\\/script>');
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        const w = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+        if (!w) { alert('팝업이 차단되었을 수 있습니다.'); return; }
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>답변 미리보기</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body class="dr-pv-window" style="margin:0;background:var(--bg1)">' +
+            '<div id="preview-container" class="preview-container" style="position:absolute;inset:0;overflow:auto;padding:24px;box-sizing:border-box">' +
+            '<div class="preview-page" data-page="1">' + html + '</div></div></body></html>'
+        );
+        w.document.close();
+    }
+
+    function openResultForTranslateFromCiteModal() {
+        const txt = _getCiteModalOutText();
+        if (!txt) { alert('번역할 결과가 없습니다.'); return; }
+        if (typeof App !== 'undefined') App.hideModal('cite-modal');
+        if (typeof Translator !== 'undefined') Translator.show(txt);
+    }
+
+    const _AI_SEARCH_PRESETS = {
+        basic: `You are an academic research assistant.
+
+Task:
+Search for real, peer-reviewed journal articles on the following topic:
+[여기에 주제 입력]
+
+Search conditions:
+- Publication years: [연도 범위 입력]
+- Only include verifiable, existing journal articles.
+- Do NOT fabricate citations.
+- If bibliographic information is uncertain, explicitly state uncertainty.
+
+Output requirements:
+1. Format all references strictly in APA 7th edition.
+2. Include DOI when available.
+3. Indicate journal indexing status (SSCI/SCIE/ESCI/Scopus if known).
+4. Separate domestic (Korean) and international studies if applicable.
+5. For each article, provide 2–3 sentences summarizing:
+   - Research purpose
+   - Methodology (e.g., SEM, multilevel modeling, regression, meta-analysis)
+   - Key findings
+6. Focus on recent theoretical frameworks when relevant.`,
+        research: `You are a doctoral-level research assistant.
+
+Search for empirical studies on:
+[연구주제]
+
+Conditions:
+- Years: 2023–2026
+- Empirical quantitative studies only
+- Clearly state:
+    - Theoretical framework (e.g., Meyer & Allen model, JD-R model, SET)
+    - Sample size and characteristics
+    - Statistical method used (SEM, PLS-SEM, multilevel SEM, HLM, CFA, regression)
+    - Model fit indices if SEM is used
+- Provide citation count if available.
+- APA 7 format with DOI required.
+- No fabricated sources.`,
+        meta: `Search for systematic reviews or meta-analyses on:
+[주제]
+
+Include:
+- Effect sizes reported
+- Number of studies included
+- Statistical model used (random/fixed effects)
+- Publication bias test methods
+- DOI and APA 7 format
+
+Exclude narrative reviews.`,
+        recommend: `You are an academic research assistant.
+
+Search for peer-reviewed empirical journal articles on:
+[주제]
+
+Years: 2023–2026
+
+Requirements:
+- Only real, verifiable articles.
+- Verify existence through academic databases.
+- APA 7th edition format.
+- DOI required.
+- State theoretical framework.
+- Specify statistical method.
+- Separate Korean and international studies.
+- Provide 2–3 sentence structured summary.
+- Do not fabricate citations.`
+    };
+
+    const _AI_SEARCH_VERIFICATION = `Before presenting results, verify that each article exists in recognized academic databases (Google Scholar, Crossref, Web of Science, Scopus, or official journal websites).
+If verification is not possible, do not include the citation.`;
+
+    function applyAiSearchPreset() {
+        const sel = $('dr-ai-preset');
+        const ta = $('dr-ai-preset-text');
+        if (!sel || !ta) return;
+        const key = sel.value || 'basic';
+        ta.value = _AI_SEARCH_PRESETS[key] || _AI_SEARCH_PRESETS.basic;
+    }
+
+    function openCiteAiSearch() {
+        hide();
+        if (typeof App !== 'undefined' && App.showCite) App.showCite();
+        if (typeof CM !== 'undefined' && CM.tab) setTimeout(() => CM.tab('ai-search'), 50);
+    }
+
+    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, copyThinking, openResultInNewWindow, openThinkingInNewWindow, openResultForTranslate, openThinkingForTranslate, thinkingTranslateGoogle, thinkingTranslateResultNewWindow, thinkingTranslateBothNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile, closeThinkingIncludeModal, confirmThinkingInclude, runCiteAiSearch, openCiteAiSearch, applyAiSearchPreset, openPresetTextWindow, applyCiteAiSearchPreset, openCitePresetTextWindow, runCiteAiSearchFromModal, insertFromCiteModal, insertToNewFileFromCiteModal, copyResultFromCiteModal, openResultInNewWindowFromCiteModal, openResultForTranslateFromCiteModal };
 })();
 window.DeepResearch = DeepResearch;
 
@@ -12550,9 +14001,9 @@ const Translator = (() => {
         return String(t);
     }
 
-    /* ── LibreTranslate 공개 인스턴스 (2순위) ─────────────── */
+    /* ── LibreTranslate 공개 인스턴스 (2순위, #tr-translate-btn 시 사용) ─────────────── */
     const _LT_HOSTS = [
-        'https://translate.argosopentech.com',
+        'https://de.libretranslate.com',
         'https://libretranslate.de',
         'https://translate.cutie.dating',
     ];
@@ -12574,13 +14025,45 @@ const Translator = (() => {
         throw new Error('모든 번역 서버에 접속할 수 없습니다');
     }
 
+    /* ── 구글 번역 모바일 스크래핑 (R 방식: URL 요청 후 .result-container 파싱) ───────────── */
+    async function _googleTranslateScrape(text, sl, tl) {
+        const url = 'https://translate.google.com/m?sl=' + encodeURIComponent(sl) +
+            '&hl=' + encodeURIComponent(tl) +
+            '&q=' + encodeURIComponent(text);
+        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+        const r = await fetch(proxyUrl, {
+            signal: AbortSignal.timeout(15000),
+            headers: { 'Accept': 'text/html' }
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const html = await r.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const selectors = ['.result-container', '.result-div', '.translated-ltr', '[data-result-index]'];
+        let result = '';
+        for (const sel of selectors) {
+            const el = doc.querySelector(sel);
+            if (el && (el.textContent || '').trim()) {
+                result = el.textContent.trim();
+                break;
+            }
+        }
+        if (!result) throw new Error('구글 번역 결과를 찾을 수 없습니다');
+        return result;
+    }
+
     async function _doTranslate(text, sl, tl) {
-        try {
+        const engineEl = document.getElementById('tr-engine');
+        const engine = (engineEl && engineEl.value) || 'google';
+        if (engine === 'google') {
+            return await _googleTranslateScrape(text, sl, tl);
+        }
+        if (engine === 'mymemory') {
             return await _myMemory(text, sl, tl);
-        } catch (e) {
-            console.warn('[Translator] MyMemory 실패 →', e.message, '→ LibreTranslate 시도');
+        }
+        if (engine === 'libre') {
             return await _libreTranslate(text, sl, tl);
         }
+        return await _googleTranslateScrape(text, sl, tl);
     }
 
     /* ── UI 유틸 ──────────────────────────────────────── */
@@ -12599,21 +14082,142 @@ const Translator = (() => {
     }
 
     /* ── 공개 API ─────────────────────────────────────── */
-    function show() {
+    function show(initialText) {
         const modal = $('translator-modal');
         if (!modal) return;
-        /* 에디터 선택 텍스트 자동 채우기 */
-        const ed = $('editor');
-        if (ed) {
-            const sel = ed.value.substring(ed.selectionStart, ed.selectionEnd).trim();
-            if (sel) {
-                const inp = $('tr-input');
-                if (inp) { inp.value = sel; _updateCount(); }
+        const inp = $('tr-input');
+        if (inp) {
+            if (initialText != null && initialText !== '') {
+                inp.value = typeof initialText === 'string' ? initialText : String(initialText);
+                _updateCount();
+            } else {
+                const ed = $('editor');
+                if (ed) {
+                    const sel = ed.value.substring(ed.selectionStart, ed.selectionEnd).trim();
+                    if (sel) { inp.value = sel; _updateCount(); }
+                }
             }
         }
         modal.classList.add('vis');
         switchTab('translate');
-        setTimeout(() => { const inp = $('tr-input'); if (inp) inp.focus(); }, 60);
+        setTimeout(() => { const i = $('tr-input'); if (i) i.focus(); }, 60);
+    }
+
+    function openOriginalAndTranslationInNewWindow() {
+        const inp = $('tr-input'), out = $('tr-output');
+        const orig = inp ? inp.value.trim() : '';
+        const trans = out ? out.value.trim() : '';
+        if (!orig && !trans) {
+            alert('원문 또는 번역 결과가 없습니다.');
+            return;
+        }
+        const combined = trans ? (orig + '\n\n--- 번역 ---\n' + trans) : orig;
+        const w = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        if (!w) { alert('팝업이 차단되었을 수 있습니다.'); return; }
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>원문 + 번역</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body style="margin:0;background:var(--bg1);display:flex;flex-direction:column;min-height:100vh;font-family:inherit">' +
+            '<div style="flex-shrink:0;padding:8px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;background:var(--bg3)">' +
+            '<button type="button" onclick="var p=document.getElementById(\'tr-combined-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.min(24,s+2)+\'px\';var L=document.getElementById(\'tr-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx)">확대</button>' +
+            '<button type="button" onclick="var p=document.getElementById(\'tr-combined-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.max(10,s-2)+\'px\';var L=document.getElementById(\'tr-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx)">축소</button>' +
+            '<span id="tr-zoom-label" style="font-size:11px;color:var(--tx3);min-width:40px">100%</span>' +
+            '</div>' +
+            '<div style="flex:1;min-height:0;overflow:auto;padding:20px">' +
+            '<pre id="tr-combined-content" style="white-space:pre-wrap;word-break:break-word;max-width:720px;margin:0 auto;font-size:13px;line-height:1.7;font-family:inherit"></pre>' +
+            '</div></body></html>'
+        );
+        w.document.close();
+        var el = w.document.getElementById('tr-combined-content');
+        if (el) el.textContent = combined;
+    }
+
+    /** 번역 결과(tr-output)만 클립보드에 복사하고 새 창으로 띄움. 구글번역 등에서 붙여넣은 결과에 유용. */
+    function openTranslationInNewWindow() {
+        const out = $('tr-output');
+        const txt = out ? out.value.trim() : _lastResult || '';
+        if (!txt) {
+            alert('번역 결과가 없습니다. 구글번역 등에서 번역한 뒤 여기에 붙여넣고 다시 시도하세요.');
+            return;
+        }
+        navigator.clipboard.writeText(txt).catch(() => {});
+        const w = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        if (!w) { alert('팝업이 차단되었을 수 있습니다.'); return; }
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>번역 결과</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body style="margin:0;background:var(--bg1);display:flex;flex-direction:column;min-height:100vh;font-family:inherit">' +
+            '<div style="flex-shrink:0;padding:8px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;background:var(--bg3)">' +
+            '<span style="font-size:11px;color:var(--tx3)">번역 결과 (클립보드에 복사됨)</span>' +
+            '<button type="button" onclick="var p=document.getElementById(\'tr-only-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.min(24,s+2)+\'px\';var L=document.getElementById(\'tr-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx)">확대</button>' +
+            '<button type="button" onclick="var p=document.getElementById(\'tr-only-content\');var s=parseInt(p.style.fontSize,10)||13;p.style.fontSize=Math.max(10,s-2)+\'px\';var L=document.getElementById(\'tr-zoom-label\');if(L)L.textContent=Math.round((parseInt(p.style.fontSize,10)/13)*100)+\'%\'" style="padding:4px 10px;cursor:pointer;border:1px solid var(--bd);border-radius:4px;background:var(--bg2);color:var(--tx)">축소</button>' +
+            '<span id="tr-zoom-label" style="font-size:11px;color:var(--tx3);min-width:40px">100%</span>' +
+            '</div>' +
+            '<div style="flex:1;min-height:0;overflow:auto;padding:20px">' +
+            '<pre id="tr-only-content" style="white-space:pre-wrap;word-break:break-word;max-width:720px;margin:0 auto;font-size:13px;line-height:1.7;font-family:inherit"></pre>' +
+            '</div></body></html>'
+        );
+        w.document.close();
+        const el = w.document.getElementById('tr-only-content');
+        if (el) el.textContent = txt;
+        _setStatus('번역 결과를 복사했고 새 창을 열었습니다.', 'ok');
+        setTimeout(() => _setStatus(''), 3000);
+    }
+
+    /** (en/ko 간단용) 구글 스크래핑으로 번역만 수행. 외부(DR 생각 등)에서 호출. */
+    function translateText(text, sl, tl) {
+        return _googleTranslateScrape(text, sl || 'en', tl || 'ko');
+    }
+
+    /** (en/ko 간단용) 텍스트만으로 구글 번역 탭 열기. 번역기 모달 구글번역기 버튼과 동일한 데스크톱 URL 사용. */
+    function openBrowserWithText(text, sl, tl) {
+        const s = sl || 'en', t = tl || 'ko';
+        window.open(
+            'https://translate.google.com/?sl=' + encodeURIComponent(s) + '&tl=' + encodeURIComponent(t) + '&text=' + encodeURIComponent(text) + '&op=translate',
+            '_blank'
+        );
+    }
+
+    /** (en/ko 간단용) 번역문만 새 창으로 띄움. */
+    function openTranslationInNewWindowWithText(txt) {
+        if (!txt) return;
+        navigator.clipboard.writeText(txt).catch(() => {});
+        const w = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        if (!w) { alert('팝업이 차단되었을 수 있습니다.'); return; }
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>번역 결과</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body style="margin:0;background:var(--bg1);display:flex;flex-direction:column;min-height:100vh;font-family:inherit">' +
+            '<div style="flex-shrink:0;padding:8px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;background:var(--bg3)">' +
+            '<span style="font-size:11px;color:var(--tx3)">번역 결과 (클립보드에 복사됨)</span>' +
+            '</div>' +
+            '<div style="flex:1;min-height:0;overflow:auto;padding:20px">' +
+            '<pre style="white-space:pre-wrap;word-break:break-word;max-width:720px;margin:0 auto;font-size:13px;line-height:1.7;font-family:inherit"></pre>' +
+            '</div></body></html>'
+        );
+        w.document.close();
+        const pre = w.document.querySelector('pre');
+        if (pre) pre.textContent = txt;
+    }
+
+    /** (en/ko 간단용) 원문+번역 새 창으로 띄움. */
+    function openOriginalAndTranslationInNewWindowWithText(orig, trans) {
+        const combined = (orig || '') + (trans ? '\n\n--- 번역 ---\n' + trans : '');
+        if (!combined.trim()) return;
+        const w = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        if (!w) { alert('팝업이 차단되었을 수 있습니다.'); return; }
+        const base = window.location.href.replace(/[#?].*$/, '').replace(/[^/]*$/, '');
+        w.document.write(
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>원문 + 번역</title><base href="' + base + '"><link rel="stylesheet" href="style.css"></head>' +
+            '<body style="margin:0;background:var(--bg1);display:flex;flex-direction:column;min-height:100vh;font-family:inherit">' +
+            '<div style="flex-shrink:0;padding:8px 12px;border-bottom:1px solid var(--bd);background:var(--bg3)"></div>' +
+            '<div style="flex:1;min-height:0;overflow:auto;padding:20px">' +
+            '<pre style="white-space:pre-wrap;word-break:break-word;max-width:720px;margin:0 auto;font-size:13px;line-height:1.7;font-family:inherit"></pre>' +
+            '</div></body></html>'
+        );
+        w.document.close();
+        const pre = w.document.querySelector('pre');
+        if (pre) pre.textContent = combined;
     }
 
     function hide() {
@@ -12639,10 +14243,11 @@ const Translator = (() => {
         document.querySelectorAll('#tr-tabs .tr-tab').forEach(b => {
             b.classList.toggle('active', b.dataset.tab === tab);
         });
-        const aiTrans = $('tr-ai-translate-panel'), aiWrite = $('tr-ai-write-panel'), langRow = $('tr-lang-row'), transBtn = $('tr-translate-btn');
+        const aiTrans = $('tr-ai-translate-panel'), aiWrite = $('tr-ai-write-panel'), langRow = $('tr-lang-row'), engineRow = $('tr-engine-row'), transBtn = $('tr-translate-btn');
         if (aiTrans) aiTrans.style.display = (tab === 'ai-translate') ? 'flex' : 'none';
         if (aiWrite) aiWrite.style.display = (tab === 'ai-write') ? 'flex' : 'none';
         if (langRow) langRow.style.display = (tab === 'translate' || tab === 'ai-translate') ? 'flex' : 'none';
+        if (engineRow) engineRow.style.display = (tab === 'translate') ? 'flex' : 'none';
         if (transBtn) {
             transBtn.textContent = tab === 'ai-translate' ? '🤖 AI 번역' : '🌐 번역';
             transBtn.onclick = () => (tab === 'ai-translate' ? aiTranslate() : translate());
@@ -12849,7 +14454,7 @@ const Translator = (() => {
         }
     });
 
-    return { show, hide, toggleFullscreen, translate, swapLang, insertResult, copyResult, openBrowser, clearInput, onInput, onOutputInput, switchTab, aiTranslate, aiWrite };
+    return { show, hide, toggleFullscreen, translate, swapLang, insertResult, copyResult, openBrowser, openOriginalAndTranslationInNewWindow, openTranslationInNewWindow, translateText, openBrowserWithText, openTranslationInNewWindowWithText, openOriginalAndTranslationInNewWindowWithText, clearInput, onInput, onOutputInput, switchTab, aiTranslate, aiWrite };
 })();
 
 /* ═══════════════════════════════════════════════════════════

@@ -237,7 +237,7 @@
         <button class="tb tb-insert" onclick="STATS.show()" data-tooltip="APA 통계 삽입"
           data-key="Shift+Alt+9">𝑓(x)</button>
         <button class="tb tb-insert" onclick="App.insertDate()" data-tooltip="오늘 날짜·시간 삽입 (2026-02-27(금) 오전 12:04 형식)"
-          data-key="Ctrl+Shift+D">📅</button>
+          data-key="Shift+Alt+D">📅</button>
         <button class="tb tb-insert" onclick="CharMap.show()" data-tooltip="문자표 — 특수문자 삽입 (Ctrl+Q)"
           data-key="Ctrl+Q">Ω</button>
         <button class="tb tb-translate" onclick="Translator.show()" data-tooltip="번역기 (Shift+Alt+G)"
@@ -360,6 +360,9 @@
           <div id="gh-hdr">
             <button class="btn btn-g btn-sm" id="gh-settings-btn" onclick="GH.showSettings()"
               title="GitHub 설정">⚙ 설정</button>
+            <button type="button" id="gh-hdr-save-btn" onclick="GH.saveSettings()" title="연결 테스트 &amp; 저장"
+              class="gh-hdr-save-circle">✓</button>
+            <span id="gh-hdr-ok-msg" style="display:none;font-size:10px;color:var(--ok);font-weight:600;margin-left:2px;opacity:0;transition:opacity .25s" aria-live="polite"></span>
             <a id="gh-repo-link" href="#" target="_blank" title="GitHub 저장소 열기"
               style="display:none" class="btn-ic">↗</a>
             <span id="gh-repo-name" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">미연결</span>
@@ -786,14 +789,16 @@
   <!-- HOTKEY OVERLAY -->
   <div id="hk-overlay" onclick="App.hideHK()">
     <div id="hk-panel" onclick="event.stopPropagation()">
-      <h2>
+      <h2 style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;margin-bottom:0">
         <span>⌨ 단축키 목록 &amp; 설정</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button class="btn btn-g btn-sm" id="hk-edit-btn" onclick="HK.toggleEdit()" style="font-size:11px">✎
-            편집</button>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0">
+          <button class="btn btn-g btn-sm" id="hk-edit-btn" onclick="HK.toggleEdit()" style="font-size:11px">✎ 편집</button>
           <button class="btn-ic" onclick="App.hideHK()">✕</button>
         </div>
       </h2>
+
+      <!-- 단축키 목록 렌더 영역 (헤더 바로 아래, 핫키 등록 창 오른쪽에 편집 버튼) -->
+      <div id="hk-list-wrap" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);min-height:120px"></div>
 
       <!-- 편집 모드 안내 -->
       <div id="hk-edit-hint"
@@ -805,9 +810,16 @@
       </div>
 
       <!-- 현재 줄 하이라이트 ON/OFF -->
-      <div id="hk-line-highlight-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--tx2)">에디터 현재 줄 하이라이트</span>
-        <button type="button" class="btn btn-g btn-sm" id="hk-line-highlight-btn" onclick="EditorLineHighlight.toggle()" style="font-size:11px">ON</button>
+      <div id="hk-line-highlight-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+        <span style="font-size:11px;color:var(--tx2);flex-shrink:0">에디터 현재 줄 하이라이트</span>
+        <button type="button" class="btn btn-g btn-sm" id="hk-line-highlight-btn" onclick="EditorLineHighlight.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
+        <span style="font-size:11px;color:var(--tx3);margin-left:8px;flex-shrink:0">작성자 정보</span>
+        <input type="text" id="hk-author-name" placeholder="이름" title="이름" style="font-size:11px;padding:4px 6px;min-width:100px;flex:1;max-width:140px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
+        <input type="text" id="hk-author-affiliation" placeholder="소속" title="소속" style="font-size:11px;padding:4px 6px;min-width:120px;flex:1;max-width:180px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
+        <input type="text" id="hk-author-email" placeholder="메일" title="메일" style="font-size:11px;padding:4px 6px;min-width:130px;flex:1;max-width:200px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
+        <input type="text" id="hk-author-contact" placeholder="연락처" title="연락처" style="font-size:11px;padding:4px 6px;min-width:100px;flex:1;max-width:140px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
+        <button type="button" class="btn btn-g btn-sm" onclick="AuthorInfo.saveInputs()" style="font-size:11px;flex-shrink:0">저장</button>
+        <button type="button" class="btn btn-p btn-sm" onclick="AuthorInfo.insertAllIntoEditor(); App.hideHK();" style="font-size:11px;flex-shrink:0" title="작성한 작성자 정보를 에디터에 삽입">작성된 것은 문서에 삽입</button>
       </div>
 
       <div style="margin-top:10px;font-size:11px;color:var(--tx3)" id="hk-footer-note">
@@ -824,6 +836,15 @@
           onchange="if(typeof AppLock!=='undefined')AppLock.setAutoLockMinutes(this.value||0)" />
         <span style="font-size:11px;color:var(--tx3)">분</span>
       </div>
+      <!-- 작성자 정보 삽입: Shift+Alt+A 삽입 항목 선택 + 삽입 버튼 -->
+      <div id="hk-author-insert-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <span style="font-size:11px;color:var(--tx3)">Shift+Alt+A 삽입 항목</span>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-name" checked style="accent-color:var(--ac)"> 이름</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-affiliation" style="accent-color:var(--ac)"> 소속</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-email" style="accent-color:var(--ac)"> 메일</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-contact" style="accent-color:var(--ac)"> 연락처</label>
+        <button type="button" class="btn btn-p btn-sm" onclick="AuthorInfo.insertIntoEditor(); App.hideHK();" style="font-size:11px">삽입</button>
+      </div>
       <!-- AI API Key (Google AI Studio) -->
       <div id="ai-apikey-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <span style="font-size:11px;color:var(--tx3);margin-right:4px">AI API Key</span>
@@ -831,10 +852,34 @@
           style="font-size:11px;padding:4px 8px;min-width:140px;max-width:260px;flex:1;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1)"
           title="https://aistudio.google.com/api-keys 에서 발급">
         <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style="font-size:11px;color:var(--ac)" title="API 키 발급">키 발급</a>
-        <button type="button" class="btn btn-g btn-sm" onclick="AiApiKey.save()" style="font-size:11px">저장</button>
+        <button type="button" class="btn btn-g btn-sm" id="ai-apikey-btn-save" onclick="AiApiKey.save()" style="font-size:11px">저장</button>
+        <button type="button" class="btn btn-g btn-sm" id="ai-apikey-btn-show" onclick="AiApiKey.toggleShow()" style="font-size:11px" title="키 보기">👁 키보기</button>
       </div>
       <div style="margin-top:6px;font-size:11px;color:var(--tx3);line-height:1.5">
         <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener" style="color:var(--ac)">https://aistudio.google.com/api-keys</a> 링크에서 API 키를 생성하여 붙여넣으세요.
+      </div>
+      <!-- Scholar API Key (SerpAPI, Google Scholar 검색용) -->
+      <div id="scholar-apikey-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--tx3);margin-right:4px">Scholar API Key</span>
+        <input id="scholar_apikey" type="password" placeholder="SerpAPI 키 또는 코드 붙여넣기"
+          style="font-size:11px;padding:4px 8px;min-width:140px;max-width:260px;flex:1;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1)"
+          title="키만 넣거나 getJson(...) 코드 붙여넣으면 api_key 자동 추출">
+        <a href="https://serpapi.com/google-scholar-api" target="_blank" rel="noopener" style="font-size:11px;color:var(--ac)" title="SerpAPI 키 발급">키 발급</a>
+        <button type="button" class="btn btn-g btn-sm" id="scholar-apikey-btn-save" onclick="ScholarApiKey.save()" style="font-size:11px">저장</button>
+        <button type="button" class="btn btn-g btn-sm" id="scholar-apikey-btn-show" onclick="ScholarApiKey.toggleShow()" style="font-size:11px" title="키 보기">👁 키보기</button>
+      </div>
+      <!-- getJson(...) 코드 붙여넣기 → api_key 추출 -->
+      <div id="scholar-code-paste-wrap" style="margin-top:8px;">
+        <div style="font-size:11px;color:var(--tx3);margin-bottom:4px">코드에서 키 추출 (getJson 코드 붙여넣기)</div>
+        <textarea id="scholar_code_paste" placeholder='getJson({ engine: "google_scholar", q: "...", api_key: "여기에_실제_키" }, ...);'
+          style="width:100%;height:36px;min-height:36px;font-size:11px;font-family:var(--fm);padding:6px 8px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1);resize:none;box-sizing:border-box"></textarea>
+        <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-p btn-sm" onclick="ScholarApiKey.extractFromPasteBox()" style="font-size:11px">키 추출 → 위 입력란에 넣기</button>
+          <span id="scholar-extract-feedback" style="font-size:11px;color:var(--ok);display:none">✓ api_key 추출됨</span>
+        </div>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--tx3);line-height:1.5">
+        Scholar API Key(SerpAPI)를 입력하면 <strong>참고문헌 검색</strong>에서 <strong>AI (Google Scholar)</strong> 모드로 실제 Google Scholar 결과를 앱 안에서 볼 수 있습니다. <a href="https://serpapi.com/google-scholar-api" target="_blank" rel="noopener" style="color:var(--ac)">https://serpapi.com/google-scholar-api</a> 에서 키 발급(무료 할당량 있음). 코드 예시 붙여넣기 시 <code>api_key</code> 자동 추출.
       </div>
       <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end" id="hk-edit-actions"
         style="display:none">
@@ -842,8 +887,6 @@
         <button class="btn btn-p btn-sm" onclick="HK.saveEdit()">저장</button>
       </div>
 
-      <!-- 단축키 목록 렌더 영역 (맨 아래) -->
-      <div id="hk-list-wrap" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)"></div>
     </div>
   </div>
 
@@ -977,15 +1020,23 @@
 
   <!-- CITATION MANAGER -->
   <div class="ov" id="cite-modal">
-    <div class="modal xl">
-      <h3>📚 참고문헌 관리 &amp; 인용 삽입</h3>
-      <div class="tab-row">
-        <div class="tab active" onclick="CM.tab('add')">① 참고문헌 추가</div>
-        <div class="tab" onclick="CM.tab('cite')">② 인용 삽입</div>
-        <div class="tab" onclick="CM.tab('convert')">③ 스타일 변환</div>
-        <div class="tab" onclick="CM.tab('lib')">④ 저장된 목록</div>
-        <div class="tab" onclick="CM.tab('manual')">⑤ 수동참고문헌삽입</div>
-        <div class="tab" onclick="CM.tab('search')" style="color:var(--ac2)">⑥ 논문검색</div>
+    <div class="modal xl" id="cite-modal-box">
+      <div class="cite-modal-hdr" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <h3 style="margin:0;font-size:15px;font-weight:600;color:var(--txh)">📚 참고문헌 관리 &amp; 인용 삽입</h3>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <button class="btn btn-p btn-sm" id="cite-ins-btn" onclick="CM.insert()" style="display:none;font-size:11px">✔ 선택 항목 인용 삽입</button>
+          <button class="btn-ic" id="cite-modal-maximize-btn" onclick="CiteModal.toggleMaximize();event.stopPropagation()" title="최대화" style="font-size:14px;padding:4px 8px">⛶</button>
+          <button class="btn btn-g btn-sm" onclick="App.hideModal('cite-modal')" style="font-size:11px">닫기</button>
+        </div>
+      </div>
+      <div class="tab-row" style="display:flex;gap:2px;padding:8px 0 0;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <button type="button" class="tr-tab active" data-tab="add" onclick="CM.tab('add')">① 참고문헌 추가</button>
+        <button type="button" class="tr-tab" data-tab="cite" onclick="CM.tab('cite')">② 인용 삽입</button>
+        <button type="button" class="tr-tab" data-tab="convert" onclick="CM.tab('convert')">③ 스타일 변환</button>
+        <button type="button" class="tr-tab" data-tab="lib" onclick="CM.tab('lib')">④ 저장된 목록</button>
+        <button type="button" class="tr-tab" data-tab="manual" onclick="CM.tab('manual')">⑤ 수동참고문헌삽입</button>
+        <button type="button" class="tr-tab" data-tab="search" onclick="CM.tab('search')" style="color:var(--ac2)">⑥ 논문검색</button>
+        <button type="button" class="tr-tab" data-tab="ai-search" onclick="CM.tab('ai-search')" style="color:var(--ac)">⑦ AI 검색 모드</button>
       </div>
 
       <!-- ADD -->
@@ -1081,8 +1132,11 @@
               style="color:var(--ac);font-weight:600">0</span>건</span>
           <span class="spacer"></span>
           <button class="btn btn-g btn-sm" onclick="CM.insertRefSection()">📄 참고문헌 섹션 삽입</button>
-          <button class="btn btn-g btn-sm" onclick="CM.downloadLib()">⬇ 목록 다운로드</button>
+          <button class="btn btn-g btn-sm" onclick="CM.downloadLibTxt()">⬇ TXT 다운로드</button>
+          <button class="btn btn-g btn-sm" onclick="CM.downloadLibMd()">⬇ MD 다운로드</button>
+          <button class="btn btn-g btn-sm" onclick="CM.loadLibFromMd()">📂 MD 불러오기</button>
           <button class="btn btn-g btn-sm" style="color:var(--er)" onclick="CM.clearAll()">전체 삭제</button>
+          <button class="btn btn-g btn-sm" onclick="CM.openLibInNewWindow()" title="저장된 목록을 마크다운 미리보기 새 창으로">🪟 새창목록</button>
         </div>
         <div id="lib-list">
           <div class="cite-empty">저장된 참고문헌이 없습니다.</div>
@@ -1138,6 +1192,14 @@
         <!-- 상태/결과수 -->
         <div id="ref-status" style="font-size:11px;color:var(--tx3);min-height:18px;margin-bottom:6px"></div>
 
+        <!-- AI 모드: 검색 명령 프롬프트 (ref-db=ai 일 때만 표시) -->
+        <div id="ref-ai-prompt-wrap" style="display:none;margin-bottom:8px">
+          <label class="fl" style="font-size:10px;color:var(--tx3)">검색 명령 (Google Scholar)</label>
+          <textarea class="fi" id="ref-ai-prompt" rows="2" placeholder="예) self-efficacy meta-analysis 2020 이후 한국 학술지"
+            style="width:100%;resize:vertical;min-height:52px;font-size:12px;margin-top:4px"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();RefSearch.search()}"></textarea>
+        </div>
+
         <!-- 결과 목록 -->
         <div id="ref-results"
           style="border:1px solid var(--bd);border-radius:var(--r);background:var(--bg3);min-height:80px;max-height:340px;overflow-y:auto">
@@ -1152,10 +1214,70 @@
           결과가 없으면 <b>Scholar ↗</b>로 직접 검색
         </div>
       </div>
-      <button class="btn btn-g btn-sm" onclick="App.hideModal('cite-modal')">닫기</button>
-      <button class="btn btn-p btn-sm" id="cite-ins-btn" onclick="CM.insert()" style="display:none">✔ 선택 항목 인용 삽입</button>
+      <!-- AI 검색 모드 탭 (cite-modal 전용) — 이미지와 동일 레이아웃 -->
+      <div class="tp" id="cp-ai-search">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px">
+          <div style="flex:0 0 auto">
+            <label style="font-size:10px;color:var(--tx3)">모델</label>
+            <select id="cite-ai-model" class="fi" style="width:100%;max-width:200px;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+            </select>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+              <label style="font-size:10px;color:var(--tx3)">사전 프롬프트 (수정 가능)</label>
+              <select id="cite-ai-preset" class="fi" style="width:auto;padding:4px 8px;font-size:11px" onchange="DeepResearch.applyCiteAiSearchPreset()" title="양식 불러오기">
+                <option value="basic">기본형</option>
+                <option value="research">연구용</option>
+                <option value="meta">메타분석·문헌고찰</option>
+                <option value="recommend">추천형</option>
+              </select>
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="DeepResearch.openCitePresetTextWindow()" title="새 창에서 프롬프트 보기·편집">새창보기</button>
+            </div>
+            <textarea id="cite-ai-preset-text" class="fi" rows="3" placeholder="양식을 선택하면 여기에 채워집니다. 필요 시 수정하세요."
+              style="width:100%;height:70px;min-height:70px;max-height:40vh;font-size:12px;resize:both;line-height:1.5;display:block"></textarea>
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--tx3)">질문</label>
+            <textarea id="cite-ai-prompt" class="fi" rows="3" placeholder="질문을 입력하세요…"
+              style="width:100%;margin-top:4px;font-size:13px;resize:vertical;min-height:72px"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-p btn-sm" onclick="DeepResearch.runCiteAiSearchFromModal()" style="font-size:12px">🔎 AI 검색 실행</button>
+            <button class="btn btn-g btn-sm" onclick="DeepResearch.show();DeepResearch.switchTab('ai-search');App.hideModal('cite-modal')" style="font-size:11px">참고문헌 모달에서 열기</button>
+            <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="CiteAiSearchHistory.saveCurrentFromCiteModal()" title="현재 답변을 히스토리에 저장">히스토리 저장</button>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:200px;margin-bottom:10px">
+          <div style="padding:6px 0;font-size:10px;color:var(--tx3);font-weight:600;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+            <span>답변</span>
+            <div style="display:flex;gap:4px;align-items:center">
+              <button type="button" class="btn btn-sm" onclick="DeepResearch.openResultForTranslateFromCiteModal()" title="결과 번역" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과번역</button>
+              <button type="button" class="btn btn-sm" onclick="DeepResearch.openResultInNewWindowFromCiteModal()" title="새 창에서 결과 보기" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과새창</button>
+              <button type="button" class="btn btn-sm" onclick="DeepResearch.copyResultFromCiteModal()" title="결과 복사" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과복사</button>
+            </div>
+          </div>
+          <textarea id="cite-ai-out" class="fi"
+            style="flex:1;resize:vertical;min-height:160px;border:1px solid var(--bd);border-radius:var(--r);background:var(--bg3);font-size:13px;line-height:1.7;padding:10px;outline:none;color:var(--tx);font-family:inherit;white-space:pre-wrap"
+            placeholder="답변이 여기에 표시됩니다."></textarea>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--tx3);font-weight:600">AI 검색 결과 히스토리</span>
+            <button type="button" class="btn btn-g btn-sm" style="font-size:10px" onclick="CiteAiSearchHistory.clearAll()" title="전체 삭제">전체 삭제</button>
+          </div>
+          <div id="cite-ai-history-list" style="max-height:140px;overflow-y:auto;padding:4px 0"
+            data-empty="Deep Research AI 검색에서 &#39;히스토리 저장&#39;을 누르면 여기에 저장됩니다."></div>
+        </div>
+        <div id="cite-ai-search-footer" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);align-items:center;gap:8px;flex-wrap:wrap" class="mf">
+          <button class="btn btn-p btn-sm" onclick="DeepResearch.insertFromCiteModal()">문서에 삽입</button>
+          <button class="btn btn-sm" onclick="DeepResearch.insertToNewFileFromCiteModal()" title="새 파일로 삽입" style="color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600;padding:2px 10px">＋</button>
+          <input type="text" id="cite-ai-insert-hint" class="fi" placeholder="새파일로 삽입 (파일명 입력)" style="font-size:11px;color:var(--tx2);width:160px;min-width:0;padding:4px 8px" title="비우면 자동 파일명">
+        </div>
+      </div>
     </div>
-  </div>
   </div>
 
   <!-- CODE MODAL (toolbar button) -->
@@ -1550,9 +1672,12 @@
         </div>
         <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">IEEE Xplore Digital Library</div>
       </div>
-      <div class="fg" id="scholar-recent-wrap" style="display:none;margin-top:10px">
-        <label class="fl">최근 검색어</label>
-        <div id="scholar-recent" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+      <div class="fg" id="scholar-recent-wrap" style="margin-top:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label class="fl">최근 검색어</label>
+          <button type="button" class="btn btn-g btn-sm" onclick="Scholar.openApaGuide()" style="font-size:11px;padding:2px 8px" title="APA 7판 참고문헌 작성 가이드">APA규칙</button>
+        </div>
+        <div id="scholar-recent" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"></div>
       </div>
       <div class="mf">
         <button class="btn btn-g btn-sm" onclick="Scholar.clear()">검색어 초기화</button>
@@ -1896,8 +2021,8 @@ Do not provide explanations unless explicitly requested.</textarea>
         <div style="flex:1;display:flex;flex-direction:column;gap:3px">
           <label style="font-size:10px;color:var(--tx3)">원본 언어</label>
           <select id="tr-src-lang" class="fi" style="padding:5px 8px;font-size:12px">
-            <option value="ko">🇰🇷 한국어</option>
             <option value="en">🇺🇸 영어</option>
+            <option value="ko">🇰🇷 한국어</option>
             <option value="ja">🇯🇵 일본어</option>
             <option value="zh">🇨🇳 중국어</option>
             <option value="fr">🇫🇷 프랑스어</option>
@@ -1914,8 +2039,8 @@ Do not provide explanations unless explicitly requested.</textarea>
         <div style="flex:1;display:flex;flex-direction:column;gap:3px">
           <label style="font-size:10px;color:var(--tx3)">번역 언어</label>
           <select id="tr-tgt-lang" class="fi" style="padding:5px 8px;font-size:12px">
-            <option value="en">🇺🇸 영어</option>
             <option value="ko">🇰🇷 한국어</option>
+            <option value="en">🇺🇸 영어</option>
             <option value="ja">🇯🇵 일본어</option>
             <option value="zh">🇨🇳 중국어</option>
             <option value="fr">🇫🇷 프랑스어</option>
@@ -1929,6 +2054,15 @@ Do not provide explanations unless explicitly requested.</textarea>
         </div>
         <button class="btn btn-p" id="tr-translate-btn" onclick="Translator.translate()"
           style="margin-top:16px;padding:5px 18px;flex-shrink:0;font-size:12px;font-weight:600">🌐 번역</button>
+      </div>
+      <!-- 번역 엔진 선택 (번역 탭에서만 사용) -->
+      <div id="tr-engine-row" style="display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <label style="font-size:10px;color:var(--tx3);flex-shrink:0">번역 엔진</label>
+        <select id="tr-engine" class="fi" style="padding:4px 8px;font-size:11px;max-width:220px">
+          <option value="google">구글 번역 스크래핑</option>
+          <option value="mymemory">MyMemory</option>
+          <option value="libre">LibreTranslate</option>
+        </select>
       </div>
       <!-- 본문 -->
       <div style="display:flex;flex:1;overflow:hidden;min-height:200px">
@@ -1951,8 +2085,10 @@ Do not provide explanations unless explicitly requested.</textarea>
           <div style="padding:5px 12px;font-size:10px;color:var(--tx3);font-weight:600;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
             <span>번역 결과</span>
             <div style="display:flex;gap:4px">
+              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openBrowser()" title="구글 번역에서 열기">구글번역기</button>
+              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openTranslationInNewWindow()" title="번역 결과 복사 후 새 창으로 보기">번역결과 새창</button>
+              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openOriginalAndTranslationInNewWindow()" title="원문 + 번역 새 창으로 보기">원문+번역 새창</button>
               <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.copyResult()" title="복사">📋</button>
-              <button class="btn-ic" style="font-size:10px;color:var(--tx3)" onclick="Translator.openBrowser()" title="구글번역기">화살표(gt)</button>
             </div>
           </div>
           <textarea id="tr-output" class="fi"
@@ -2016,6 +2152,7 @@ Do not provide explanations unless explicitly requested.</textarea>
       <div id="dr-tabs" style="display:flex;gap:2px;padding:8px 14px 0;border-bottom:1px solid var(--bd);flex-shrink:0">
         <button type="button" class="tr-tab active" data-tab="question" onclick="DeepResearch.switchTab('question')">질문</button>
         <button type="button" class="tr-tab" data-tab="pro-preview" onclick="DeepResearch.switchTab('pro-preview')">Deep Research Pro Preview</button>
+        <button type="button" class="tr-tab" data-tab="ai-search" onclick="DeepResearch.switchTab('ai-search')">AI 검색</button>
       </div>
       <!-- 탭: 질문 (모델 선택) -->
       <div id="dr-panel-question" style="padding:8px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;flex-direction:column;gap:8px">
@@ -2046,6 +2183,43 @@ Do not provide explanations unless explicitly requested.</textarea>
         </div>
         <button class="btn btn-p" onclick="DeepResearch.runPro()" style="font-size:12px;font-weight:600">🔍 리서치 실행</button>
       </div>
+      <!-- 탭: AI 검색 (모델 → 사전 프롬프트 → 질문 → 실행 → 답변) -->
+      <div id="dr-panel-ai-search" style="display:none;padding:8px 14px;border-bottom:1px solid var(--bd);flex-shrink:0;flex-direction:column;gap:8px;flex:0 0 auto">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:10px;color:var(--tx3)">모델</label>
+            <select id="dr-ai-model" class="fi" style="width:100%;padding:5px 8px;font-size:12px;margin-top:4px">
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <label style="font-size:10px;color:var(--tx3)">사전 프롬프트 (수정 가능)</label>
+            <select id="dr-ai-preset" class="fi" style="width:auto;padding:4px 8px;font-size:11px" onchange="DeepResearch.applyAiSearchPreset()" title="양식 불러오기">
+              <option value="basic">기본형</option>
+              <option value="research">연구용</option>
+              <option value="meta">메타분석·문헌고찰</option>
+              <option value="recommend">추천형</option>
+            </select>
+            <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="DeepResearch.openPresetTextWindow()" title="새 창에서 프롬프트 보기·편집">새창보기</button>
+          </div>
+          <textarea id="dr-ai-preset-text" class="fi" rows="3" placeholder="양식을 선택하면 여기에 채워집니다. 필요 시 수정하세요."
+            style="width:100%;height:70px;min-height:70px;max-height:60vh;font-size:12px;resize:both;line-height:1.5;display:block"></textarea>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--tx3)">질문</label>
+          <textarea id="dr-ai-prompt" class="fi" rows="3" placeholder="질문을 입력하세요…"
+            style="width:100%;margin-top:4px;font-size:13px;resize:vertical;min-height:72px"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-p btn-sm" onclick="DeepResearch.runCiteAiSearch()" style="font-size:12px">🔎 AI 검색 실행</button>
+          <button class="btn btn-g btn-sm" onclick="DeepResearch.openCiteAiSearch()" style="font-size:11px">참고문헌 모달에서 열기</button>
+          <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="CiteAiSearchHistory.saveCurrent()" title="현재 답변을 히스토리에 저장">히스토리 저장</button>
+        </div>
+      </div>
       <!-- 출력 -->
       <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:200px;position:relative">
         <div style="padding:6px 12px;font-size:10px;color:var(--tx3);font-weight:600;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
@@ -2053,8 +2227,12 @@ Do not provide explanations unless explicitly requested.</textarea>
           <div style="display:flex;gap:4px;align-items:center">
             <button class="btn btn-g btn-sm" id="dr-stop-btn" onclick="DeepResearch.stopRun()" style="font-size:10px;padding:2px 8px;display:none;color:var(--er);border-color:var(--er)">⏹ 진행 중지</button>
             <button class="btn btn-g btn-sm" id="dr-thinking-btn" onclick="DeepResearch.toggleThinking()" style="font-size:10px;padding:2px 8px;display:none">💭 생각</button>
-            <button class="btn btn-sm" onclick="DeepResearch.openResultInNewWindow()" title="새 창에서 마크다운 적용 결과 보기" style="color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600;padding:2px 10px">새창</button>
-            <button class="btn btn-sm" onclick="DeepResearch.copyResult()" title="복사" style="color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600;padding:2px 10px">복사</button>
+            <button class="btn btn-sm" id="dr-translate-thinking-btn" onclick="DeepResearch.openThinkingForTranslate()" title="생각 내용 번역" style="display:none;font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">생각번역</button>
+            <button class="btn btn-sm" id="dr-open-thinking-btn" onclick="DeepResearch.openThinkingInNewWindow()" title="생각 내용 새 창으로 보기" style="display:none;font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">생각새창</button>
+            <button class="btn btn-sm" id="dr-copy-thinking-btn" onclick="DeepResearch.copyThinking()" title="생각 내용 복사" style="display:none;font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">생각복사</button>
+            <button class="btn btn-sm" onclick="DeepResearch.openResultForTranslate()" title="결과 번역" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과번역</button>
+            <button class="btn btn-sm" onclick="DeepResearch.openResultInNewWindow()" title="새 창에서 마크다운 적용 결과 보기" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과새창</button>
+            <button class="btn btn-sm" onclick="DeepResearch.copyResult()" title="결과 복사" style="font-size:10px;padding:2px 8px;color:#6ac8f7;border:1px solid rgba(106,200,247,.5);background:rgba(106,200,247,.2);font-weight:600">결과복사</button>
           </div>
         </div>
         <div id="dr-loading" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:5;align-items:center;justify-content:center;color:#fff;font-size:13px;gap:10px;flex-direction:column">
@@ -2064,9 +2242,16 @@ Do not provide explanations unless explicitly requested.</textarea>
         <textarea id="dr-output" class="fi"
           style="flex:1;resize:vertical;min-height:180px;border:none;border-radius:0;background:var(--bg3);font-size:13px;line-height:1.7;padding:12px;outline:none;color:var(--tx);font-family:inherit;white-space:pre-wrap"
           placeholder="답변이 여기에 표시됩니다."></textarea>
-        <textarea id="dr-thinking" class="fi" readonly
-          style="display:none;flex:1;resize:none;border:none;border-radius:0;background:var(--bg2);font-size:12px;line-height:1.6;padding:12px;outline:none;color:var(--tx3);font-family:inherit;min-height:80px;white-space:pre-wrap;border-top:1px solid var(--bd)"
-          placeholder="생각 (thinking) 내용"></textarea>
+        <div id="dr-thinking-wrap" style="display:none;flex:1;flex-direction:column;min-height:80px;border-top:1px solid var(--bd)">
+          <div style="flex-shrink:0;display:flex;gap:2px;padding:2px 8px;align-items:center;background:var(--bg2);border-bottom:1px solid var(--bd)">
+            <button type="button" class="btn-ic" id="dr-thinking-google-btn" onclick="DeepResearch.thinkingTranslateGoogle()" title="구글 번역에서 열기 (en↔ko)" style="font-size:9px;padding:2px 6px;color:var(--tx3)">구글번역기</button>
+            <button type="button" class="btn-ic" id="dr-thinking-result-win-btn" onclick="DeepResearch.thinkingTranslateResultNewWindow()" title="구글 스크래핑 번역 후 번역만 새창 (en↔ko)" style="font-size:9px;padding:2px 6px;color:var(--tx3)">번역결과 새창</button>
+            <button type="button" class="btn-ic" id="dr-thinking-both-win-btn" onclick="DeepResearch.thinkingTranslateBothNewWindow()" title="구글 스크래핑 번역 후 원문+번역 새창 (en↔ko)" style="font-size:9px;padding:2px 6px;color:var(--tx3)">원문+번역 새창</button>
+          </div>
+          <textarea id="dr-thinking" class="fi" readonly
+            style="flex:1;resize:none;border:none;border-radius:0;background:var(--bg2);font-size:12px;line-height:1.6;padding:12px;outline:none;color:var(--tx3);font-family:inherit;min-height:60px;white-space:pre-wrap"
+            placeholder="생각 (thinking) 내용"></textarea>
+        </div>
       </div>
       <!-- 삽입 -->
       <div style="padding:8px 12px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -2089,6 +2274,21 @@ Do not provide explanations unless explicitly requested.</textarea>
             <button type="button" class="btn btn-p btn-sm" onclick="DeepResearch.saveHistoryAsZip();DeepResearch.closeHistorySaveModal()" style="width:100%;font-size:12px">ZIP으로 저장 (로컬)</button>
             <button type="button" class="btn btn-g btn-sm" onclick="DeepResearch.saveHistoryBatch();DeepResearch.closeHistorySaveModal()" style="width:100%;font-size:12px">일괄 저장 (각 항목을 .md 파일로)</button>
             <button type="button" class="btn btn-g btn-sm" onclick="DeepResearch.closeHistorySaveModal()" style="width:100%;font-size:12px">취소</button>
+          </div>
+        </div>
+      </div>
+      <!-- 생각 포함 여부 확인 모달 (항목 저장 / 문서에 삽입) -->
+      <div id="dr-thinking-include-modal" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:11;align-items:center;justify-content:center;border-radius:0 0 8px 0" onclick="if(event.target===this)DeepResearch.closeThinkingIncludeModal()">
+        <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:20px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.4)" onclick="event.stopPropagation()">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--tx)" id="dr-thinking-modal-title">생각 포함</div>
+          <p style="font-size:11px;color:var(--tx2);margin:0 0 12px;line-height:1.5">인공지능의 사고 과정(생각)을 하단에 붙여서 포함할까요?</p>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2);margin-bottom:16px">
+            <input type="checkbox" id="dr-thinking-include-chk" style="accent-color:var(--ac)">
+            <span id="dr-thinking-include-label">생각 포함하여 저장</span>
+          </label>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn btn-g btn-sm" onclick="DeepResearch.closeThinkingIncludeModal()">취소</button>
+            <button type="button" class="btn btn-p btn-sm" id="dr-thinking-include-confirm-btn" onclick="DeepResearch.confirmThinkingInclude()">저장</button>
           </div>
         </div>
       </div>

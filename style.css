@@ -46,6 +46,13 @@
     --wn: #c07010;
 }
 
+/* API 키 저장됨 표시 (밝은 초록) */
+#ai_apikey.apikey-saved,
+#scholar_apikey.apikey-saved {
+    border-color: var(--ok) !important;
+    background: color-mix(in srgb, var(--ok) 18%, var(--bg3)) !important;
+}
+
 [data-theme=light] .tb.tb-heading {
     color: #a07008
 }
@@ -974,6 +981,33 @@ body {
     white-space: nowrap;
     padding-left: 2px;
     font-weight: 500;
+}
+
+/* 조그마한 보라색 원 버튼: 연결 테스트 & 저장 */
+#gh-hdr .gh-hdr-save-circle {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--ac);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+#gh-hdr .gh-hdr-save-circle:hover {
+    filter: brightness(1.15);
+}
+#gh-hdr .gh-hdr-save-circle:active {
+    filter: brightness(0.9);
 }
 
 #gh-search {
@@ -2911,13 +2945,15 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
 }
 
 #dr-modal-box.dr-modal-maximized,
-#image-modal-box.img-modal-maximized {
+#image-modal-box.img-modal-maximized,
+#cite-modal-box.cite-modal-maximized {
     width: 100vw !important;
     height: 100vh !important;
     max-width: none !important;
     max-height: none !important;
     border-radius: 0;
-    margin: 0
+    margin: 0;
+    overflow: auto
 }
 
 #dr-history-list:empty::before {
