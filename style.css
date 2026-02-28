@@ -448,6 +448,11 @@ body {
     gap: 5px
 }
 
+#titlebar-path-display,
+#app-datetime {
+    color: #b8b8d8 !important
+}
+
 /* ─── TAB BAR ─────────────────────────────────────────── */
 #tab-bar {
     grid-area: tabs;
@@ -2565,6 +2570,53 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
 [data-theme=light] #toolbar {
     background: #f0eef8;
     border-bottom: 1px solid #d0c8f0
+}
+
+/* titlebar 라이트 모드 */
+[data-theme=light] #titlebar {
+    background: #eeebff;
+    border-bottom-color: #d0c8f0
+}
+
+[data-theme=light] #titlebar-path-display,
+[data-theme=light] #app-datetime {
+    color: #404068 !important
+}
+
+/* #tba 보기/PV 버튼 라이트 모드 (#vm-split, #vm-editor, #vm-preview, #pw-btn) — 기존 .tb-view/.tb-pv 적용되도록 titlebar 배경만 바꿈 */
+[data-theme=light] #tba .tb.tb-view {
+    color: #1878b0;
+    border-color: rgba(24, 120, 176, .35)
+}
+[data-theme=light] #tba .tb.tb-view.active {
+    background: rgba(24, 120, 176, .12);
+    color: #1060a0;
+    border-color: #1878b0
+}
+[data-theme=light] #tba .tb.tb-pv {
+    color: #a07010
+}
+
+/* 툴바 24번째 div 내 버튼(◑, ln) 라이트 모드 */
+[data-theme=light] #toolbar .tb.tb-sys {
+    color: #5050a0
+}
+
+/* #tba Deep Research(11번), AI PPT(14번) 인라인 스타일 라이트 오버라이드 */
+[data-theme=light] #tba > button:nth-child(10) {
+    background: linear-gradient(135deg, #e0f2ff 0%, #c8e8ff 100%) !important;
+    color: #1060a0 !important;
+    border: 1px solid rgba(16, 96, 160, .35) !important
+}
+[data-theme=light] #tba > button:nth-child(11) {
+    background: linear-gradient(135deg, #e0f2ff 0%, #c8e8ff 100%) !important;
+    color: #1060a0 !important;
+    border: 1px solid rgba(16, 96, 160, .35) !important
+}
+[data-theme=light] #tba > button:nth-child(14) {
+    background: rgba(247, 201, 106, .2) !important;
+    border-color: rgba(247, 201, 106, .5) !important;
+    color: #b8860b !important
 }
 
 /* ── 글자 크기 표시 라이트모드 ── */

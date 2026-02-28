@@ -63,8 +63,11 @@
 
     <!-- TITLEBAR -->
     <header id="titlebar">
-      <div id="app-logo">
-        <div class="logo-icon">M</div>MD PRO By 박중희 PhD
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <div id="app-logo">
+          <div class="logo-icon">M</div>MD PRO By 박중희 PhD
+        </div>
+        <span id="app-datetime" class="app-datetime" title="현재 날짜·시간" style="font-size:11px;font-family:var(--fm);color:var(--tx2);white-space:nowrap"></span>
       </div>
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;min-width:0;position:relative">
         <span id="titlebar-path-display"
@@ -77,13 +80,21 @@
       </div>
       <div id="tba">
         <span id="rm-badge">RESEARCH</span>
-        <span id="app-datetime" class="app-datetime" title="현재 날짜·시간" style="font-size:11px;font-family:var(--fm);color:var(--tx2);margin-right:8px;white-space:nowrap"></span>
+        <div class="tg" style="margin:0;gap:2px">
+          <button class="tb tb-view" onclick="App.setViewCycle('split')" id="vm-split" data-tooltip="분할 보기 (Alt+1)" data-key="Alt+1">Split</button>
+          <button class="tb tb-view" onclick="App.setViewCycle('editor')" id="vm-editor" data-tooltip="에디터만 (Alt+2)" data-key="Alt+2">Edit</button>
+          <button class="tb tb-view" onclick="App.setViewCycle('preview')" id="vm-preview" data-tooltip="미리보기만 (Alt+3)" data-key="Alt+3">View</button>
+        </div>
+        <button class="tb tb-pv" id="pw-btn" onclick="PW.open()" data-tooltip="새창 미리보기" data-key="Ctrl+Shift+P">🗗 PV</button>
+        <button class="tb tb-pv" onclick="PW.openSlide()" data-tooltip="슬라이드 모드로 바로 열기 (새창)" data-key="Ctrl+Shift+T">📽 Slide</button>
+        <button class="tb tb-pv" onclick="PW.forceRefresh()" data-tooltip="새창 강제 새로고침">↻</button>
         <button class="btn btn-sm" id="app-lock-btn" onclick="if(typeof AppLock!=='undefined'&&AppLock.hasLock())AppLock.lockNow()" data-tooltip="앱 잠금 (Ctrl+G)" title="앱 잠금 (Ctrl+G)" style="display:none;background:rgba(124,106,247,.15);border:1px solid rgba(124,106,247,.35);color:#9d8cf7">🔒 잠금</button>
         <button class="btn btn-sm btn-settings" onclick="App.showHK()" data-tooltip="단축키 목록 &amp; 설정 (Alt+?)" data-key="Alt+?" title="설정">⚙ 설정</button>
         <button class="btn btn-sm btn-tmpl" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
         <button class="btn btn-sm btn-research" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)"
           data-key="Ctrl+Shift+R" title="Research Mode">🔬</button>
-        <button class="btn btn-sm" onclick="window.open('https://jh-park9.imgbb.com/','_blank')" data-tooltip="ImgBB — 이미지 호스팅 (새 창)" title="ImgBB">🖼 IMG</button>
+        <button class="btn btn-sm btn-scholar" onclick="window.open('https://jh-park9.imgbb.com/','_blank')" data-tooltip="ImgBB — 이미지 호스팅 (새 창)" title="ImgBB"
+          style="background:linear-gradient(135deg,#1a2a40 0%,#1e3558 100%);color:#6ac8f7;border:1px solid rgba(106,200,247,.35);font-weight:600">🖼 IMG</button>
         <button class="btn btn-sm" onclick="DeepResearch.show()" data-tooltip="Deep Research (AI 질문)"
           style="background:linear-gradient(135deg,#1a2a40 0%,#1e3558 100%);color:#6ac8f7;border:1px solid rgba(106,200,247,.35);font-weight:600">📚 Deep Research</button>
         <button class="btn btn-sm btn-ref" onclick="App.showCite()" data-tooltip="참고문헌 관리 & 인용"
@@ -253,23 +264,7 @@
           data-key="Ctrl+F">🔍</button></div>
       <div class="spacer"></div>
 
-      <!-- ⚙ 보기 모드 -->
-      <div class="tg">
-        <button class="tb tb-view" onclick="App.setViewCycle('split')" id="vm-split" data-tooltip="분할 보기 (Alt+1)"
-          data-key="Alt+1">Split</button>
-        <button class="tb tb-view" onclick="App.setViewCycle('editor')" id="vm-editor" data-tooltip="에디터만 (Alt+2)"
-          data-key="Alt+2">Edit</button>
-        <button class="tb tb-view" onclick="App.setViewCycle('preview')" id="vm-preview" data-tooltip="미리보기만 (Alt+3)"
-          data-key="Alt+3">View</button>
-      </div>
-      <div class="ts"></div>
-      <div class="tg">
-        <button class="tb tb-pv" id="pw-btn" onclick="PW.open()" data-tooltip="새창 미리보기" data-key="Ctrl+Shift+P">🗗
-          PV</button>
-        <button class="tb tb-pv" onclick="PW.openSlide()" data-tooltip="슬라이드 모드로 바로 열기 (새창)" data-key="Ctrl+Shift+T">📽
-          Slide</button>
-        <button class="tb tb-pv" onclick="PW.forceRefresh()" data-tooltip="새창 강제 새로고침">↻</button>
-      </div>
+      <!-- ⚙ 보기 모드 / PV: 타이틀바로 이동됨 -->
       <div class="ts"></div>
       <div class="tg">
         <button class="tb tb-sys" onclick="App.toggleTheme()" data-tooltip="전체 다크/라이트 토글 (Alt+4)" data-key="Alt+4">◑</button>
@@ -2040,7 +2035,7 @@
   <!-- 번역기 모달 -->
   <div class="ov" id="translator-modal" onclick="if(event.target===this)Translator.hide()">
     <div class="modal" id="translator-modal-inner" style="max-width:640px;max-height:88vh;display:flex;flex-direction:column;position:relative">
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--bg3)">
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--bg3)">
         <button type="button" class="btn btn-g btn-sm" onclick="Translator.hide()" style="font-size:11px">닫기</button>
         <button type="button" class="btn btn-g btn-sm" id="tr-fullscreen-btn" onclick="Translator.toggleFullscreen()" style="font-size:11px">전체화면</button>
       </div>
