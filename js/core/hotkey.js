@@ -97,7 +97,6 @@ const HK = (() => {
         'app.ghCommit':     () => { const t=TM.getActive(); if(t&&t.ghPath) App._openGHSaveModal(t); },
         'app.pullGH':       () => FM.pullFromGitHub(),
         'app.pushGH':       () => FM.syncToGitHub(),
-        'edit.deleteLine':  () => App.deleteLine(),
     };
 
     /* ── 기본 단축키 데이터 ─────────────────────────────────────
@@ -176,7 +175,7 @@ const HK = (() => {
                 { desc: '저장 다이얼로그', keys: 'Ctrl + S', action: 'app.save' },
                 { desc: '찾기 / 바꾸기', keys: 'Ctrl + H', action: 'app.find' },
                 { desc: '다중선택 편집 (선택 시 메뉴 열기)', keys: 'Ctrl + Alt + K', action: 'app.toggleMultiEditBar' },
-                { desc: '다중선택 편집 (선택→바꾸기 전체 적용)', keys: 'Ctrl + Enter', action: 'app.multiEditApply' },
+                /* 다중선택 적용은 다중선택 바가 열린 상태에서 Ctrl+Enter로만 동작(events.js에서 처리). 여기서 같은 키를 등록하면 페이지 나누기가 덮어씌워지므로 제거 */
                 { desc: 'Research Mode', keys: 'Ctrl + Shift + R', action: 'app.researchMode' },
                 { desc: 'Scholar 검색', keys: 'Ctrl + Shift + G', action: 'app.scholar' },
                 { desc: 'AI PPT (ScholarSlide)', keys: 'Ctrl + Shift + L', action: 'app.aiPPT' },

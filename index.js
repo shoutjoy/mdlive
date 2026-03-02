@@ -2008,14 +2008,7 @@ window.addEventListener('DOMContentLoaded', () => {
         GH.checkNewCommits().catch(() => {});
         GH.loadDeviceActivity().catch(() => {});
     }).catch(e => console.warn('GH restore failed:', e));
-    /* 문자표 단축키 및 Shift+Alt 단축키 */
-    document.addEventListener('keydown', e => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'q') { e.preventDefault(); CharMap.show(); }
-        if (e.shiftKey && e.altKey && (e.key === 'g' || e.key === 'G')) { e.preventDefault(); Translator.show(); }
-        if (e.shiftKey && e.altKey && (e.key === 'm' || e.key === 'M')) { e.preventDefault(); SS.toggle(); }
-        if (e.shiftKey && e.altKey && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); if (typeof AuthorInfo !== 'undefined') AuthorInfo.insertIntoEditor(); }
-        if (e.shiftKey && e.altKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); App.insertDate(); }
-    });
+    /* Shift+Alt+G/M/A/D, Ctrl+Q 등은 js/core/hotkey.js 기본 등록 → handleKey에서만 처리 (중복 방지) */
 
     /* ── gh-save-modal 리사이즈 드래그 ─────────────────── */
     (function initGhSaveResize() {
