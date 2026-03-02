@@ -1,4 +1,4 @@
-﻿/* FM — File Manager (el, GH, TM, LocalFS, DelConfirm 의존) */
+/* FM — File Manager (el, GH, TM, LocalFS, DelConfirm 의존) */
 
 /* ═══════════════════════════════════════════════════════════
    FM — File Manager  (폴더 선택 → 파일 목록 → 탭 열기)
@@ -320,14 +320,29 @@ const FM = (() => {
     }
 
     /* ── 전체 폴더 접기/펼치기 토글 ───────────────────── */
+    const FM_LOCKED_FOLDERS_KEY = 'mdpro_fm_locked_folders';
+    function _getLockedFolders() {
+        try {
+            const raw = localStorage.getItem(FM_LOCKED_FOLDERS_KEY);
+            const arr = raw ? JSON.parse(raw) : [];
+            return new Set(Array.isArray(arr) ? arr : []);
+        } catch (e) { return new Set(); }
+    }
+    function _setLockedFolders(set) {
+        try { localStorage.setItem(FM_LOCKED_FOLDERS_KEY, JSON.stringify([...set])); } catch (e) {}
+    }
+
     function toggleFoldAll() {
         const list = document.getElementById('files-list');
         if (!list) return;
         const folders = list.querySelectorAll('.ft-folder');
         if (!folders.length) return;
+        const lockedSet = _getLockedFolders();
         const anyExpanded = Array.from(folders).some(f => !f.classList.contains('collapsed'));
         const collapse = anyExpanded;
         folders.forEach(f => {
+            const path = f.dataset.path;
+            if (!collapse && path && lockedSet.has(path)) return;
             const hdr = f.querySelector('.ft-folder-hdr');
             const toggle = hdr && hdr.querySelector('.ft-toggle');
             const isEmpty = toggle && toggle.textContent === '—';
@@ -412,25 +427,44 @@ const FM = (() => {
 
                 const folderEl = document.createElement('div');
                 folderEl.className = 'ft-folder';
+                folderEl.dataset.path = child._fullPath;
 
                 const hdr = document.createElement('div');
                 hdr.className = 'ft-folder-hdr';
                 hdr.style.paddingLeft = (8 + indent) + 'px';
+                const folderPath = child._fullPath;
                 hdr.innerHTML =
                     `<span class="ft-toggle">${isEmpty ? '—' : '▾'}</span>` +
                     `<span class="ft-folder-icon">📂</span>` +
                     `<span class="ft-folder-name">${_esc(folderName)}</span>` +
+                    `<span class="ft-folder-lock" title="접었을 때 잠금 — 트리 새로고침 시에도 접힌 상태 유지" role="button" tabindex="0">▼</span>` +
                     `<span class="ft-count" style="${isEmpty ? 'opacity:.4' : ''}">${isEmpty ? '빈 폴더' : totalFiles}</span>` +
                     `<button class="fg-add-btn" title="이 폴더에 새 파일 만들기" ` +
-                    `onclick="event.stopPropagation();FM.createFileInFolder('${_esc(child._fullPath)}')">＋</button>` +
+                    `onclick="event.stopPropagation();FM.createFileInFolder('${_esc(folderPath)}')">＋</button>` +
                     `<button class="folder-del-btn" title="${isEmpty ? '빈 폴더 삭제' : '폴더 삭제 (내부 파일 포함)'}" ` +
-                    `data-path="${_esc(child._fullPath)}" data-empty="${isEmpty}" ` +
+                    `data-path="${_esc(folderPath)}" data-empty="${isEmpty}" ` +
                     `onclick="event.stopPropagation();FM.confirmDeleteFolder(this)">🗑</button>`;
-                hdr.onclick = () => {
+                hdr.onclick = (e) => {
+                    if (e.target.closest('.ft-folder-lock')) return;
                     folderEl.classList.toggle('collapsed');
                     hdr.querySelector('.ft-toggle').textContent =
                         folderEl.classList.contains('collapsed') ? '▸' : '▾';
                 };
+                const lockEl = hdr.querySelector('.ft-folder-lock');
+                lockEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const locked = _getLockedFolders();
+                    if (locked.has(folderPath)) {
+                        locked.delete(folderPath);
+                        lockEl.classList.remove('ft-folder-lock-on');
+                    } else {
+                        locked.add(folderPath);
+                        folderEl.classList.add('collapsed');
+                        hdr.querySelector('.ft-toggle').textContent = isEmpty ? '—' : '▸';
+                        lockEl.classList.add('ft-folder-lock-on');
+                    }
+                    _setLockedFolders(locked);
+                });
                 folderEl.appendChild(hdr);
 
                 const body = document.createElement('div');
@@ -484,6 +518,19 @@ const FM = (() => {
 
         /* 루트 파일 + 폴더 트리 렌더 */
         renderNode(root, 0, list);
+        /* 잠금 폴더: 접힌 상태 유지 + 녹색 역삼각형 표시 */
+        const lockedSet = _getLockedFolders();
+        list.querySelectorAll('.ft-folder').forEach(folderEl => {
+            const path = folderEl.dataset.path;
+            if (!path || !lockedSet.has(path)) return;
+            folderEl.classList.add('collapsed');
+            const hdr = folderEl.querySelector('.ft-folder-hdr');
+            const toggle = hdr && hdr.querySelector('.ft-toggle');
+            const isEmpty = toggle && toggle.textContent === '—';
+            if (toggle && !isEmpty) toggle.textContent = '▸';
+            const lockSpan = hdr && hdr.querySelector('.ft-folder-lock');
+            if (lockSpan) lockSpan.classList.add('ft-folder-lock-on');
+        });
         /* 전체 접기 버튼: 렌더 후 기본은 모두 펼침 → ▽ */
         const foldBtn = document.getElementById('files-fold-toggle-btn');
         if (foldBtn) foldBtn.textContent = '▽';

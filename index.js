@@ -22,6 +22,83 @@ function repCL(ed, t) { const { ls, le } = getCL(ed); ed.value = ed.value.substr
 
 
 /* CP — 미리보기 복사 매니저: 추후 분리 또는 인라인 유지 */
+const CP = (() => {
+    function getPageNodes() {
+        const c = el('preview-container');
+        if (!c) return [];
+        if (c.classList.contains('slide-mode')) return [...c.querySelectorAll('.ppt-slide .slide-inner')];
+        return [...c.querySelectorAll('.preview-page')];
+    }
+    function buildHtml(nodes) {
+        const parts = nodes.map(n => {
+            const clone = n.cloneNode(true);
+            return clone.innerHTML;
+        });
+        const body = parts.join('\n<hr style="border:none;border-top:1px dashed #ccc;margin:18px 0">\n');
+        return `<div style="font-family:serif;font-size:11pt;line-height:1.8;color:#1a1a2e;max-width:170mm;word-break:break-word">${body}</div>`;
+    }
+    function flash(btnId, successLabel, color) {
+        const btn = el(btnId);
+        if (!btn) return;
+        const orig = btn.textContent;
+        const origColor = btn.style.color;
+        btn.textContent = successLabel;
+        btn.style.color = color || '#6af7a0';
+        btn.style.opacity = '0.7';
+        setTimeout(() => {
+            btn.textContent = orig;
+            btn.style.color = origColor;
+            btn.style.opacity = '';
+        }, 1600);
+    }
+    return {
+        async copyRich() {
+            const nodes = getPageNodes();
+            if (!nodes.length) { alert('미리보기 내용이 없습니다.'); return; }
+            const htmlStr = buildHtml(nodes);
+            const textStr = nodes.map(n => n.innerText).join('\n\n');
+            try {
+                if (window.ClipboardItem) {
+                    const htmlBlob = new Blob([htmlStr], { type: 'text/html' });
+                    const textBlob = new Blob([textStr], { type: 'text/plain' });
+                    await navigator.clipboard.write([new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })]);
+                } else {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = htmlStr;
+                    tmp.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+                    document.body.appendChild(tmp);
+                    const range = document.createRange();
+                    range.selectNodeContents(tmp);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    document.execCommand('copy');
+                    sel.removeAllRanges();
+                    document.body.removeChild(tmp);
+                }
+                flash('copy-rich-btn', '✓ 복사됨', '#6af7a0');
+            } catch (err) {
+                try {
+                    await navigator.clipboard.writeText(textStr);
+                    flash('copy-rich-btn', '✓ 텍스트로 복사', '#f7d06a');
+                } catch (e2) {
+                    alert('클립보드 복사에 실패했습니다.\n브라우저 주소창을 한 번 클릭한 뒤 다시 시도해 주세요.');
+                }
+            }
+        },
+        async copyText() {
+            const nodes = getPageNodes();
+            if (!nodes.length) { alert('미리보기 내용이 없습니다.'); return; }
+            const text = nodes.map(n => n.innerText.trim()).join('\n\n');
+            try {
+                await navigator.clipboard.writeText(text);
+                flash('copy-text-btn', '✓ 복사됨', '#6af7a0');
+            } catch (err) {
+                alert('클립보드 복사에 실패했습니다.');
+            }
+        },
+    };
+})();
 
 /* PW → js/core/pw.js */
 
@@ -1803,7 +1880,7 @@ const App = {
 | 인용 삽입 | **Ctrl+Shift+C** | 참고문헌 관리자 |
 | Research Mode | **Ctrl+Shift+R** | 단락 줄번호 표시 |
 | 저장 | **Ctrl+S** | MD / TXT / HTML 선택 |
-| **단축키 목록** | **Alt+?** | 단축키 표시 (편집 가능) |
+| **단축키 목록** | **Alt+/** | 단축키 표시 (편집 가능) |
 | **표 HTML 정돈** | ✦ Tidy 버튼 | 병합 후 들여쓰기 정리 |
 | **미리보기 복사** | 📋 복사 버튼 | 서식 있는 복사 (Word·구글독스) |
 | **A4 구분선** | 📄 A4 버튼 | 297mm 위치에 빨간 점선 표시 |
@@ -1852,7 +1929,7 @@ $$
 
 **📋 양식** 버튼을 눌러 학위논문, SSCI/KCI, 단일/다중 연구, 메타분석 구조를 삽입하세요.
 
-> \`Alt+?\` → 전체 단축키 목록
+> \`Alt+/\` → 전체 단축키 목록
 `}
 };
 
@@ -4369,27 +4446,27 @@ const PVShare = (() => {
         let html = folderBar;
 
         Object.keys(grouped).sort().forEach(grpKey => {
-            /* 서브폴더 헤더 */
+            html += `<div class="pvs-local-group" data-path="${_escQL(grpKey)}">`;
             if (grpKey) {
-                html += `<div style="display:flex;align-items:center;
+                html += `<div class="pvs-local-group-hdr" style="display:flex;align-items:center;gap:6px;
                     padding:5px 14px 3px;font-size:10.5px;color:var(--tx3);
                     font-weight:600;background:rgba(255,255,255,.02);
-                    border-bottom:1px solid rgba(255,255,255,.04)">
-                  <span style="flex:1">📁 ${_escL(grpKey)}</span>
-                  <button
-                      onclick="event.stopPropagation();PVShare._pvCreateFileInFolder('${_escQL(grpKey)}')"
+                    border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;user-select:none">
+                  <span class="ft-toggle">▾</span>
+                  <span class="ft-folder-icon">📁</span>
+                  <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_escL(grpKey)}</span>
+                  <span class="ft-folder-lock" title="접었을 때 잠금 — 새로고침 시에도 접힌 상태 유지" role="button">▼</span>
+                  <button onclick="event.stopPropagation();PVShare._pvCreateFileInFolder('${_escQL(grpKey)}')"
                       title="이 폴더에 새 파일 만들기"
                       style="padding:1px 7px;border-radius:4px;font-size:11px;cursor:pointer;flex-shrink:0;
-                          border:1px solid rgba(106,247,176,.3);background:rgba(106,247,176,.07);color:#6af7b0;
-                          line-height:1.4">📄＋</button>
-                  <button
-                      onclick="event.stopPropagation();PVShare._pvCreateFolderIn('${_escQL(grpKey)}')"
+                          border:1px solid rgba(106,247,176,.3);background:rgba(106,247,176,.07);color:#6af7b0;line-height:1.4">📄＋</button>
+                  <button onclick="event.stopPropagation();PVShare._pvCreateFolderIn('${_escQL(grpKey)}')"
                       title="이 폴더 안에 새 하위 폴더 만들기"
                       style="padding:1px 7px;border-radius:4px;font-size:11px;cursor:pointer;flex-shrink:0;
-                          border:1px solid rgba(247,201,106,.3);background:rgba(247,201,106,.07);color:#f7c96a;
-                          line-height:1.4">📁＋</button>
+                          border:1px solid rgba(247,201,106,.3);background:rgba(247,201,106,.07);color:#f7c96a;line-height:1.4">📁＋</button>
                 </div>`;
             }
+            html += `<div class="pvs-local-group-body">`;
             grouped[grpKey].forEach(f => {
                 /* ── 빈 폴더 항목 (isDir:true) ── */
                 if (f.isDir) {
@@ -4453,9 +4530,58 @@ const PVShare = (() => {
                           border:1px solid rgba(247,106,106,.3);background:rgba(247,106,106,.08);color:#f76a6a">🗑</button>
                 </div>`;
             });
+            html += `</div></div>`;
         });
 
         list.innerHTML = html;
+
+        /* 공개설정 로컬: 폴더 접기/잠금 바인딩 및 잠금 상태 복원 */
+        (function applyPvsFolderLocks() {
+            const PVS_LOCKED_KEY = 'mdpro_pvs_locked_folders';
+            function getLocked() {
+                try {
+                    const raw = localStorage.getItem(PVS_LOCKED_KEY);
+                    const arr = raw ? JSON.parse(raw) : [];
+                    return new Set(Array.isArray(arr) ? arr : []);
+                } catch (e) { return new Set(); }
+            }
+            function setLocked(set) {
+                try { localStorage.setItem(PVS_LOCKED_KEY, JSON.stringify([...set])); } catch (e) {}
+            }
+            list.querySelectorAll('.pvs-local-group').forEach(groupEl => {
+                const path = groupEl.dataset.path;
+                const hdr = groupEl.querySelector('.pvs-local-group-hdr');
+                const body = groupEl.querySelector('.pvs-local-group-body');
+                if (!hdr || !body) return;
+                const toggle = hdr.querySelector('.ft-toggle');
+                const lockSpan = hdr.querySelector('.ft-folder-lock');
+                const lockedSet = getLocked();
+                if (path && lockedSet.has(path)) {
+                    groupEl.classList.add('collapsed');
+                    if (toggle) toggle.textContent = '▸';
+                    if (lockSpan) lockSpan.classList.add('ft-folder-lock-on');
+                }
+                hdr.addEventListener('click', function(e) {
+                    if (e.target.closest('.ft-folder-lock') || e.target.closest('button')) return;
+                    groupEl.classList.toggle('collapsed');
+                    if (toggle) toggle.textContent = groupEl.classList.contains('collapsed') ? '▸' : '▾';
+                });
+                if (lockSpan) lockSpan.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const set = getLocked();
+                    if (set.has(path)) {
+                        set.delete(path);
+                        lockSpan.classList.remove('ft-folder-lock-on');
+                    } else {
+                        set.add(path);
+                        groupEl.classList.add('collapsed');
+                        if (toggle) toggle.textContent = '▸';
+                        lockSpan.classList.add('ft-folder-lock-on');
+                    }
+                    setLocked(set);
+                });
+            });
+        })();
     }
 
     /* ── 공개노트 로컬 폴더를 탐색기에서 열기 ── */
@@ -5559,6 +5685,14 @@ const PVShare = (() => {
             }
             if (repo) {
                 _saveCfg({ repo, branch });
+                /* pvshare_cfg 및 #pvs-repo-inline 동기화 */
+                try {
+                    const pvcfg = JSON.parse(localStorage.getItem('pvshare_cfg') || '{}');
+                    pvcfg.repo = repo;
+                    localStorage.setItem('pvshare_cfg', JSON.stringify(pvcfg));
+                    const pi = document.getElementById('pvs-repo-inline');
+                    if (pi) pi.value = repo;
+                } catch(e) {}
                 /* 모달 헤더 저장소명 업데이트 */
                 const nameEl = document.getElementById('pvs-repo-name');
                 if (nameEl) {

@@ -39,22 +39,35 @@ const PvImageResize = (() => {
             const wrapper = document.createElement('div');
             wrapper.className = 'pv-resizable-wrapper';
             img.parentNode.insertBefore(wrapper, img);
-            wrapper.appendChild(img);
+            const inner = document.createElement('div');
+            inner.className = 'pv-resize-inner';
+            wrapper.appendChild(inner);
+            inner.appendChild(img);
 
             const handleBottom = document.createElement('div');
             handleBottom.className = 'pv-resize-handle pv-resize-handle-bottom';
             handleBottom.title = '드래그하여 세로 크기 조절';
-            wrapper.appendChild(handleBottom);
+            inner.appendChild(handleBottom);
+
+            const handleTop = document.createElement('div');
+            handleTop.className = 'pv-resize-handle pv-resize-handle-top';
+            handleTop.title = '드래그하여 위쪽에서 세로 크기 조절';
+            inner.appendChild(handleTop);
 
             const handleRight = document.createElement('div');
             handleRight.className = 'pv-resize-handle pv-resize-handle-right';
             handleRight.title = '드래그하여 가로 크기 조절';
-            wrapper.appendChild(handleRight);
+            inner.appendChild(handleRight);
+
+            const handleLeft = document.createElement('div');
+            handleLeft.className = 'pv-resize-handle pv-resize-handle-left';
+            handleLeft.title = '드래그하여 왼쪽에서 가로 크기 조절';
+            inner.appendChild(handleLeft);
 
             const handleCorner = document.createElement('div');
             handleCorner.className = 'pv-resize-handle pv-resize-handle-corner';
             handleCorner.title = '드래그하여 비율 유지 크기 조절 (Shift: 자유 비율)';
-            wrapper.appendChild(handleCorner);
+            inner.appendChild(handleCorner);
 
             const applyBtn = document.createElement('button');
             applyBtn.className = 'pv-resize-apply-btn';
@@ -83,7 +96,9 @@ const PvImageResize = (() => {
 
             _enableSelection(wrapper);
             _enableResize(wrapper, img, handleBottom, 'bottom');
+            _enableResize(wrapper, img, handleTop, 'top');
             _enableResize(wrapper, img, handleRight, 'right');
+            _enableResize(wrapper, img, handleLeft, 'left');
             _enableResize(wrapper, img, handleCorner, 'corner');
         });
     }
@@ -110,6 +125,8 @@ const PvImageResize = (() => {
             const startY = e.clientY;
             const startWidth = img.offsetWidth;
             const startHeight = img.offsetHeight;
+            const startMarginTop = parseFloat(window.getComputedStyle(img).marginTop) || 0;
+            const startMarginLeft = parseFloat(window.getComputedStyle(img).marginLeft) || 0;
             const ratio = startHeight > 0 ? startWidth / startHeight : 1;
 
             function onMove(ev) {
@@ -120,9 +137,19 @@ const PvImageResize = (() => {
 
                 if (mode === 'bottom') {
                     newHeight = Math.max(20, startHeight + dy);
+                    img.style.marginTop = '';
+                } else if (mode === 'top') {
+                    newHeight = Math.max(20, startHeight - dy);
+                    img.style.marginTop = (startMarginTop + dy) + 'px';
                 } else if (mode === 'right') {
                     newWidth = Math.max(20, startWidth + dx);
+                    img.style.marginLeft = '';
+                } else if (mode === 'left') {
+                    newWidth = Math.max(20, startWidth - dx);
+                    img.style.marginLeft = (startMarginLeft + dx) + 'px';
                 } else {
+                    img.style.marginTop = '';
+                    img.style.marginLeft = '';
                     if (ev.shiftKey) {
                         const d = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
                         newWidth = Math.max(20, startWidth + d);

@@ -180,7 +180,7 @@ const HK = (() => {
                 { desc: 'Research Mode', keys: 'Ctrl + Shift + R', action: 'app.researchMode' },
                 { desc: 'Scholar 검색', keys: 'Ctrl + Shift + G', action: 'app.scholar' },
                 { desc: 'AI PPT (ScholarSlide)', keys: 'Ctrl + Shift + L', action: 'app.aiPPT' },
-                { desc: '단축키 목록 & 설정', keys: 'Alt + ?', action: 'app.hotkeys' },
+                { desc: '단축키 목록 & 설정', keys: 'Alt + /', action: 'app.hotkeys' },
                 { desc: '문자표 (특수문자)', keys: 'Ctrl + Q', action: 'app.charMap' },
                 { desc: '에디터-PV 스크롤 동기화', keys: 'Shift + Alt + M', action: 'app.syncToggle' },
                 { desc: '앱 잠금', keys: 'Ctrl + G', action: 'app.lock' },

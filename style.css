@@ -2266,6 +2266,11 @@ body.trans-mode .preview-page {
     flex-direction: column;
     align-items: flex-start;
 }
+.pv-resize-inner {
+    position: relative;
+    display: inline-block;
+    line-height: 0;
+}
 .pv-resize-handle {
     position: absolute;
     width: 10px;
@@ -2280,19 +2285,31 @@ body.trans-mode .preview-page {
 }
 .pv-resize-handle-bottom {
     left: 50%;
-    bottom: -5px;
+    bottom: 0;
+    margin-left: -5px;
+    cursor: ns-resize;
+}
+.pv-resize-handle-top {
+    left: 50%;
+    top: 0;
     margin-left: -5px;
     cursor: ns-resize;
 }
 .pv-resize-handle-right {
-    right: -5px;
+    right: 0;
+    top: 50%;
+    margin-top: -5px;
+    cursor: ew-resize;
+}
+.pv-resize-handle-left {
+    left: 0;
     top: 50%;
     margin-top: -5px;
     cursor: ew-resize;
 }
 .pv-resize-handle-corner {
-    right: -5px;
-    bottom: -5px;
+    right: 0;
+    bottom: 0;
     cursor: se-resize;
 }
 .pv-resizable-wrapper img {
@@ -4515,6 +4532,25 @@ kbd {
 }
 .ft-folder-icon { font-size: 12px; flex-shrink: 0; }
 .ft-folder-name { flex: 1 1 0%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 폴더 잠금: 접었을 때 트리 새로고침 시에도 접힌 상태 유지 (녹색 역삼각형) */
+.ft-folder-lock {
+    font-size: 10px;
+    color: var(--tx3);
+    opacity: 0.5;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0 2px;
+    border-radius: 2px;
+    transition: color .15s, opacity .15s;
+}
+.ft-folder-lock:hover {
+    opacity: 0.9;
+    color: #6ef07a;
+}
+.ft-folder-lock.ft-folder-lock-on {
+    color: #6ef07a;
+    opacity: 1;
+}
 .ft-count {
     font-size: 9px;
     color: #58c8f8;
@@ -4933,6 +4969,7 @@ kbd {
 /* ═══════════════════════════════════════════════════════
    pvs-local-item 버튼 hover/touch 제어
 ═══════════════════════════════════════════════════════ */
+.pvs-local-group.collapsed .pvs-local-group-body { display: none; }
 .pvs-local-item .pvs-act-btn {
     opacity: 0;
     pointer-events: none;
