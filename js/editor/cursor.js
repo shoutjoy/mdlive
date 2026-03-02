@@ -1,12 +1,23 @@
 /* ═══════════════════════════════════════════════════════════
    커서 위치·선택 정보 및 포맷 버튼 상태 갱신
    의존: el (dom.js), 전역 App 없음 (DOM만 갱신)
+   #cursor-pos: 마우스가 에디터 위에 있으면 마우스 줄, 아니면 캐럿 줄
 ═══════════════════════════════════════════════════════════ */
 const CursorUI = {
+    _mouseOverEditor: false,
+    _lastMouseY: 0,
     updCursor() {
         const edi = el('editor');
         if (!edi) return;
-        const { line, col } = getCursorLineCol(edi);
+        let line, col;
+        if (this._mouseOverEditor) {
+            line = getLineFromMouseY(edi, this._lastMouseY);
+            col = 1;
+        } else {
+            const c = getCursorLineCol(edi);
+            line = c.line;
+            col = c.col;
+        }
         const posEl = el('cursor-pos');
         if (posEl) posEl.textContent = `줄 ${line}, 열 ${col}`;
         const sl = edi.selectionEnd - edi.selectionStart;

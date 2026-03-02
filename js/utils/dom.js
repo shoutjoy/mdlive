@@ -18,6 +18,19 @@ function formatDateTime(d) {
     return `${y}-${m}-${day}(${w}) ${ap} ${h12}:${min}`;
 }
 
+/** 마우스 Y좌표(clientY)로 에디터 내 줄 번호 계산 (1-based). 에디터 lineHeight 사용 */
+function getLineFromMouseY(ed, clientY) {
+    if (!ed) return 1;
+    const edStyle = window.getComputedStyle(ed);
+    const lineHeight = parseFloat(edStyle.lineHeight) || 21;
+    const paddingTop = parseFloat(edStyle.paddingTop) || 12;
+    const rect = ed.getBoundingClientRect();
+    const relY = clientY - rect.top - paddingTop + ed.scrollTop;
+    const lineIndex = Math.floor(relY / lineHeight);
+    const totalLines = Math.max(1, (ed.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').length));
+    return Math.max(1, Math.min(lineIndex + 1, totalLines));
+}
+
 /** 에디터 커서의 줄·열 (1-based). \r\n 정규화로 cursor-pos·줄하이라이트 동기화 */
 function getCursorLineCol(ed) {
     if (!ed) return { line: 1, col: 1 };

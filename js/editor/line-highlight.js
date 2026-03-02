@@ -33,43 +33,47 @@ const EditorLineHighlight = (() => {
     function updateUI() {
         enabled = isEnabled();
         const hl = document.getElementById('editor-line-highlight');
+        const wrap = document.getElementById('editor-line-highlight-wrap');
         const btn = document.getElementById('hk-line-highlight-btn');
-        const wrap = document.getElementById('hl-line-override-wrap');
         if (hl) hl.classList.toggle('vis', enabled);
+        if (wrap) wrap.classList.toggle('vis', enabled);
         if (btn) btn.textContent = enabled ? 'ON' : 'OFF';
-        if (wrap) wrap.style.display = enabled ? 'inline-flex' : 'none';
         applyColorOpts(loadColorOpts());
+    }
+
+    function getDisplayLine() {
+        const ed = document.getElementById('editor');
+        if (!ed) return 1;
+        let line;
+        if (typeof CursorUI !== 'undefined' && CursorUI._mouseOverEditor) {
+            line = getLineFromMouseY(ed, CursorUI._lastMouseY);
+        } else {
+            const c = getCursorLineCol(ed);
+            line = c.line;
+        }
+        const totalLines = Math.max(1, (ed.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').length));
+        return Math.max(1, Math.min(line, totalLines));
     }
 
     function updateHighlight() {
         const hl = document.getElementById('editor-line-highlight');
+        const wrap = document.getElementById('editor-line-highlight-wrap');
+        const track = document.getElementById('editor-line-highlight-track');
         const ed = document.getElementById('editor');
-        const lnc = document.getElementById('lnc');
-        const overrideEl = document.getElementById('hl-line-override');
-        if (!hl || !ed || !enabled) return;
-        let lineIndex;
-        const overrideVal = overrideEl && overrideEl.value.trim();
-        if (overrideVal) {
-            const n = parseInt(overrideVal, 10);
-            lineIndex = (n > 0 ? n : 1) - 1;
-        } else {
-            const { line } = getCursorLineCol(ed);
-            lineIndex = line - 1;
-        }
-        /* 줄번호(.ln)와 동일한 lineHeight·paddingTop 사용 — EZ 확대 시에도 정렬 유지 */
-        let lineHeight = 21, paddingTop = 12;
-        if (lnc && lnc.firstElementChild) {
-            const lnStyle = window.getComputedStyle(lnc.firstElementChild);
-            lineHeight = parseFloat(lnStyle.height) || parseFloat(lnStyle.lineHeight) || 21;
-        }
-        if (lnc) {
-            const lncStyle = window.getComputedStyle(lnc);
-            paddingTop = parseFloat(lncStyle.paddingTop) || 12;
-        }
+        if (!hl || !wrap || !track || !ed || !enabled) return;
+        const line = getDisplayLine();
+        const lineIndex = line - 1;
+        /* 에디터 기준 lineHeight·padding — EZ 확대 시 드리프트 방지 */
         const edStyle = window.getComputedStyle(ed);
+        const lineHeight = parseFloat(edStyle.lineHeight) || 21;
+        const paddingTop = parseFloat(edStyle.paddingTop) || 12;
         const paddingLeft = parseFloat(edStyle.paddingLeft) || 14;
         const paddingRight = parseFloat(edStyle.paddingRight) || 14;
-        const top = paddingTop + lineIndex * lineHeight - ed.scrollTop;
+        /* 스크롤 동기화: wrap이 에디터와 같이 스크롤 → 35줄 이후에도 하이라이트 유지 */
+        track.style.height = ed.scrollHeight + 'px';
+        wrap.scrollTop = ed.scrollTop;
+        wrap.scrollLeft = ed.scrollLeft;
+        const top = paddingTop + lineIndex * lineHeight;
         hl.style.height = lineHeight + 'px';
         hl.style.top = top + 'px';
         hl.style.left = paddingLeft + 'px';
@@ -119,7 +123,6 @@ const EditorLineHighlight = (() => {
     function init() {
         updateUI();
         const ed = document.getElementById('editor');
-        const overrideEl = document.getElementById('hl-line-override');
         if (!ed) return;
         const run = () => { if (enabled) updateHighlight(); };
         ed.addEventListener('scroll', run, { passive: true });
@@ -127,10 +130,6 @@ const EditorLineHighlight = (() => {
         ed.addEventListener('keyup', run);
         ed.addEventListener('input', run);
         document.addEventListener('selectionchange', () => { if (document.activeElement === ed) run(); });
-        if (overrideEl) {
-            overrideEl.addEventListener('input', run);
-            overrideEl.addEventListener('change', run);
-        }
         if (enabled) updateHighlight();
     }
 

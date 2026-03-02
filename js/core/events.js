@@ -88,6 +88,17 @@ const CoreEvents = {
         }, true);
         edi.addEventListener('keyup', () => { App.updCursor(); if (typeof SS !== 'undefined' && SS.onCursor) SS.onCursor(); });
         edi.addEventListener('click', () => { App.updCursor(); if (typeof SS !== 'undefined' && SS.onCursor) SS.onCursor(); });
+        edi.addEventListener('mousemove', (e) => {
+            CursorUI._mouseOverEditor = true;
+            CursorUI._lastMouseY = e.clientY;
+            App.updCursor();
+            if (typeof EditorLineHighlight !== 'undefined' && EditorLineHighlight.isEnabled()) EditorLineHighlight.updateHighlight();
+        });
+        edi.addEventListener('mouseleave', () => {
+            CursorUI._mouseOverEditor = false;
+            App.updCursor();
+            if (typeof EditorLineHighlight !== 'undefined' && EditorLineHighlight.isEnabled()) EditorLineHighlight.updateHighlight();
+        });
         edi.addEventListener('scroll', () => {
             if (typeof LN !== 'undefined' && LN.update) LN.update();
             if (typeof ScrollSync !== 'undefined' && ScrollSync.onEditor) ScrollSync.onEditor();

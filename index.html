@@ -58,6 +58,9 @@
       if (typeof window.EditorLineHighlight === 'undefined') {
         window.EditorLineHighlight = new Proxy({}, { get: function() { return noop; } });
       }
+      if (typeof window.EditorSelection === 'undefined') {
+        window.EditorSelection = new Proxy({}, { get: function() { return noop; } });
+      }
     })();
   </script>
 </head>
@@ -468,7 +471,11 @@
             <div id="line-numbers" class="vis">
               <div class="lnc" id="lnc"></div>
             </div>
-            <div id="editor-line-highlight" aria-hidden="true"></div>
+            <div id="editor-line-highlight-wrap" aria-hidden="true" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:2">
+              <div id="editor-line-highlight-track" style="position:relative;min-height:1px">
+                <div id="editor-line-highlight"></div>
+              </div>
+            </div>
             <div id="editor-find-highlight" aria-hidden="true"></div>
             <textarea id="editor" class="wln" placeholder="# 제목을 입력하세요&#10;&#10;여기에 Markdown을 작성하세요.&#10;Alt+? → 단축키 목록"
               spellcheck="false"></textarea>
@@ -556,10 +563,6 @@
       </div>
       <div class="ss">|</div>
       <div class="si" id="cursor-pos">줄 1, 열 1</div>
-      <div class="si" id="hl-line-override-wrap" style="display:inline-flex;align-items:center;gap:3px;margin-left:4px" title="줄 하이라이트 수동 보정 (비우면 커서 기준)">
-        <span style="font-size:10px;color:var(--tx3)">HL</span>
-        <input type="number" id="hl-line-override" min="1" placeholder="줄" style="width:36px;font-size:11px;padding:2px 4px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
-      </div>
       <div class="ss">|</div>
       <div class="si" id="statusbar-ar-wrap" style="display:none;align-items:center;gap:4px">
         <button id="gh-ar-btn" onclick="GH.toggleAutoRefresh()" title="자동 새로고침 ON/OFF" class="gh-ar-btn gh-ar-btn-circle on"><span class="gh-ar-dot"></span></button>
@@ -958,6 +961,18 @@
         <button type="button" class="btn btn-g btn-sm" onclick="EditorLineHighlight.saveColorOpts()" style="font-size:11px;flex-shrink:0">저장</button>
         <span style="font-size:11px;color:var(--tx3);margin-left:12px;flex-shrink:0">괄호·따옴표 자동쌍 ( ) [ ] &quot; &apos;</span>
         <button type="button" class="btn btn-g btn-sm" id="hk-auto-pair-btn" onclick="EditorAutoPair.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
+      </div>
+      <!-- 선택 영역 색상·농도 -->
+      <div id="hk-selection-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+        <span style="font-size:11px;color:var(--tx2);flex-shrink:0">선택 영역</span>
+        <span style="font-size:11px;color:var(--tx3)">색상</span>
+        <input type="color" id="hk-selection-color" value="#7c6af7" title="텍스트 선택 색상"
+          style="width:32px;height:24px;padding:0;border:1px solid var(--bd);border-radius:4px;cursor:pointer;background:var(--bg3)">
+        <span style="font-size:11px;color:var(--tx3)">농도</span>
+        <input type="range" id="hk-selection-opacity" min="5" max="100" value="25" title="농도(투명도)"
+          style="width:80px;vertical-align:middle">
+        <span style="font-size:11px;color:var(--tx3);min-width:28px" id="hk-selection-opacity-val">25%</span>
+        <button type="button" class="btn btn-g btn-sm" onclick="EditorSelection.save()" style="font-size:11px;flex-shrink:0">저장</button>
       </div>
       <!-- 찾기 하이라이트 색상·농도 -->
       <div id="hk-find-hl-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
@@ -2744,6 +2759,7 @@ Do not provide explanations unless explicitly requested.</textarea>
   <script src="js/image/ai-image.js"></script>
   <script src="js/image/pv-image-resize.js"></script>
   <script src="js/core/find-highlight.js"></script>
+  <script src="js/core/editor-selection.js"></script>
   <script src="js/core/hotkey.js"></script>
   <script src="index.js"></script>
   

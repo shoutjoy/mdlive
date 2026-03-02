@@ -1891,13 +1891,22 @@ body {
     overflow: hidden
 }
 
+#editor-line-highlight-wrap {
+    display: none;
+    overflow: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+#editor-line-highlight-wrap.vis { display: block; }
+#editor-line-highlight-wrap::-webkit-scrollbar { display: none; }
+
 #editor-line-highlight {
     position: absolute;
     left: 0;
     right: 0;
     height: 21px;
     pointer-events: none;
-    z-index: 2;
     background: rgba(255, 255, 255, 0.12);
     border-radius: 2px;
     display: none;
@@ -2024,6 +2033,10 @@ body {
 
 #editor::placeholder {
     color: var(--tx3)
+}
+
+#editor::selection {
+    background: var(--editor-selection-bg, rgba(124, 106, 247, .25))
 }
 
 /* preview pane */
@@ -2246,10 +2259,12 @@ body.trans-mode .preview-page {
     max-width: 100%
 }
 
-/* PV 이미지 resize (클릭 시 3개 핸들: 하단·우측·모서리) */
+/* PV 이미지 resize (클릭 시 3개 핸들: 하단·우측·모서리 + 적용 버튼) */
 .pv-resizable-wrapper {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 .pv-resize-handle {
     position: absolute;
@@ -2259,7 +2274,8 @@ body.trans-mode .preview-page {
     border-radius: 2px;
     display: none;
 }
-.pv-resizable-wrapper.active .pv-resize-handle {
+.pv-resizable-wrapper.active .pv-resize-handle,
+.pv-resizable-wrapper.active .pv-resize-apply-btn {
     display: block;
 }
 .pv-resize-handle-bottom {
@@ -2282,6 +2298,20 @@ body.trans-mode .preview-page {
 .pv-resizable-wrapper img {
     display: block;
     max-width: 100%;
+}
+.pv-resize-apply-btn {
+    display: none;
+    margin-top: 6px;
+    padding: 4px 12px;
+    font-size: 11px;
+    background: var(--ac);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.pv-resize-apply-btn:hover {
+    background: var(--acd);
 }
 
 .preview-page a {
@@ -2839,7 +2869,7 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
 }
 
 [data-theme=light] #editor::selection {
-    background: rgba(124, 106, 247, .25)
+    background: var(--editor-selection-bg, rgba(124, 106, 247, .25))
 }
 
 /* 에디터만 별도 테마 (전체와 무관하게 에디터만 다크/라이트) */
@@ -2853,7 +2883,7 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
     caret-color: #5040b0;
 }
 #editor-pane[data-editor-theme=light] #editor::selection {
-    background: rgba(124, 106, 247, .25);
+    background: var(--editor-selection-bg, rgba(124, 106, 247, .25));
 }
 #editor-pane[data-editor-theme=light] #ln-col,
 #editor-pane[data-editor-theme=light] #line-numbers {
@@ -2875,7 +2905,7 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
     caret-color: #e0e0f0;
 }
 #editor-pane[data-editor-theme=dark] #editor::selection {
-    background: rgba(124, 106, 247, .25);
+    background: var(--editor-selection-bg, rgba(124, 106, 247, .25));
 }
 #editor-pane[data-editor-theme=dark] #ln-col,
 #editor-pane[data-editor-theme=dark] #line-numbers {
@@ -4824,7 +4854,7 @@ kbd {
 /* ── 에디터 영역 ── */
 [data-theme=light] #editor-pane { background: #fdfcff; }
 [data-theme=light] #editor { background: #fdfcff; color: #1a1a30; caret-color: #5040b0; }
-[data-theme=light] #editor::selection { background: rgba(124,106,247,.25); }
+[data-theme=light] #editor::selection { background: var(--editor-selection-bg, rgba(124,106,247,.25)); }
 [data-theme=light] #ln-col { background: #f0eef8; border-right: 1px solid #d8d4f0; color: #7070a0; }
 
 /* ── 상태 바 ── */

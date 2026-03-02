@@ -498,6 +498,7 @@ const HK = (() => {
                 try { if (typeof AuthorInfo !== 'undefined') AuthorInfo.loadToPanel(); } catch (e) { console.warn('AuthorInfo.loadToPanel:', e); }
                 try { if (typeof ImgLink !== 'undefined') ImgLink.loadToPanel(); } catch (e) { console.warn('ImgLink.loadToPanel:', e); }
                 try { if (typeof FindHighlight !== 'undefined') FindHighlight.loadToPanel(); } catch (e) { console.warn('FindHighlight.loadToPanel:', e); }
+                try { if (typeof EditorSelection !== 'undefined') EditorSelection.loadToPanel(); } catch (e) { console.warn('EditorSelection.loadToPanel:', e); }
             } catch (err) {
                 console.error('HK.open:', err);
                 const ov = el('hk-overlay');

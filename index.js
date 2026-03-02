@@ -1911,6 +1911,7 @@ $$
 window.addEventListener('DOMContentLoaded', () => {
     App.init();
     try { if (typeof FindHighlight !== 'undefined') FindHighlight.init(); } catch (e) {}
+    try { if (typeof EditorSelection !== 'undefined') EditorSelection.init(); } catch (e) {}
     AiApiKey.load().catch(() => {});
     ScholarApiKey.load().catch(() => {});
     ScholarApiKey.initPasteExtract();

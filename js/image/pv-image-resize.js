@@ -56,6 +56,18 @@ const PvImageResize = (() => {
             handleCorner.title = '드래그하여 비율 유지 크기 조절 (Shift: 자유 비율)';
             wrapper.appendChild(handleCorner);
 
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'pv-resize-apply-btn';
+            applyBtn.textContent = '적용';
+            applyBtn.type = 'button';
+            applyBtn.title = '에디터에 조절된 크기 반영';
+            applyBtn.onclick = (e) => {
+                e.stopPropagation();
+                _syncEditor(img, img.offsetWidth, img.offsetHeight);
+                if (typeof App !== 'undefined' && App.render) App.render();
+            };
+            wrapper.appendChild(applyBtn);
+
             if (info) {
                 img.dataset.sourceLine = String(info.line);
                 img.dataset.sourceIdx = String(info.idxInLine || 0);
@@ -128,7 +140,6 @@ const PvImageResize = (() => {
             function onUp() {
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
-                _syncEditor(img, img.offsetWidth, img.offsetHeight);
             }
 
             document.addEventListener('mousemove', onMove);
@@ -151,7 +162,7 @@ const PvImageResize = (() => {
         if (type === 'md') {
             const alt = (img.dataset.sourceAlt || '').replace(/"/g, '&quot;');
             const src = (img.dataset.sourceSrc || img.src || '').replace(/"/g, '&quot;');
-            const newImgTag = `<img src="${src}" alt="${alt}" width="${newWidth}" style="width:${newWidth}px;height:auto">`;
+            const newImgTag = `<img src="${src}" alt="${alt}" width="${newWidth}" height="${newHeight}" style="width:${newWidth}px;height:${newHeight}px">`;
             let n = 0;
             newLine = newLine.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match) => {
                 if (n++ === idxInLine) return newImgTag;
@@ -160,14 +171,17 @@ const PvImageResize = (() => {
         } else if (type === 'html') {
             const full = img.dataset.sourceFull || '';
             let replaced = full;
-            if (/width\s*=\s*["']?\d+["']?/i.test(replaced)) {
-                replaced = replaced.replace(/width\s*=\s*["']?\d+["']?/i, `width="${newWidth}"`);
-            } else {
-                replaced = replaced.replace(/<img/i, `<img width="${newWidth}"`);
-            }
-            if (/height\s*=\s*["']?\d+["']?/i.test(replaced) && newHeight) {
-                replaced = replaced.replace(/height\s*=\s*["']?\d+["']?/i, `height="${newHeight}"`);
-            }
+            replaced = replaced.replace(/width\s*=\s*["']?\d+["']?/gi, `width="${newWidth}"`);
+            if (!/width\s*=/i.test(replaced)) replaced = replaced.replace(/<img/i, `<img width="${newWidth}"`);
+            replaced = replaced.replace(/height\s*=\s*["']?\d+["']?/gi, `height="${newHeight}"`);
+            if (!/height\s*=/i.test(replaced)) replaced = replaced.replace(/\s*>/, ` height="${newHeight}">`);
+            replaced = replaced.replace(/style\s*=\s*["']([^"']*)["']/gi, (_, s) => {
+                let s2 = s.replace(/width\s*:\s*[^;]+/gi, `width:${newWidth}px`).replace(/height\s*:\s*[^;]+/gi, `height:${newHeight}px`);
+                if (!/width\s*:/i.test(s2)) s2 = (s2 ? s2 + ';' : '') + `width:${newWidth}px`;
+                if (!/height\s*:/i.test(s2)) s2 = (s2 ? s2 + ';' : '') + `height:${newHeight}px`;
+                return `style="${s2}"`;
+            });
+            if (!/style\s*=/i.test(replaced)) replaced = replaced.replace(/>/i, ` style="width:${newWidth}px;height:${newHeight}px">`);
             let n = 0;
             newLine = newLine.replace(/<img[^>]+>/gi, (match) => {
                 if (n++ === idxInLine) return replaced;

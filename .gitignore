@@ -1,0 +1,78 @@
+# ═══════════════════════════════════════════════════════════
+# MDLive .gitignore — GitHub push 시 제외할 항목
+# ═══════════════════════════════════════════════════════════
+
+# ── Cursor IDE (rules, 프로젝트 설정) ──
+.cursor/
+
+# ── 환경 변수·비밀 (공개 금지) ──
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+*.env
+
+# ── API 키·비밀 저장 파일 ──
+*apikey*
+*api-key*
+*secret*
+*password*
+*.pem
+*.key
+
+# ── OS 생성 파일 ──
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── 에디터·IDE 임시 ──
+*.swp
+*.swo
+*~
+.project
+.settings/
+.idea/
+*.sublime-*
+.vscode/settings.json
+.vscode/launch.json
+
+# ── 빌드·캐시·로그 ──
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+.cache/
+
+# ── 분할/임시 파일 (index.js 분할 결과 등) ──
+chunks/
+index1.js
+
+# ── MCP·에이전트 (설정·트랜잭션) ──
+mcps/
+agent-transcripts/
+
+# ── 로컬 테스트·개인 백업 ──
+*.bak
+*.backup
+*.local
+local/
+tmp/
+temp/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# ── 기타 민감·불필요 ──
+*.localstorage
+*.sqlite
+*.db
