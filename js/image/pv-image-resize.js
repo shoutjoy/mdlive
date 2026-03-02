@@ -41,10 +41,20 @@ const PvImageResize = (() => {
             img.parentNode.insertBefore(wrapper, img);
             wrapper.appendChild(img);
 
-            const handle = document.createElement('div');
-            handle.className = 'pv-resize-handle';
-            handle.title = '드래그하여 크기 조절 (Shift: 비율 유지)';
-            wrapper.appendChild(handle);
+            const handleBottom = document.createElement('div');
+            handleBottom.className = 'pv-resize-handle pv-resize-handle-bottom';
+            handleBottom.title = '드래그하여 세로 크기 조절';
+            wrapper.appendChild(handleBottom);
+
+            const handleRight = document.createElement('div');
+            handleRight.className = 'pv-resize-handle pv-resize-handle-right';
+            handleRight.title = '드래그하여 가로 크기 조절';
+            wrapper.appendChild(handleRight);
+
+            const handleCorner = document.createElement('div');
+            handleCorner.className = 'pv-resize-handle pv-resize-handle-corner';
+            handleCorner.title = '드래그하여 비율 유지 크기 조절 (Shift: 자유 비율)';
+            wrapper.appendChild(handleCorner);
 
             if (info) {
                 img.dataset.sourceLine = String(info.line);
@@ -60,7 +70,9 @@ const PvImageResize = (() => {
             }
 
             _enableSelection(wrapper);
-            _enableResize(wrapper, img, handle);
+            _enableResize(wrapper, img, handleBottom, 'bottom');
+            _enableResize(wrapper, img, handleRight, 'right');
+            _enableResize(wrapper, img, handleCorner, 'corner');
         });
     }
 
@@ -78,25 +90,39 @@ const PvImageResize = (() => {
         _currentWrapper = null;
     }
 
-    function _enableResize(wrapper, img, handle) {
-        let startX, startWidth, startHeight, ratio;
-
+    function _enableResize(wrapper, img, handle, mode) {
         handle.addEventListener('mousedown', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            startX = e.clientX;
-            startWidth = img.offsetWidth;
-            startHeight = img.offsetHeight;
-            ratio = startHeight > 0 ? startWidth / startHeight : 1;
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = img.offsetWidth;
+            const startHeight = img.offsetHeight;
+            const ratio = startHeight > 0 ? startWidth / startHeight : 1;
 
             function onMove(ev) {
-                let newWidth = Math.max(20, startWidth + (ev.clientX - startX));
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                let newWidth = startWidth;
                 let newHeight = startHeight;
-                if (ev.shiftKey) {
-                    newHeight = Math.round(newWidth / ratio);
-                    img.style.height = newHeight + 'px';
+
+                if (mode === 'bottom') {
+                    newHeight = Math.max(20, startHeight + dy);
+                } else if (mode === 'right') {
+                    newWidth = Math.max(20, startWidth + dx);
+                } else {
+                    if (ev.shiftKey) {
+                        const d = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
+                        newWidth = Math.max(20, startWidth + d);
+                        newHeight = Math.round(newWidth / ratio);
+                    } else {
+                        newWidth = Math.max(20, startWidth + dx);
+                        newHeight = Math.max(20, startHeight + dy);
+                    }
                 }
+
                 img.style.width = newWidth + 'px';
+                img.style.height = newHeight + 'px';
             }
 
             function onUp() {

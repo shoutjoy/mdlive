@@ -18,6 +18,15 @@ function formatDateTime(d) {
     return `${y}-${m}-${day}(${w}) ${ap} ${h12}:${min}`;
 }
 
+/** 에디터 커서의 줄·열 (1-based). \r\n 정규화로 cursor-pos·줄하이라이트 동기화 */
+function getCursorLineCol(ed) {
+    if (!ed) return { line: 1, col: 1 };
+    const pos = ed.selectionStart;
+    const text = ed.value.substring(0, pos).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = text.split('\n');
+    return { line: lines.length, col: (lines[lines.length - 1] || '').length + 1 };
+}
+
 function getCL(ed) {
     const pos = ed.selectionStart, bef = ed.value.substring(0, pos);
     const ls = bef.lastIndexOf('\n') + 1, aft = ed.value.substring(pos);

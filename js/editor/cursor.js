@@ -6,9 +6,9 @@ const CursorUI = {
     updCursor() {
         const edi = el('editor');
         if (!edi) return;
-        const t = edi.value.substring(0, edi.selectionStart), ls = t.split('\n');
+        const { line, col } = getCursorLineCol(edi);
         const posEl = el('cursor-pos');
-        if (posEl) posEl.textContent = `줄 ${ls.length}, 열 ${(ls[ls.length - 1] || '').length + 1}`;
+        if (posEl) posEl.textContent = `줄 ${line}, 열 ${col}`;
         const sl = edi.selectionEnd - edi.selectionStart;
         const selEl = el('sel-info');
         if (selEl) selEl.textContent = sl > 0 ? `${sl}자 선택` : '';

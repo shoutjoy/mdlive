@@ -285,6 +285,19 @@
     border-color: rgba(247, 160, 160, .6)
 }
 
+/* ImgBB 버튼 — #tba IMG 버튼과 동일 스타일 */
+.btn.btn-img-style {
+    background: linear-gradient(135deg, #1a2a40 0%, #1e3558 100%);
+    color: #6ac8f7;
+    border: 1px solid rgba(106, 200, 247, .35);
+    font-weight: 600
+}
+.btn.btn-img-style:hover {
+    background: linear-gradient(135deg, #243a58 0%, #2a4870 100%);
+    color: #8ad4ff;
+    border-color: rgba(106, 200, 247, .5)
+}
+
 [data-theme=light] .btn.btn-settings {
     background: linear-gradient(135deg, #ede8ff 0%, #ddd4ff 100%);
     color: #5a30c0;
@@ -331,6 +344,17 @@
     background: linear-gradient(135deg, #ffe8e8 0%, #ffd0d0 100%);
     color: #c02020;
     border: 1px solid rgba(192, 32, 32, .3)
+}
+
+[data-theme=light] .btn.btn-img-style {
+    background: linear-gradient(135deg, #e0f2ff 0%, #c8e8ff 100%);
+    color: #1060a0;
+    border: 1px solid rgba(16, 96, 160, .35)
+}
+[data-theme=light] .btn.btn-img-style:hover {
+    background: linear-gradient(135deg, #c8e8ff 0%, #a8d8f0 100%);
+    color: #0a5090;
+    border-color: rgba(16, 96, 160, .5)
 }
 
 [data-theme=light] .tb.tb-view {
@@ -1873,8 +1897,8 @@ body {
     right: 0;
     height: 21px;
     pointer-events: none;
-    z-index: 1;
-    background: rgba(255, 255, 255, 0.04);
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 2px;
     display: none;
     transition: none;
@@ -1898,7 +1922,7 @@ body {
     word-wrap: break-word;
     overflow: auto;
     pointer-events: none;
-    z-index: 2;
+    z-index: 3;
     color: transparent;
     caret-color: transparent;
     background: transparent;
@@ -1939,7 +1963,7 @@ body {
     overflow: hidden;
     pointer-events: none;
     display: none;
-    z-index: 1
+    z-index: 2
 }
 
 #line-numbers.vis {
@@ -1957,7 +1981,7 @@ body {
 .ln {
     font-family: var(--fm);
     font-size: 11px;
-    color: var(--tx3);
+    color: var(--tx2);
     line-height: 21px;
     height: 21px
 }
@@ -1975,13 +1999,23 @@ body {
     line-height: 21px;
     padding: 12px 14px;
     tab-size: 2;
-    word-wrap: break-word;
     overflow-y: auto;
-    overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--bd) transparent;
     position: relative;
     z-index: 1;
+    /* Word Wrap OFF일 때: 줄 바꿈 없음(가로 스크롤). Alt+Z 토글 */
+    white-space: pre;
+    overflow-x: auto;
+    word-break: normal;
+}
+
+/* Word Wrap ON (기본): 긴 줄 자동 줄바꿈 — 하이라이트 오류처럼 보이는 현상 방지 */
+#editor-wrap.editor-word-wrap #editor {
+    white-space: pre-wrap;
+    overflow-x: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 #editor.wln {
@@ -2212,24 +2246,38 @@ body.trans-mode .preview-page {
     max-width: 100%
 }
 
-/* PV 이미지 resize (클릭 시 핸들 표시) */
+/* PV 이미지 resize (클릭 시 3개 핸들: 하단·우측·모서리) */
 .pv-resizable-wrapper {
     position: relative;
     display: inline-block;
 }
 .pv-resize-handle {
     position: absolute;
-    width: 12px;
-    height: 12px;
-    right: -6px;
-    bottom: -6px;
-    cursor: se-resize;
+    width: 10px;
+    height: 10px;
     background: var(--ac);
     border-radius: 2px;
     display: none;
 }
 .pv-resizable-wrapper.active .pv-resize-handle {
     display: block;
+}
+.pv-resize-handle-bottom {
+    left: 50%;
+    bottom: -5px;
+    margin-left: -5px;
+    cursor: ns-resize;
+}
+.pv-resize-handle-right {
+    right: -5px;
+    top: 50%;
+    margin-top: -5px;
+    cursor: ew-resize;
+}
+.pv-resize-handle-corner {
+    right: -5px;
+    bottom: -5px;
+    cursor: se-resize;
 }
 .pv-resizable-wrapper img {
     display: block;

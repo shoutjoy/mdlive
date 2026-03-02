@@ -821,6 +821,14 @@ const App = {
         /* FM.restore는 DOMContentLoaded에서 별도 호출 */
         /* HK 초기화: 앱 시작 시 load + rebuild 해야 핫키가 작동함 */
         try { HK._initDispatch(); } catch(e) {}
+        /* Word Wrap 복원: 저장값이 '0'이면 OFF, 그 외에는 ON(기본) */
+        try {
+            const wrap = document.getElementById('editor-wrap');
+            if (wrap) {
+                if (localStorage.getItem('mdpro_editor_wordwrap') !== '0') wrap.classList.add('editor-word-wrap');
+                else wrap.classList.remove('editor-word-wrap');
+            }
+        } catch (e) {}
         /* Ctrl+H: 찾기/바꾸기 — 캡처 단계에서 선점해 브라우저(히스토리 등)에 빼앗기지 않도록 */
         CoreEvents.init();
         // Set default view button state
@@ -965,6 +973,12 @@ const App = {
             localStorage.setItem('mdpro_editor_theme', nextLight ? 'light' : 'dark');
         } catch (e) {}
         App._updateEditorThemeBtn();
+    },
+    toggleWordWrap() {
+        const wrap = document.getElementById('editor-wrap');
+        if (!wrap) return;
+        const on = wrap.classList.toggle('editor-word-wrap');
+        try { localStorage.setItem('mdpro_editor_wordwrap', on ? '1' : '0'); } catch (e) {}
     },
     setTheme(theme) {
         const isLight = theme === 'light';
@@ -1896,6 +1910,7 @@ $$
 
 window.addEventListener('DOMContentLoaded', () => {
     App.init();
+    try { if (typeof FindHighlight !== 'undefined') FindHighlight.init(); } catch (e) {}
     AiApiKey.load().catch(() => {});
     ScholarApiKey.load().catch(() => {});
     ScholarApiKey.initPasteExtract();
@@ -1981,8 +1996,26 @@ const DeepResearch = (() => {
     let _abortController = null;
     const DB_NAME = 'mdlive-dr-history';
     const STORE_NAME = 'history';
+    const PRE_PROMPT_KEY = 'mdpro_dr_pre_prompt';
 
     const $ = id => document.getElementById(id);
+
+    function loadPrePrompt() {
+        try {
+            const raw = localStorage.getItem(PRE_PROMPT_KEY);
+            const el = $('dr-pre-prompt');
+            if (el) el.value = raw != null ? raw : '';
+        } catch (e) {}
+    }
+
+    function savePrePrompt() {
+        const el = $('dr-pre-prompt');
+        const val = el ? el.value.trim() : '';
+        try {
+            localStorage.setItem(PRE_PROMPT_KEY, val);
+            if (typeof App !== 'undefined' && App._toast) App._toast('사전 프롬프트 저장됨');
+        } catch (e) {}
+    }
 
     function _openDB() {
         return new Promise((resolve, reject) => {
@@ -2251,6 +2284,8 @@ const DeepResearch = (() => {
         if (hasThinking) {
             _pendingThinkingMode = 'save';
             _pendingSaveId = id;
+            const opts = document.getElementById('dr-thinking-insert-options');
+            if (opts) opts.style.display = 'none';
             const chk = document.getElementById('dr-thinking-include-chk');
             const label = document.getElementById('dr-thinking-include-label');
             const btn = document.getElementById('dr-thinking-include-confirm-btn');
@@ -2303,7 +2338,9 @@ const DeepResearch = (() => {
         if (_pendingThinkingMode === 'save' && _pendingSaveId) {
             _doSaveHistoryItem(_pendingSaveId, include);
         } else if (_pendingThinkingMode === 'insert') {
-            _doInsert(include);
+            const belowRadio = document.getElementById('dr-thinking-insert-mode-below');
+            const insertMode = (belowRadio && belowRadio.checked) ? 'below' : 'replace';
+            _doInsert(include, insertMode);
         } else if (_pendingThinkingMode === 'newfile') {
             _doInsertToNewFile(include);
         }
@@ -2429,6 +2466,7 @@ const DeepResearch = (() => {
         _newFileMode = false;
         const hint = $('dr-insert-hint');
         if (hint) hint.textContent = '새파일로 삽입';
+        loadPrePrompt();
         loadHistory();
         setTimeout(() => { const inp = $('dr-prompt'); if (inp) inp.focus(); }, 60);
     }
@@ -2444,6 +2482,9 @@ const DeepResearch = (() => {
         const loadEl = $('dr-loading'), thinkBtn = $('dr-thinking-btn'), insBtn = $('dr-insert-btn'), stopBtn = $('dr-stop-btn');
         let prompt = inp ? inp.value.trim() : '';
         if (!prompt) { alert('질문을 입력해 주세요.'); return; }
+        const preEl = $('dr-pre-prompt');
+        const prePrompt = preEl ? preEl.value.trim() : '';
+        if (prePrompt) prompt = prePrompt + '\n\n' + prompt;
         prompt += _getStyleInstruction();
         const modelId = $('dr-model')?.value || 'gemini-2.5-pro';
 
@@ -2565,6 +2606,8 @@ const DeepResearch = (() => {
         if (hasThinking) {
             _pendingThinkingMode = 'newfile';
             _pendingSaveId = null;
+            const opts = document.getElementById('dr-thinking-insert-options');
+            if (opts) opts.style.display = 'none';
             const chk = document.getElementById('dr-thinking-include-chk');
             const label = document.getElementById('dr-thinking-include-label');
             const btn = document.getElementById('dr-thinking-include-confirm-btn');
@@ -2611,6 +2654,10 @@ const DeepResearch = (() => {
         if (hasThinking) {
             _pendingThinkingMode = 'insert';
             _pendingSaveId = null;
+            const opts = document.getElementById('dr-thinking-insert-options');
+            if (opts) opts.style.display = 'block';
+            const replaceRadio = document.getElementById('dr-thinking-insert-mode-replace');
+            if (replaceRadio) replaceRadio.checked = true;
             const chk = document.getElementById('dr-thinking-include-chk');
             const label = document.getElementById('dr-thinking-include-label');
             const btn = document.getElementById('dr-thinking-include-confirm-btn');
@@ -2626,7 +2673,7 @@ const DeepResearch = (() => {
         }
     }
 
-    function _doInsert(includeThinking) {
+    function _doInsert(includeThinking, insertMode) {
         const out = $('dr-output');
         let txt = out ? out.value.trim() : _result;
         if (!txt) return;
@@ -2635,8 +2682,18 @@ const DeepResearch = (() => {
         }
         const ed = $('editor');
         if (!ed) return;
+        const val = ed.value;
         const s = ed.selectionStart, e2 = ed.selectionEnd;
-        ed.setRangeText(txt, s, e2, 'end');
+
+        if (insertMode === 'below') {
+            const from = e2;
+            const lineEndIdx = val.indexOf('\n', from);
+            const insertAt = lineEndIdx === -1 ? val.length : lineEndIdx + 1;
+            const needNewline = (insertAt > 0 && val[insertAt - 1] !== '\n') || (insertAt === val.length && val.length > 0 && val[val.length - 1] !== '\n');
+            ed.setRangeText(needNewline ? '\n' + txt : txt, insertAt, insertAt, 'end');
+        } else {
+            ed.setRangeText(txt, s, e2, 'end');
+        }
         ed.focus();
         if (typeof US !== 'undefined') US.snap();
         if (typeof TM !== 'undefined') TM.markDirty();
@@ -3346,7 +3403,7 @@ If verification is not possible, do not include the citation.`;
         if (typeof CM !== 'undefined' && CM.tab) setTimeout(() => CM.tab('ai-search'), 50);
     }
 
-    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, copyThinking, clearOutput, openResultInNewWindow, openThinkingInNewWindow, openResultForTranslate, openThinkingForTranslate, thinkingTranslateGoogle, thinkingTranslateResultNewWindow, thinkingTranslateBothNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile, closeThinkingIncludeModal, confirmThinkingInclude, runCiteAiSearch, openCiteAiSearch, applyAiSearchPreset, openPresetTextWindow, applyCiteAiSearchPreset, openCitePresetTextWindow, runCiteAiSearchFromModal, insertFromCiteModal, insertToNewFileFromCiteModal, copyResultFromCiteModal, openResultInNewWindowFromCiteModal, openResultForTranslateFromCiteModal, runDataResearch, applyDataResearchPreset, openDataPresetTextWindow };
+    return { show, hide, run, stopRun, runPro, switchTab, toggleMaximize, toggleThinking, toggleNewFile, insertToNewFile, insert, copyResult, copyThinking, clearOutput, openResultInNewWindow, openThinkingInNewWindow, openResultForTranslate, openThinkingForTranslate, thinkingTranslateGoogle, thinkingTranslateResultNewWindow, thinkingTranslateBothNewWindow, loadHistory, filterHistory, loadHistoryItem, renameHistory, deleteHistory, openHistorySaveModal, closeHistorySaveModal, saveHistoryAsZip, saveHistoryBatch, saveHistoryItemToFile, closeThinkingIncludeModal, confirmThinkingInclude, savePrePrompt, loadPrePrompt, runCiteAiSearch, openCiteAiSearch, applyAiSearchPreset, openPresetTextWindow, applyCiteAiSearchPreset, openCitePresetTextWindow, runCiteAiSearchFromModal, insertFromCiteModal, insertToNewFileFromCiteModal, copyResultFromCiteModal, openResultInNewWindowFromCiteModal, openResultForTranslateFromCiteModal, runDataResearch, applyDataResearchPreset, openDataPresetTextWindow };
 })();
 window.DeepResearch = DeepResearch;
 

@@ -56,9 +56,11 @@ const HK = (() => {
         'app.toggleMultiEditBar': () => App.toggleMultiEditBar(),
         'app.multiEditApply': () => { if (el('multi-edit-bar') && el('multi-edit-bar').classList.contains('vis')) App.multiEditApply(); },
         'app.hotkeys':      () => App.showHK(),
+        'app.toggleSidebar': () => App.toggleSidebar(),
         'app.themeDark':    () => App.setTheme('dark'),
         'app.themeLight':   () => App.setTheme('light'),
         'app.themeToggle':  () => App.toggleTheme(),
+        'app.wordWrap':     () => App.toggleWordWrap(),
         'app.lock':         () => { if (typeof AppLock !== 'undefined') AppLock.lockNow(); },
         'app.nbsp':         () => { const ed = el('editor'), s = ed.selectionStart; ins(ed, s, ed.selectionEnd, '&nbsp;'); US.snap(); },
         'tab.new':          () => TM.newTab(),
@@ -139,10 +141,12 @@ const HK = (() => {
                 { desc: '왼쪽 정렬', keys: 'Shift + Alt + L', action: 'ed.alignLeft' },
                 { desc: '가운데 정렬', keys: 'Shift + Alt + C', action: 'ed.alignCenter' },
                 { desc: '오른쪽 정렬', keys: 'Shift + Alt + R', action: 'ed.alignRight' },
+                { desc: '사이드바 토글 (열기/닫기)', keys: 'Alt + W', action: 'app.toggleSidebar' },
                 { desc: 'Split 보기', keys: 'Alt + 1', action: 'view.split' },
                 { desc: '에디터만', keys: 'Alt + 2', action: 'view.editor' },
                 { desc: '미리보기만', keys: 'Alt + 3', action: 'view.preview' },
                 { desc: '전체 다크/라이트 토글', keys: 'Alt + 4', action: 'app.themeToggle' },
+                { desc: 'Word Wrap (줄바꿈) 토글', keys: 'Alt + Z', action: 'app.wordWrap' },
             ]
         },
         {
@@ -489,10 +493,11 @@ const HK = (() => {
                 if (lineHighlightRow) lineHighlightRow.style.display = 'flex';
                 render();
                 el('hk-overlay').classList.add('vis');
-                try { if (typeof EditorLineHighlight !== 'undefined') EditorLineHighlight.updateUI(); } catch (e) { console.warn('EditorLineHighlight.updateUI:', e); }
+                try { if (typeof EditorLineHighlight !== 'undefined') { EditorLineHighlight.updateUI(); EditorLineHighlight.loadToPanel(); } } catch (e) { console.warn('EditorLineHighlight:', e); }
                 try { if (typeof EditorAutoPair !== 'undefined') EditorAutoPair.updateUI(); } catch (e) { console.warn('EditorAutoPair.updateUI:', e); }
                 try { if (typeof AuthorInfo !== 'undefined') AuthorInfo.loadToPanel(); } catch (e) { console.warn('AuthorInfo.loadToPanel:', e); }
                 try { if (typeof ImgLink !== 'undefined') ImgLink.loadToPanel(); } catch (e) { console.warn('ImgLink.loadToPanel:', e); }
+                try { if (typeof FindHighlight !== 'undefined') FindHighlight.loadToPanel(); } catch (e) { console.warn('FindHighlight.loadToPanel:', e); }
             } catch (err) {
                 console.error('HK.open:', err);
                 const ov = el('hk-overlay');

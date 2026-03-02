@@ -94,7 +94,13 @@ const CoreEvents = {
             const hl = document.getElementById('editor-find-highlight');
             if (hl && hl.style.display === 'block') { hl.scrollTop = edi.scrollTop; hl.scrollLeft = edi.scrollLeft; }
         }, { passive: true });
-        document.addEventListener('selectionchange', () => { if (document.activeElement === edi) App.updFmtBtns(); });
+        document.addEventListener('selectionchange', () => {
+            if (document.activeElement === edi) {
+                App.updCursor();
+                App.updFmtBtns();
+                if (typeof EditorLineHighlight !== 'undefined' && EditorLineHighlight.isEnabled()) EditorLineHighlight.updateHighlight();
+            }
+        });
         document.addEventListener('keydown', e => { if (document.activeElement !== edi && typeof handleKey === 'function') handleKey(e); });
 
         const fiEl = document.getElementById('fi');

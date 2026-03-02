@@ -915,6 +915,14 @@ const AiImage = (() => {
             URL.revokeObjectURL(a.href);
         });
     }
+    function downloadCurrentToPc() {
+        const dataUrl = _resultImages[0];
+        if (!dataUrl) { alert('다운로드할 결과 이미지가 없습니다.'); return; }
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `aiimg-${Date.now()}.png`;
+        a.click();
+    }
 
     function insertToEditor() {
         const dataUrl = _resultImages[0];
@@ -967,7 +975,7 @@ const AiImage = (() => {
     return {
         switchTab, toggleMaximize, applyPreset, applyMenuType, sendAnalysisToPrompt, onSeedFile, clearSeed,
         openCropUpload, openCropEdit, openTryOnCropEdit, openTryOnExtractedCropEdit,
-        generate, setResultAsSeed, downloadAll, downloadZip, downloadProject, loadHistory,
+        generate, setResultAsSeed, downloadAll, downloadZip, downloadProject, downloadCurrentToPc, loadHistory,
         insertToEditor, insertToNewFile, insertSeedToEditor, insertSeedToNewFile, insertAnalysisToEditor,
         resetModal, clearAllHistory, removeHistoryItem, saveCropResultToHistory,
         cropCurrentResult, openCurrentResultInNewWindow, openSeedInNewWindow,

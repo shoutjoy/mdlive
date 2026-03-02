@@ -55,6 +55,9 @@
       if (typeof window.AiImage === 'undefined') {
         window.AiImage = new Proxy({}, { get: function() { return noop; } });
       }
+      if (typeof window.EditorLineHighlight === 'undefined') {
+        window.EditorLineHighlight = new Proxy({}, { get: function() { return noop; } });
+      }
     })();
   </script>
 </head>
@@ -143,7 +146,7 @@
     <!-- TOOLBAR -->
     <div id="toolbar">
       <!-- ☰ 사이드바 토글 -->
-      <div class="tg"><button class="tb" onclick="App.toggleSidebar()" data-tooltip="사이드바">☰</button></div>
+      <div class="tg"><button class="tb" onclick="App.toggleSidebar()" data-tooltip="사이드바 (Alt+W)" data-key="Alt+W">☰</button></div>
       <div class="ts"></div>
 
       <!-- 🟡 헤딩 — 노란색 계열 -->
@@ -553,6 +556,10 @@
       </div>
       <div class="ss">|</div>
       <div class="si" id="cursor-pos">줄 1, 열 1</div>
+      <div class="si" id="hl-line-override-wrap" style="display:inline-flex;align-items:center;gap:3px;margin-left:4px" title="줄 하이라이트 수동 보정 (비우면 커서 기준)">
+        <span style="font-size:10px;color:var(--tx3)">HL</span>
+        <input type="number" id="hl-line-override" min="1" placeholder="줄" style="width:36px;font-size:11px;padding:2px 4px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
+      </div>
       <div class="ss">|</div>
       <div class="si" id="statusbar-ar-wrap" style="display:none;align-items:center;gap:4px">
         <button id="gh-ar-btn" onclick="GH.toggleAutoRefresh()" title="자동 새로고침 ON/OFF" class="gh-ar-btn gh-ar-btn-circle on"><span class="gh-ar-dot"></span></button>
@@ -849,49 +856,112 @@
           style="font-size:10px;padding:2px 7px;vertical-align:middle">+ 행 추가</button>
       </div>
 
-      <!-- IMG 버튼 링크 주소 (3개, 체크된 것이 메인 메뉴에서 동작) -->
-      <div id="hk-img-link-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0">
-            <input type="checkbox" id="hk-img-link-chk-0" name="hk-img-link-chk" style="accent-color:var(--ac)">
-            <span style="font-size:11px;color:var(--tx3)">🖼 IMG 링크 1</span>
-          </label>
-          <input type="text" id="hk-img-link-0" placeholder="https://imgbb.com/"
-            style="font-size:11px;padding:4px 8px;min-width:160px;flex:1;max-width:280px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1);box-sizing:border-box"
-            title="IMG 버튼 클릭 시 이동할 이미지 호스팅 URL">
-          <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(0)" style="font-size:11px">바로가기</button>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0">
-            <input type="checkbox" id="hk-img-link-chk-1" name="hk-img-link-chk" style="accent-color:var(--ac)">
-            <span style="font-size:11px;color:var(--tx3)">🖼 IMG 링크 2</span>
-          </label>
-          <input type="text" id="hk-img-link-1" placeholder="https://imgbb.com/"
-            style="font-size:11px;padding:4px 8px;min-width:160px;flex:1;max-width:280px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1);box-sizing:border-box"
-            title="IMG 버튼 클릭 시 이동할 이미지 호스팅 URL">
-          <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(1)" style="font-size:11px">바로가기</button>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0">
-            <input type="checkbox" id="hk-img-link-chk-2" name="hk-img-link-chk" style="accent-color:var(--ac)">
-            <span style="font-size:11px;color:var(--tx3)">🖼 IMG 링크 3</span>
-          </label>
-          <input type="text" id="hk-img-link-2" placeholder="https://imgbb.com/"
-            style="font-size:11px;padding:4px 8px;min-width:160px;flex:1;max-width:280px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1);box-sizing:border-box"
-            title="IMG 버튼 클릭 시 이동할 이미지 호스팅 URL">
-          <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(2)" style="font-size:11px">바로가기</button>
-        </div>
-        <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.save()" style="font-size:11px;align-self:flex-start">저장</button>
+      <!-- IMG 링크 (3개 × 3곳 적용: 메인·이미지삽입·AI이미지) -->
+      <div id="hk-img-link-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)">
+        <table class="hk-img-link-table" style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:4px 8px 6px 0;color:var(--tx3);font-weight:500;width:56px">링크</th>
+              <th style="text-align:left;padding:4px 8px 6px 0;color:var(--tx3);font-weight:500">URL · 메모</th>
+              <th style="width:72px;padding:4px 0 6px"></th>
+              <th style="text-align:center;padding:4px 4px 6px;color:var(--tx3);font-weight:500;width:52px" title="타이틀바 IMG 버튼">메인</th>
+              <th style="text-align:center;padding:4px 4px 6px;color:var(--tx3);font-weight:500;width:52px" title="이미지 삽입 패널 IMGUP">삽입</th>
+              <th style="text-align:center;padding:4px 4px 6px;color:var(--tx3);font-weight:500;width:52px" title="AI 이미지 패널 IMGUP">AI</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:4px 8px 4px 0;vertical-align:middle">
+                <span style="color:var(--tx3)">🖼 창 1</span>
+              </td>
+              <td style="padding:4px 8px;vertical-align:top">
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
+                  <textarea id="hk-img-link-0" placeholder="https://imgbb.com/" class="fi" rows="1" style="width:100%;padding:4px 8px;box-sizing:border-box;resize:vertical;min-height:28px;max-height:80px;font-size:11px;font-family:inherit"></textarea>
+                  <textarea id="hk-img-link-memo-0" placeholder="주소 설명 메모" class="fi" rows="2" style="width:100%;padding:4px 8px;box-sizing:border-box;resize:vertical;min-height:40px;max-height:120px;font-size:11px;font-family:inherit"></textarea>
+                </div>
+              </td>
+              <td style="padding:4px 0;vertical-align:middle">
+                <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(0)" style="font-size:10px;padding:2px 8px;white-space:nowrap">바로가기</button>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-main-0" name="hk-img-link-main" style="accent-color:var(--ac);margin:0" title="메인 우선 링크"></label>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-insert-0" style="accent-color:var(--ac);margin:0" title="삽입 우선 링크"></label>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-ai-0" style="accent-color:var(--ac);margin:0" title="AI 우선 링크"></label>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px 4px 0;vertical-align:middle">
+                <span style="color:var(--tx3)">🖼 창 2</span>
+              </td>
+              <td style="padding:4px 8px;vertical-align:top">
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
+                  <textarea id="hk-img-link-1" placeholder="https://imgbb.com/" class="fi" rows="1" style="width:100%;padding:4px 8px;box-sizing:border-box;resize:vertical;min-height:28px;max-height:80px;font-size:11px;font-family:inherit"></textarea>
+                  <textarea id="hk-img-link-memo-1" placeholder="주소 설명 메모" class="fi" rows="2" style="width:100%;padding:4px 8px;box-sizing:border-box;resize:vertical;min-height:40px;max-height:120px;font-size:11px;font-family:inherit"></textarea>
+                </div>
+              </td>
+              <td style="padding:4px 0;vertical-align:middle">
+                <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(1)" style="font-size:10px;padding:2px 8px;white-space:nowrap">바로가기</button>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-main-1" name="hk-img-link-main" style="accent-color:var(--ac);margin:0" title="메인 우선 링크"></label>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-insert-1" style="accent-color:var(--ac);margin:0" title="삽입 우선 링크"></label>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-ai-1" style="accent-color:var(--ac);margin:0" title="AI 우선 링크"></label>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:4px 8px 4px 0;vertical-align:middle">
+                <span style="color:var(--tx3)">🖼 창 3</span>
+              </td>
+              <td style="padding:4px 8px;vertical-align:top">
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:160px">
+                  <textarea id="hk-img-link-2" placeholder="https://imgbb.com/" class="fi" rows="1" style="width:100%;padding:4px 8px;box-sizing:border-box;resize:vertical;min-height:28px;max-height:80px;font-size:11px;font-family:inherit"></textarea>
+                  <textarea id="hk-img-link-memo-2" placeholder="주소 설명 메모" class="fi" rows="2" style="width:100%;padding:4px 8px;box-sizing:border-box;resize:vertical;min-height:40px;max-height:120px;font-size:11px;font-family:inherit"></textarea>
+                </div>
+              </td>
+              <td style="padding:4px 0;vertical-align:middle">
+                <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(2)" style="font-size:10px;padding:2px 8px;white-space:nowrap">바로가기</button>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-main-2" name="hk-img-link-main" style="accent-color:var(--ac);margin:0" title="메인 우선 링크"></label>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-insert-2" style="accent-color:var(--ac);margin:0" title="삽입 우선 링크"></label>
+              </td>
+              <td style="padding:4px;text-align:center;vertical-align:middle">
+                <label style="display:inline-flex;justify-content:center;cursor:pointer;margin:0"><input type="checkbox" id="hk-img-link-ai-2" style="accent-color:var(--ac);margin:0" title="AI 우선 링크"></label>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="font-size:10px;color:var(--tx3);margin-top:6px;margin-bottom:0">메인·삽입·AI 각 열에서 하나씩만 선택됩니다. 체크한 링크가 해당 위치(타이틀바 / 이미지삽입 / AI이미지)에서 사용됩니다.</p>
+        <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.save()" style="font-size:11px;margin-top:8px">저장</button>
       </div>
-      <!-- 현재 줄 하이라이트 ON/OFF -->
+      <!-- 현재 줄 하이라이트 ON/OFF + 색상·농도 -->
       <div id="hk-line-highlight-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
         <span style="font-size:11px;color:var(--tx2);flex-shrink:0">에디터 현재 줄 하이라이트</span>
         <button type="button" class="btn btn-g btn-sm" id="hk-line-highlight-btn" onclick="EditorLineHighlight.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
+        <span style="font-size:11px;color:var(--tx3)">색상</span>
+        <input type="color" id="hk-line-hl-color" value="#ffffff" title="현재 줄 하이라이트 색상"
+          style="width:32px;height:24px;padding:0;border:1px solid var(--bd);border-radius:4px;cursor:pointer;background:var(--bg3)">
+        <span style="font-size:11px;color:var(--tx3)">농도</span>
+        <input type="range" id="hk-line-hl-opacity" min="5" max="100" value="15" title="농도(투명도)"
+          style="width:80px;vertical-align:middle">
+        <span style="font-size:11px;color:var(--tx3);min-width:28px" id="hk-line-hl-opacity-val">15%</span>
+        <button type="button" class="btn btn-g btn-sm" onclick="EditorLineHighlight.saveColorOpts()" style="font-size:11px;flex-shrink:0">저장</button>
         <span style="font-size:11px;color:var(--tx3);margin-left:12px;flex-shrink:0">괄호·따옴표 자동쌍 ( ) [ ] &quot; &apos;</span>
         <button type="button" class="btn btn-g btn-sm" id="hk-auto-pair-btn" onclick="EditorAutoPair.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
       </div>
       <!-- 찾기 하이라이트 색상·농도 -->
       <div id="hk-find-hl-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+        <button class="btn-ic" onclick="App.hideHK()" title="닫기" style="flex-shrink:0;align-self:flex-start;margin-right:0">✕</button>
         <span style="font-size:11px;color:var(--tx3);flex-shrink:0">찾기 하이라이트</span>
         <input type="color" id="hk-find-hl-color" value="#ffc800" title="매치 색상"
           style="width:32px;height:24px;padding:0;border:1px solid var(--bd);border-radius:4px;cursor:pointer;background:var(--bg3)">
@@ -1525,6 +1595,10 @@
               <div id="img-drop-text" style="font-size:12px;color:var(--tx2)">🖼 클릭 또는 드래그</div>
               <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="IMG.fileSelected(event)">
             </div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-g btn-sm" style="font-size:11px" onclick="ImgInsert.downloadToPc()" title="현재 미리보기 이미지를 PC에 다운로드">💾 로컬 저장</button>
+              <button type="button" class="btn btn-img-style btn-sm" style="font-size:11px" onclick="ImgLink.openUpload()" title="설정된 이미지삽입 링크 열기 (새 창)">🖼 IMGUP</button>
+            </div>
             <div class="fg" style="margin-top:10px">
               <label class="fl">Md_image</label>
               <input class="fi" id="img-url" type="text" placeholder="https://... 또는 data:image/..." style="margin-top:4px;padding:6px 8px;font-size:12px">
@@ -1584,6 +1658,8 @@
               <button type="button" class="btn btn-g btn-sm" onclick="AiImage.downloadAll()">일괄 다운로드</button>
               <button type="button" class="btn btn-g btn-sm" onclick="AiImage.downloadZip()">ZIP 다운로드</button>
               <button type="button" class="btn btn-g btn-sm" onclick="AiImage.downloadProject()">프로젝트 다운로드 (.mdp)</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="AiImage.downloadCurrentToPc()" style="font-size:11px" title="현재 결과 이미지를 PC에 다운로드">💾 로컬 저장</button>
+              <button type="button" class="btn btn-img-style btn-sm" onclick="ImgLink.openUploadAi()" title="설정된 AI 이미지 링크 열기 (새 창)">🖼 IMGUP</button>
             </div>
             <div style="padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--bd);flex-shrink:0;align-items:center">
               <button type="button" class="btn btn-p btn-sm" onclick="AiImage.insertToEditor()">이미지 삽입</button>
@@ -2376,10 +2452,19 @@ Do not provide explanations unless explicitly requested.</textarea>
             <label style="font-size:10px;color:var(--tx3)">모델</label>
             <select id="dr-model" class="fi" style="width:100%;padding:5px 8px;font-size:12px;margin-top:4px">
               <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
               <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
             </select>
           </div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+            <label style="font-size:10px;color:var(--tx3)">사전 프롬프트</label>
+            <button type="button" class="btn btn-g btn-sm" onclick="DeepResearch.savePrePrompt()" style="font-size:11px">저장</button>
+          </div>
+          <textarea id="dr-pre-prompt" class="fi" rows="2" placeholder="질문 앞에 항상 붙일 지시나 맥락을 입력하세요. 저장하면 다음에도 유지됩니다."
+            style="width:100%;font-size:12px;resize:vertical;min-height:48px;max-height:200px"></textarea>
         </div>
         <div>
           <label style="font-size:10px;color:var(--tx3)">질문</label>
@@ -2549,10 +2634,21 @@ Do not provide explanations unless explicitly requested.</textarea>
         <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:20px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.4)" onclick="event.stopPropagation()">
           <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--tx)" id="dr-thinking-modal-title">생각 포함</div>
           <p style="font-size:11px;color:var(--tx2);margin:0 0 12px;line-height:1.5">인공지능의 사고 과정(생각)을 하단에 붙여서 포함할까요?</p>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2);margin-bottom:16px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--tx2);margin-bottom:12px">
             <input type="checkbox" id="dr-thinking-include-chk" style="accent-color:var(--ac)">
             <span id="dr-thinking-include-label">생각 포함하여 저장</span>
           </label>
+          <div id="dr-thinking-insert-options" style="display:none;margin-bottom:16px;padding:10px 0;border-top:1px solid var(--bd)">
+            <div style="font-size:10px;color:var(--tx3);margin-bottom:8px">삽입 방식</div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--tx2);margin-bottom:6px">
+              <input type="radio" name="dr-thinking-insert-mode" id="dr-thinking-insert-mode-replace" value="replace" checked style="accent-color:var(--ac)">
+              <span>대체하기</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--tx2)">
+              <input type="radio" name="dr-thinking-insert-mode" id="dr-thinking-insert-mode-below" value="below" style="accent-color:var(--ac)">
+              <span>아랫줄에 넣기</span>
+            </label>
+          </div>
           <div style="display:flex;gap:8px;justify-content:flex-end">
             <button type="button" class="btn btn-g btn-sm" onclick="DeepResearch.closeThinkingIncludeModal()">취소</button>
             <button type="button" class="btn btn-p btn-sm" id="dr-thinking-include-confirm-btn" onclick="DeepResearch.confirmThinkingInclude()">저장</button>
@@ -2647,6 +2743,7 @@ Do not provide explanations unless explicitly requested.</textarea>
   <script src="js/image/img.js"></script>
   <script src="js/image/ai-image.js"></script>
   <script src="js/image/pv-image-resize.js"></script>
+  <script src="js/core/find-highlight.js"></script>
   <script src="js/core/hotkey.js"></script>
   <script src="index.js"></script>
   

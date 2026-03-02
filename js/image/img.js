@@ -120,6 +120,36 @@ const ImgCrop = {
 };
 
 const ImgInsert = {
+    async downloadToPc() {
+        const urlEl = document.getElementById('img-url');
+        const preview = document.getElementById('imgpv-preview');
+        const src = (urlEl && urlEl.value && urlEl.value.trim()) || (preview && preview.src);
+        if (!src || (!src.startsWith('data:image') && !src.startsWith('http'))) {
+            alert('다운로드할 이미지가 없습니다. 먼저 이미지를 업로드하거나 URL을 입력하세요.');
+            return;
+        }
+        const ext = src.startsWith('data:image/png') ? 'png' : src.startsWith('data:image/jpeg') || src.startsWith('data:image/jpg') ? 'jpg' : 'png';
+        const a = document.createElement('a');
+        if (src.startsWith('data:')) {
+            a.href = src;
+            a.download = 'image-' + Date.now() + '.' + ext;
+            a.click();
+            return;
+        }
+        try {
+            const res = await fetch(src, { mode: 'cors' });
+            const blob = await res.blob();
+            a.href = URL.createObjectURL(blob);
+            a.download = 'image-' + Date.now() + '.' + ext;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        } catch (e) {
+            a.href = src;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.click();
+        }
+    },
     insertToNewFile() {
         const url = document.getElementById('img-url')?.value?.trim();
         const alt = document.getElementById('img-alt')?.value?.trim() || '이미지';
