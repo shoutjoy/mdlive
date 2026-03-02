@@ -12,7 +12,8 @@ const ImgLink = (() => {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
                 const d = JSON.parse(raw);
-                const urls = Array.isArray(d.urls) ? d.urls.slice(0, 3) : ['', '', ''];
+                let urls = Array.isArray(d.urls) ? d.urls.slice(0, 3) : ['', '', ''];
+                if (!(urls[0] || '').trim()) urls[0] = DEFAULT_IMG_URL;
                 const memos = Array.isArray(d.memos) ? d.memos.slice(0, 3) : ['', '', ''];
                 let apply = { main: 0, insert: 0, ai: 0 };
                 if (d.apply && typeof d.apply === 'object') {
@@ -74,7 +75,7 @@ const ImgLink = (() => {
             const chkMain = document.getElementById('hk-img-link-main-' + i);
             const chkInsert = document.getElementById('hk-img-link-insert-' + i);
             const chkAi = document.getElementById('hk-img-link-ai-' + i);
-            if (inp) inp.value = d.urls[i] || '';
+            if (inp) inp.value = (i === 0 && !(d.urls[0] || '').trim()) ? DEFAULT_IMG_URL : (d.urls[i] || '');
             if (memo) memo.value = (d.memos && d.memos[i]) ? d.memos[i] : '';
             if (chkMain) chkMain.checked = (d.apply.main === i);
             if (chkInsert) chkInsert.checked = (d.apply.insert === i);
