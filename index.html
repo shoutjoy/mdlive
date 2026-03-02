@@ -21,6 +21,7 @@
     rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+  <script src="js/markdown/setup.js"></script>
   <link rel="stylesheet" href="style.css">
   <script>
     // GitHub Pages 배포 시 구버전 Service Worker(blob: URL) 즉시 해제
@@ -93,7 +94,7 @@
         <button class="btn btn-sm btn-tmpl" onclick="App.showTmpl()" data-tooltip="논문 양식 선택">📋 양식</button>
         <button class="btn btn-sm btn-research" onclick="App.toggleRM()" data-tooltip="Research Mode (단락 줄번호)"
           data-key="Ctrl+Shift+R" title="Research Mode">🔬</button>
-        <button class="btn btn-sm btn-scholar" onclick="window.open('https://jh-park9.imgbb.com/','_blank')" data-tooltip="ImgBB — 이미지 호스팅 (새 창)" title="ImgBB"
+        <button class="btn btn-sm btn-scholar" onclick="ImgLink.open()" data-tooltip="ImgBB — 이미지 호스팅 (새 창)" title="ImgBB"
           style="background:linear-gradient(135deg,#1a2a40 0%,#1e3558 100%);color:#6ac8f7;border:1px solid rgba(106,200,247,.35);font-weight:600">🖼 IMG</button>
         <button class="btn btn-sm" onclick="DeepResearch.show()" data-tooltip="Deep Research (AI 질문)"
           style="background:linear-gradient(135deg,#1a2a40 0%,#1e3558 100%);color:#6ac8f7;border:1px solid rgba(106,200,247,.35);font-weight:600">📚 Deep Research</button>
@@ -132,6 +133,11 @@
       <div class="tab-file-actions-sep"></div>
       <!-- 탭 목록 (스크롤 가능) -->
       <div id="tab-list"></div>
+      <!-- DocTab복제: 활성 탭 내용 복제 → copy_ 접두사 새 탭 -->
+      <button id="tab-duplicate-btn" class="tfab" onclick="TM.duplicateTab()" title="현재 탭 복제 (copy_ 접두사)"
+        style="flex-shrink:0;font-size:11px;padding:6px 10px;margin-left:4px">
+        DocTab복제
+      </button>
     </div>
 
     <!-- TOOLBAR -->
@@ -261,7 +267,10 @@
 
       <!-- 🔍 찾기 -->
       <div class="tg"><button class="tb tb-util" onclick="App.toggleFind()" data-tooltip="찾기/바꾸기"
-          data-key="Ctrl+F">🔍</button></div>
+          data-key="Ctrl+H">🔍</button></div>
+      <!-- 다중선택 편집 -->
+      <div class="tg"><button class="tb tb-util" id="multi-edit-toolbar-btn" onmousedown="App._multiEditSaveSelection()" onclick="App.toggleMultiEditBar()"
+          data-tooltip="다중선택 편집 — 선택한 텍스트를 문서 전체에서 바꾸기 (Ctrl+Enter)" data-key="Ctrl+Enter">✎ 다중선택</button></div>
       <div class="spacer"></div>
 
       <!-- ⚙ 보기 모드 / PV: 타이틀바로 이동됨 -->
@@ -422,10 +431,20 @@
         <span style="font-size:11px;color:var(--tx3)">바꾸기</span>
         <input id="ri" type="text" placeholder="바꿀 내용...">
         <button class="btn btn-g btn-sm" onclick="App.findNext()">다음</button>
+        <button class="btn btn-g btn-sm" onclick="App.findPrev()">이전</button>
         <button class="btn btn-g btn-sm" onclick="App.replaceOne()">바꾸기</button>
         <button class="btn btn-g btn-sm" onclick="App.replaceAll()">모두</button>
         <button class="btn-ic" onclick="App.toggleFind()">✕</button>
         <span id="fc-cnt" style="font-size:11px;color:var(--tx3)"></span>
+      </div>
+      <div id="multi-edit-bar" class="find-bar-like">
+        <span style="font-size:11px;color:var(--tx3)">선택</span>
+        <input id="me-select" type="text" placeholder="선택한 텍스트..." title="문서에서 바꿀 대상" onkeydown="App.multiEditBarKey(event)" oninput="App.updateFindHighlight()">
+        <span style="font-size:11px;color:var(--tx3)">바꾸기</span>
+        <input id="me-replace" type="text" placeholder="바꿀 내용..." onkeydown="App.multiEditBarKey(event)">
+        <button class="btn btn-g btn-sm" id="me-apply-btn" onclick="App.multiEditApply()">편집</button>
+        <button class="btn-ic" onclick="App.toggleMultiEditBar()">✕</button>
+        <span id="me-cnt" style="font-size:11px;color:var(--tx3)"></span>
       </div>
       <div id="editor-wrap">
         <div id="editor-pane">
@@ -447,6 +466,7 @@
               <div class="lnc" id="lnc"></div>
             </div>
             <div id="editor-line-highlight" aria-hidden="true"></div>
+            <div id="editor-find-highlight" aria-hidden="true"></div>
             <textarea id="editor" class="wln" placeholder="# 제목을 입력하세요&#10;&#10;여기에 Markdown을 작성하세요.&#10;Alt+? → 단축키 목록"
               spellcheck="false"></textarea>
           </div>
@@ -727,23 +747,45 @@
                width:8px;height:40px;cursor:ew-resize;border-radius:4px;
                background:var(--bd);opacity:0.5;z-index:10"
         title="드래그하여 너비 조절"></div>
-      <div class="mh">
+      <div class="mh" style="display:flex;align-items:center;justify-content:space-between">
+        <button class="btn-ic" onclick="App.hideModal('gh-save-modal')" style="order:-1">✕</button>
         <span>💾 저장 방법 선택</span>
-        <button class="btn-ic" onclick="App.hideModal('gh-save-modal')">✕</button>
+        <span style="width:28px"></span>
       </div>
       <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <!-- 1. 위치 (폴더) -->
         <div>
-          <label style="font-size:11px;color:var(--tx3);display:block;margin-bottom:4px">파일 경로 / 파일명</label>
-          <input type="text" id="gh-save-file-path" class="gh-input"
-            placeholder="경로/파일명.md" autocomplete="off"
-            style="font-size:12px;font-family:monospace;width:100%;box-sizing:border-box">
+          <label class="gh-label" style="font-size:11px;color:var(--tx3);display:block;margin-bottom:4px">위치 (폴더)</label>
+          <select id="gh-save-folder" class="gh-input"
+            style="font-size:12px;font-family:monospace;width:100%;box-sizing:border-box;padding:6px 10px;cursor:pointer"
+            onchange="App._ghSaveUpdatePath()">
+            <option value="/">📁 (루트)</option>
+          </select>
         </div>
-        <!-- 커밋 메시지 -->
+        <!-- 2. 파일명 -->
+        <div>
+          <label class="gh-label" style="font-size:11px;color:var(--tx3);display:block;margin-bottom:4px">파일명</label>
+          <input type="text" id="gh-save-filename" class="gh-input"
+            placeholder="파일명.md" autocomplete="off"
+            style="font-size:12px;font-family:monospace;width:100%;box-sizing:border-box"
+            oninput="App._ghSaveUpdatePath()">
+        </div>
+        <!-- 3. 파일 경로 / 파일명 (자동 합침, 직접 수정 가능) -->
+        <div>
+          <label class="gh-label" style="font-size:11px;color:var(--tx3);display:block;margin-bottom:4px">파일 경로 / 파일명</label>
+          <input type="text" id="gh-save-file-path" class="gh-input"
+            placeholder="폴더/파일명.md" autocomplete="off"
+            style="font-size:12px;font-family:monospace;width:100%;box-sizing:border-box"
+            title="위치와 파일명이 자동으로 합쳐집니다. 직접 수정 가능"
+            oninput="App._ghSaveUpdateFromPath()">
+        </div>
+        <!-- 4. 커밋 메시지 (폴더/파일명 형식) -->
         <div class="gh-field" id="gh-save-commit-section">
           <label class="gh-label">커밋 메시지</label>
           <input type="text" id="gh-save-commit-msg" class="gh-input"
-            placeholder="Update 파일명" autocomplete="off"
-            style="width:100%;box-sizing:border-box">
+            placeholder="폴더/파일명 또는 파일명" autocomplete="off"
+            style="width:100%;box-sizing:border-box"
+            title="루트: 파일명 | 하위폴더: 폴더/파일명">
         </div>
         <!-- 파일명 변경 감지 안내 -->
         <div id="gh-rename-notice" style="display:none;font-size:10.5px;padding:8px 10px;
@@ -807,13 +849,67 @@
           style="font-size:10px;padding:2px 7px;vertical-align:middle">+ 행 추가</button>
       </div>
 
+      <!-- IMG 버튼 링크 주소 (3개, 체크된 것이 메인 메뉴에서 동작) -->
+      <div id="hk-img-link-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0">
+            <input type="checkbox" id="hk-img-link-chk-0" name="hk-img-link-chk" style="accent-color:var(--ac)">
+            <span style="font-size:11px;color:var(--tx3)">🖼 IMG 링크 1</span>
+          </label>
+          <input type="text" id="hk-img-link-0" placeholder="https://imgbb.com/"
+            style="font-size:11px;padding:4px 8px;min-width:160px;flex:1;max-width:280px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1);box-sizing:border-box"
+            title="IMG 버튼 클릭 시 이동할 이미지 호스팅 URL">
+          <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(0)" style="font-size:11px">바로가기</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0">
+            <input type="checkbox" id="hk-img-link-chk-1" name="hk-img-link-chk" style="accent-color:var(--ac)">
+            <span style="font-size:11px;color:var(--tx3)">🖼 IMG 링크 2</span>
+          </label>
+          <input type="text" id="hk-img-link-1" placeholder="https://imgbb.com/"
+            style="font-size:11px;padding:4px 8px;min-width:160px;flex:1;max-width:280px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1);box-sizing:border-box"
+            title="IMG 버튼 클릭 시 이동할 이미지 호스팅 URL">
+          <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(1)" style="font-size:11px">바로가기</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0">
+            <input type="checkbox" id="hk-img-link-chk-2" name="hk-img-link-chk" style="accent-color:var(--ac)">
+            <span style="font-size:11px;color:var(--tx3)">🖼 IMG 링크 3</span>
+          </label>
+          <input type="text" id="hk-img-link-2" placeholder="https://imgbb.com/"
+            style="font-size:11px;padding:4px 8px;min-width:160px;flex:1;max-width:280px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1);box-sizing:border-box"
+            title="IMG 버튼 클릭 시 이동할 이미지 호스팅 URL">
+          <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.openAt(2)" style="font-size:11px">바로가기</button>
+        </div>
+        <button type="button" class="btn btn-g btn-sm" onclick="ImgLink.save()" style="font-size:11px;align-self:flex-start">저장</button>
+      </div>
       <!-- 현재 줄 하이라이트 ON/OFF -->
       <div id="hk-line-highlight-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
         <span style="font-size:11px;color:var(--tx2);flex-shrink:0">에디터 현재 줄 하이라이트</span>
         <button type="button" class="btn btn-g btn-sm" id="hk-line-highlight-btn" onclick="EditorLineHighlight.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
         <span style="font-size:11px;color:var(--tx3);margin-left:12px;flex-shrink:0">괄호·따옴표 자동쌍 ( ) [ ] &quot; &apos;</span>
         <button type="button" class="btn btn-g btn-sm" id="hk-auto-pair-btn" onclick="EditorAutoPair.toggle()" style="font-size:11px;flex-shrink:0">ON</button>
-        <span style="font-size:11px;color:var(--tx3);margin-left:8px;flex-shrink:0">작성자 정보</span>
+      </div>
+      <!-- 찾기 하이라이트 색상·농도 -->
+      <div id="hk-find-hl-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+        <span style="font-size:11px;color:var(--tx3);flex-shrink:0">찾기 하이라이트</span>
+        <input type="color" id="hk-find-hl-color" value="#ffc800" title="매치 색상"
+          style="width:32px;height:24px;padding:0;border:1px solid var(--bd);border-radius:4px;cursor:pointer;background:var(--bg3)">
+        <span style="font-size:11px;color:var(--tx3)">색상</span>
+        <input type="range" id="hk-find-hl-opacity" min="10" max="100" value="85" title="농도(투명도)"
+          style="width:80px;vertical-align:middle">
+        <span style="font-size:11px;color:var(--tx3);min-width:28px" id="hk-find-hl-opacity-val">85%</span>
+        <span style="font-size:11px;color:var(--tx3);margin-left:8px">현재 매치</span>
+        <input type="color" id="hk-find-hl-current-color" value="#b4b4b4" title="현재 매치 색상"
+          style="width:32px;height:24px;padding:0;border:1px solid var(--bd);border-radius:4px;cursor:pointer;background:var(--bg3)">
+        <input type="range" id="hk-find-hl-current-opacity" min="10" max="100" value="55" title="현재 매치 농도"
+          style="width:80px;vertical-align:middle">
+        <span style="font-size:11px;color:var(--tx3);min-width:28px" id="hk-find-hl-current-opacity-val">55%</span>
+        <button type="button" class="btn btn-g btn-sm" onclick="FindHighlight.save()" style="font-size:11px;flex-shrink:0">저장</button>
+      </div>
+      <!-- 작성자 정보 (한 줄 아래) -->
+      <div id="hk-author-info-row" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+        <span style="font-size:11px;color:var(--tx3);flex-shrink:0">작성자 정보</span>
         <input type="text" id="hk-author-name" placeholder="이름" title="이름" style="font-size:11px;padding:4px 6px;min-width:100px;flex:1;max-width:140px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box">
         <textarea id="hk-author-affiliation" placeholder="소속" title="소속" rows="2" style="font-size:11px;padding:4px 6px;min-width:120px;flex:1;max-width:180px;min-height:2.2em;height:auto;resize:both;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box;vertical-align:middle;line-height:1.4"></textarea>
         <textarea id="hk-author-email" placeholder="메일" title="메일" rows="1" style="font-size:11px;padding:4px 6px;min-width:130px;flex:1;max-width:200px;min-height:2em;resize:both;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx);box-sizing:border-box;vertical-align:middle;line-height:1.4"></textarea>
@@ -825,6 +921,23 @@
       <div style="margin-top:10px;font-size:11px;color:var(--tx3)" id="hk-footer-note">
         표 내부: Tab→다음 셀 | Enter→새 행 | ⌨ Code 버튼→언어 선택 | Alt+C→마지막 언어 직접 삽입
       </div>
+      <!-- 작성자 정보 삽입: Shift+Alt+A 삽입 항목 선택 + 삽입 버튼 -->
+      <div id="hk-author-insert-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <span style="font-size:11px;color:var(--tx3)">Shift+Alt+A 삽입 항목</span>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-name" checked style="accent-color:var(--ac)"> 이름</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-affiliation" style="accent-color:var(--ac)"> 소속</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-email" style="accent-color:var(--ac)"> 메일</label>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-contact" style="accent-color:var(--ac)"> 연락처</label>
+        <button type="button" class="btn btn-p btn-sm" onclick="AuthorInfo.insertIntoEditor(); App.hideHK();" style="font-size:11px">삽입</button>
+      </div>
+      <!-- 다중선택 span방식 (설정, 기본 ON) -->
+      <div id="hk-me-spanmethod-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--tx3);margin-right:4px">다중선택</span>
+        <label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)" title="ON: span으로 PV 하이라이트·닫을 때 span 제거">
+          <input type="checkbox" id="hk-me-spanmethod" style="accent-color:var(--ac)">
+          span방식
+        </label>
+      </div>
       <!-- 로그인 후 설정: 비밀번호 변경 / 앱 잠금 / 자동 잠금 -->
       <div id="hk-settings-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:none;flex-wrap:wrap;gap:8px;align-items:center">
         <span style="font-size:11px;color:var(--tx3);margin-right:4px">설정</span>
@@ -835,15 +948,6 @@
           style="font-size:11px;padding:4px 8px;width:56px;background:var(--bg3);border:1px solid var(--bd);border-radius:4px;color:var(--tx1)"
           onchange="if(typeof AppLock!=='undefined')AppLock.setAutoLockMinutes(this.value||0)" />
         <span style="font-size:11px;color:var(--tx3)">분</span>
-      </div>
-      <!-- 작성자 정보 삽입: Shift+Alt+A 삽입 항목 선택 + 삽입 버튼 -->
-      <div id="hk-author-insert-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-        <span style="font-size:11px;color:var(--tx3)">Shift+Alt+A 삽입 항목</span>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-name" checked style="accent-color:var(--ac)"> 이름</label>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-affiliation" style="accent-color:var(--ac)"> 소속</label>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-email" style="accent-color:var(--ac)"> 메일</label>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:var(--tx2)"><input type="checkbox" id="hk-insert-contact" style="accent-color:var(--ac)"> 연락처</label>
-        <button type="button" class="btn btn-p btn-sm" onclick="AuthorInfo.insertIntoEditor(); App.hideHK();" style="font-size:11px">삽입</button>
       </div>
       <!-- AI API Key (Google AI Studio) -->
       <div id="ai-apikey-row" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:8px;align-items:center">
@@ -1485,6 +1589,7 @@
               <button type="button" class="btn btn-p btn-sm" onclick="AiImage.insertToEditor()">이미지 삽입</button>
               <button type="button" class="btn btn-g btn-sm" onclick="AiImage.insertToNewFile()">+ 새파일에 삽입</button>
               <button type="button" class="btn btn-g btn-sm" id="aiimg-center-crop-btn" onclick="AiImage.cropCurrentResult()" style="font-size:11px" disabled>✂ 크롭</button>
+              <button type="button" class="btn btn-g btn-sm" onclick="AiImage.saveCropResultToHistory()" style="font-size:11px">크롭결과저장</button>
               <button type="button" class="btn btn-g btn-sm" id="aiimg-center-big-btn" onclick="AiImage.openCurrentResultInNewWindow()" style="font-size:11px" disabled>크게 보기</button>
             </div>
             <div id="aiimg-loading" style="display:none;flex-direction:column;align-items:stretch;gap:8px;padding:12px 16px;border-bottom:1px solid var(--bd);flex-shrink:0">
@@ -2484,6 +2589,65 @@ Do not provide explanations unless explicitly requested.</textarea>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="js/utils/dom.js"></script>
+  <script src="js/core/app-lock.js"></script>
+  <script src="js/core/ai-apikey.js"></script>
+  <script src="js/core/scholar-apikey.js"></script>
+  <script src="js/core/img-link.js"></script>
+  <script src="js/utils/normalize.js"></script>
+  <script src="js/utils/debounce.js"></script>
+  <script src="js/editor/undo.js"></script>
+  <script src="js/editor/commands.js"></script>
+  <script src="js/editor/cursor.js"></script>
+  <script src="js/markdown/toc.js"></script>
+  <script src="js/editor/line-numbers.js"></script>
+  <script src="js/editor/line-highlight.js"></script>
+  <script src="js/editor/auto-pair.js"></script>
+  <script src="js/editor/font-size.js"></script>
+  <script src="js/storage/autosave.js"></script>
+  <script src="js/storage/localfs.js"></script>
+  <script src="js/storage/persistence.js"></script>
+  <script src="js/data/templates.js"></script>
+  <script src="js/core/detect-errors.js"></script>
+  <script src="js/core/render.js"></script>
+  <script src="js/core/state.js"></script>
+  <script src="js/core/events.js"></script>
+  <script src="js/markdown/parser.js"></script>
+  <script src="js/markdown/preview.js"></script>
+  <script src="js/scholar/scholar.js"></script>
+  <script src="js/markdown/slide-mode.js"></script>
+  <script src="js/markdown/pv.js"></script>
+  <script src="js/editor/ippt.js"></script>
+  <script src="js/markdown/a4-ruler.js"></script>
+  <script src="js/core/pw.js"></script>
+  <script src="js/editor/scroll-sync.js"></script>
+  <script src="js/editor/scroll-sync-doc.js"></script>
+  <script src="js/core/tm.js"></script>
+  <script src="js/core/sb.js"></script>
+  <script src="js/storage/fm.js"></script>
+  <script src="js/github/api.js"></script>
+  <script src="js/github/history.js"></script>
+  <script src="js/github/sync.js"></script>
+  <script src="js/ui/ez.js"></script>
+  <script src="js/ui/cite-modal.js"></script>
+  <script src="js/cite/cm.js"></script>
+  <script src="js/cite/cite-ai-search.js"></script>
+  <script src="js/cite/cite-ai-history.js"></script>
+  <script src="js/ai/ai-ppt.js"></script>
+  <script src="js/ai/translator.js"></script>
+  <script src="js/cite/cap.js"></script>
+  <script src="js/cite/ref-search.js"></script>
+  <script src="js/ui/author-info.js"></script>
+  <script src="js/ui/fp.js"></script>
+  <script src="js/ui/stats.js"></script>
+  <script src="js/ui/char-map.js"></script>
+  <script src="js/ui/del-confirm.js"></script>
+  <script src="js/utils/color-picker.js"></script>
+  <script src="js/image/img-store.js"></script>
+  <script src="js/image/img.js"></script>
+  <script src="js/image/ai-image.js"></script>
+  <script src="js/image/pv-image-resize.js"></script>
+  <script src="js/core/hotkey.js"></script>
   <script src="index.js"></script>
   
 

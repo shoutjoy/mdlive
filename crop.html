@@ -114,15 +114,24 @@
       };
     }
 
+    var imageReceived = false;
     window.addEventListener('message', function(e) {
       if (e.data && e.data.type === 'crop' && e.data.image) {
+        imageReceived = true;
         receiveImage(e.data.image);
       }
     });
 
-    if (window.opener) {
-      window.opener.postMessage({ type: 'crop-ready' }, '*');
+    function requestImage() {
+      if (window.opener && !window.opener.closed) window.opener.postMessage({ type: 'crop-ready' }, '*');
     }
+    requestImage();
+    var retryCount = 0;
+    var retryId = setInterval(function() {
+      if (imageReceived || img) { clearInterval(retryId); return; }
+      if (++retryCount > 6) { clearInterval(retryId); return; }
+      requestImage();
+    }, 400);
 
     canvas.addEventListener('mousedown', function(e) {
       const r = canvas.getBoundingClientRect();
@@ -150,9 +159,17 @@
       tc.height = Math.round(rect.h * scale.h);
       const tctx = tc.getContext('2d');
       tctx.drawImage(img, rect.x * scale.w, rect.y * scale.h, tc.width, tc.height, 0, 0, tc.width, tc.height);
-      const dataUrl = tc.toDataURL('image/png');
-      if (window.opener) window.opener.postMessage({ type: 'aiimg-cropped', dataUrl: dataUrl }, '*');
-      window.close();
+      var dataUrl = tc.toDataURL('image/png');
+      if (dataUrl.length > 4000000) dataUrl = tc.toDataURL('image/jpeg', 0.92);
+      if (!window.opener) { window.close(); return; }
+      window.opener.postMessage({ type: 'aiimg-cropped', dataUrl: dataUrl }, '*');
+      window.addEventListener('message', function onAck(e) {
+        if (e.data && e.data.type === 'crop-applied') {
+          window.removeEventListener('message', onAck);
+          window.close();
+        }
+      });
+      setTimeout(function() { window.close(); }, 500);
     });
     document.getElementById('btn-cancel').addEventListener('click', function() { window.close(); });
   </script>

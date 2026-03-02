@@ -539,6 +539,21 @@ body {
 .tfab-print:hover { background: rgba(247,106,180,.08) !important; }
 .tfab-print:hover .tfab-label { color: #ff8ece; }
 
+/* DocTab복제 버튼 (탭 목록 우측 끝) */
+#tab-duplicate-btn {
+    align-self: flex-end;
+    margin-bottom: 4px;
+    background: rgba(124,106,247,.12);
+    border: 1px solid rgba(124,106,247,.3);
+    color: #9d8cf7;
+    border-radius: 6px 6px 0 0;
+}
+#tab-duplicate-btn:hover {
+    background: rgba(124,106,247,.22);
+    color: #c0b0ff;
+    border-color: rgba(124,106,247,.5);
+}
+
 /* ── 파일액션-탭목록 구분선 ── */
 .tab-file-actions-sep {
     width: 0;
@@ -1650,6 +1665,33 @@ body {
     border-color: var(--ac)
 }
 
+#multi-edit-bar {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--bd);
+    flex-shrink: 0;
+}
+#multi-edit-bar.vis {
+    display: flex;
+}
+#multi-edit-bar input {
+    background: var(--bg3);
+    border: 1px solid var(--bd);
+    border-radius: 4px;
+    color: var(--tx);
+    padding: 3px 7px;
+    font-size: 12px;
+    font-family: var(--fb);
+    outline: none;
+    width: 140px;
+}
+#multi-edit-bar input:focus {
+    border-color: var(--ac);
+}
+
 #editor-wrap {
     flex: 1;
     display: flex;
@@ -1841,6 +1883,51 @@ body {
     display: block;
 }
 
+#editor-find-highlight {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    padding: 12px 14px;
+    padding-left: 58px;
+    font-family: var(--fm);
+    font-size: 13.5px;
+    line-height: 21px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: auto;
+    pointer-events: none;
+    z-index: 2;
+    color: transparent;
+    caret-color: transparent;
+    background: transparent;
+}
+
+#editor-find-highlight mark {
+    color: var(--find-hl-color, #1a1a00);
+    background: var(--find-hl-bg, rgba(255, 200, 0, 0.85));
+    border-radius: 3px;
+    padding: 1px 2px;
+    font-weight: 600;
+    box-shadow: 0 0 0 1px var(--find-hl-border, rgba(200, 150, 0, 0.5));
+}
+#editor-find-highlight mark.find-current {
+    color: var(--find-hl-current-color, #2a2a2a);
+    background: var(--find-hl-current-bg, rgba(180, 180, 180, 0.55));
+    box-shadow: 0 0 0 1px var(--find-hl-current-border, rgba(140, 140, 140, 0.4));
+}
+
+/* 찾기 검색어 하이라이트 — 미리보기 패널 */
+#preview-container .find-highlight-pv {
+    background: rgba(255, 200, 0, 0.85);
+    color: #1a1a00;
+    border-radius: 3px;
+    padding: 1px 2px;
+    font-weight: 600;
+    box-shadow: 0 0 0 1px rgba(200, 150, 0, 0.5);
+}
+
 #line-numbers {
     position: absolute;
     left: 0;
@@ -1894,7 +1981,7 @@ body {
     scrollbar-width: thin;
     scrollbar-color: var(--bd) transparent;
     position: relative;
-    z-index: 0;
+    z-index: 1;
 }
 
 #editor.wln {
@@ -2123,6 +2210,30 @@ body.trans-mode .preview-page {
 
 .preview-page img {
     max-width: 100%
+}
+
+/* PV 이미지 resize (클릭 시 핸들 표시) */
+.pv-resizable-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.pv-resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    right: -6px;
+    bottom: -6px;
+    cursor: se-resize;
+    background: var(--ac);
+    border-radius: 2px;
+    display: none;
+}
+.pv-resizable-wrapper.active .pv-resize-handle {
+    display: block;
+}
+.pv-resizable-wrapper img {
+    display: block;
+    max-width: 100%;
 }
 
 .preview-page a {
@@ -2576,6 +2687,10 @@ body.trans-mode #preview-container.slide-mode .ppt-slide {
 [data-theme=light] #titlebar {
     background: #eeebff;
     border-bottom-color: #d0c8f0
+}
+
+[data-theme=light] #app-logo {
+    color: var(--ac);
 }
 
 [data-theme=light] #titlebar-path-display,

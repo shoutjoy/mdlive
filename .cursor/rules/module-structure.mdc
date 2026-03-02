@@ -1,0 +1,41 @@
+---
+description: 새 기능은 index.js에 누적하지 않고 js 카테고리별로 분리
+alwaysApply: true
+---
+
+# MDLive 모듈 구조 규칙
+
+새로 추가하는 파일·함수는 **index.js에 넣지 않고**, 기능에 맞는 `js/` 카테고리 폴더에 별도 모듈로 만든다.
+
+## 카테고리 매핑
+
+| 기능 | 경로 | 예시 |
+|------|------|------|
+| 앱 핵심(렌더, 상태, 이벤트) | `js/core/` | render.js, state.js, events.js |
+| 에디터(명령, 커서, 스크롤) | `js/editor/` | commands.js, cursor.js, undo.js |
+| 마크다운(파싱, 미리보기, TOC) | `js/markdown/` | parser.js, preview.js, pv.js |
+| 이미지 | `js/image/` | img.js, img-store.js, pv-image-resize.js |
+| 인용/참고문헌 | `js/cite/` | cite-modal.js, ref-search.js |
+| AI | `js/ai/` | ai-ppt.js, translator.js |
+| GitHub | `js/github/` | api.js, sync.js |
+| 저장소/파일 | `js/storage/` | autosave.js, fm.js |
+| UI 컴포넌트 | `js/ui/` | cite-modal.js, stats.js |
+| 유틸 | `js/utils/` | dom.js, debounce.js |
+
+## 작업 순서
+
+1. **새 기능 추가 시**: 해당 카테고리 폴더에 새 `.js` 파일 생성
+2. **전역 노출**: IIFE 또는 `const ModuleName = (() => { ... return { init }; })();` 형태로 전역 변수 노출
+3. **index.html**: `</body>` 직전 스크립트 블록에 `<script src="js/카테고리/파일명.js"></script>` 추가
+4. **index.js**: 새 코드를 넣지 않고, 기존 모듈 호출만 유지
+
+## index.js에 남기는 것
+
+- `ins`, `repCL` (App/US 의존 헬퍼)
+- `App` 객체 및 `ED` 등 오케스트레이션
+- 기존 모듈에 대한 위임 호출만
+
+## 금지
+
+- index.js에 새로운 기능 블록을 추가하는 것
+- 50줄 이상의 새 로직을 index.js에 작성하는 것
